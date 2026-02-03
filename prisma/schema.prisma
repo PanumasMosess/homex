@@ -1,3 +1,9 @@
+// =====================================
+// Prisma Schema: Homex Construction OS
+// - Multi-tenant (แยกบริษัทด้วย organizationId)
+// - User รวม Admin/Staff/Customer ไว้ตารางเดียว
+// =====================================
+
 generator client {
   provider = "prisma-client-js"
 }
@@ -6,11 +12,301 @@ datasource db {
   provider = "mysql"
 }
 
+// =====================================
+// Organization = บริษัท/องค์กร (ตัวคุมทุกอย่าง)
+// =====================================
 model organization {
-  id        Int      @id @default(autoincrement())
-  name      String
-  slug      String?
-  ownerId   Int
-  createdAt DateTime @default(now())
+  id        Int      @id @default(autoincrement()) // PK: รหัสบริษัท
+  name      String // ชื่อบริษัท
+  slug      String?  @unique // ชื่อย่อ/URL slug (ไม่ซ้ำ)
+  createdAt DateTime @default(now()) // วันที่สร้างบริษัท
+  updatedAt DateTime @updatedAt // วันที่แก้ไขล่าสุด
+
+  // ---------- relations ----------
+  ownerId Int
+  owner   user @relation("org_owner", fields: [ownerId], references: [id])
+
+  users        user[]         @relation("org_users") // สมาชิกในบริษัททั้งหมด
+  positions    position[] // ตำแหน่งของบริษัท
+  permissions  permission[] // สิทธิ์ของบริษัท
+  projects     project[] // โปรเจคของบริษัท
+  projectUsers project_user[] @relation("org_project_users") // คนที่ถูกดึงเข้าโปรเจค (ตารางกลาง)
+  projectFiles project_file[] // ไฟล์แนบโปรเจค
+  projectImgs  project_img[] // รูปแนบโปรเจค
+  tasks        task[] // งานหลักทั้งหมดของบริษัท (ทุกโปรเจค)
+  taskDetails  task_detail[] // งานย่อยทั้งหมดของบริษัท (ทุกโปรเจค)
 }
 
+// =====================================
+// User = ผู้ใช้งาน (Admin/Staff/Customer รวมตารางเดียว)
+// =====================================
+model user {
+  id           Int      @id @default(autoincrement()) // PK: รหัสผู้ใช้
+  // ---------- login ----------
+  username     String   @unique // ชื่อผู้ใช้ (ใช้ล็อกอิน) ห้ามซ้ำ
+  email        String? // อีเมล (อาจไม่มี)
+  passwordHash String // รหัสผ่านแบบ hash (ห้ามเก็บ plain text)
+  isActive     Boolean  @default(true) // สถานะบัญชี เปิด/ปิด
+  // ---------- profile ----------
+  displayName  String? // ชื่อที่แสดงในระบบ
+  phone        String? // เบอร์โทร
+  address      String? // ที่อยู่
+  note         String? // โน้ต/ข้อมูลจำเป็นอื่น ๆ
+  avatarUrl    String? // รูปโปรไฟล์ (URL)
+  // ---------- user type (ระดับหยาบ) ----------
+  createdAt    DateTime @default(now()) // วันที่สร้างบัญชี
+  updatedAt    DateTime @updatedAt // วันที่แก้ไขล่าสุด
+
+  // ---------- relations ----------
+  // user เป็น "สมาชิกบริษัท"
+  organizationId Int // FK -> organization.id (ผู้ใช้อยู่บริษัทไหน)
+  organization   organization @relation("org_users", fields: [organizationId], references: [id])
+
+  // user มี "ตำแหน่ง" ในบริษัท
+  positionId Int // FK -> position.id (ตำแหน่งในบริษัท)
+  position   position @relation(fields: [positionId], references: [id])
+
+  // user เป็น "เจ้าของบริษัท" (อาจเป็นเจ้าของหลายบริษัท)
+  ownedOrganizations organization[] @relation("org_owner")
+
+  // user ถูก "ลากเข้าโปรเจค" ผ่านตารางกลาง
+  projectLinks project_user[]
+
+  // user เป็น "คนสร้างโปรเจค"
+  createdProjects project[] @relation("project_creator")
+
+  // user เป็น "คนสร้าง task"
+  createdTasks task[] @relation("task_creator")
+
+  // user เป็น "ผู้อัปโหลดไฟล์"
+  uploadedFiles project_file[] @relation("project_file_uploader")
+  uploadedImgs  project_img[]  @relation("project_img_uploader")
+}
+
+// =====================================
+// Position = ตำแหน่ง (เช่น Admin/CEO/Foreman/Customer)
+// - เป็นของแต่ละบริษัท (org แยกกัน)
+// =====================================
+model position {
+  id Int @id @default(autoincrement()) // PK: รหัสตำแหน่ง
+
+  positionName String // ชื่อตำแหน่ง เช่น "CEO", "Engineer", "Customer"
+  positionDesc String? // คำอธิบายตำแหน่ง
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id (ตำแหน่งอยู่บริษัทไหน)
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  users       user[] // คนที่อยู่ตำแหน่งนี้
+  permissions position_permission[] // สิทธิ์ของตำแหน่งนี้
+}
+
+// =====================================
+// Permission = สิทธิ์ (เช่น PROJECT_VIEW, TASK_EDIT)
+// - แยกตามบริษัท
+// =====================================
+model permission {
+  id Int @id @default(autoincrement())
+
+  permissionKey  String // รหัสสิทธิ์ เช่น "PROJECT_VIEW"
+  permissionName String // ชื่อแสดงผล เช่น "ดูโปรเจค"
+  permissionDesc String? // รายละเอียดเพิ่มเติม
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id
+  organization   organization          @relation(fields: [organizationId], references: [id])
+  positions      position_permission[] // ตำแหน่งไหนมีสิทธิ์นี้
+}
+
+// =====================================
+// PositionPermission = ตารางกลาง (ตำแหน่ง ↔ สิทธิ์)
+// - บอกว่า "ตำแหน่งนี้" มี/ไม่มี "สิทธิ์นี้"
+// =====================================
+model position_permission {
+  id      Int     @id @default(autoincrement())
+  allowed Boolean @default(false) // เปิด/ปิดสิทธิ์ (เผื่อทำ override)
+
+  positionId Int // FK -> position.id
+  position   position @relation(fields: [positionId], references: [id])
+
+  permissionId Int // FK -> permission.id
+  permission   permission @relation(fields: [permissionId], references: [id])
+}
+
+// =====================================
+// Project = โปรเจคของบริษัท
+// =====================================
+model project {
+  id Int @id @default(autoincrement())
+
+  projectCode   String // รหัสโปรเจค เช่น "PJ-2026-001"
+  projectName   String? // ชื่อโปรเจค
+  projectDesc   String? // รายละเอียด
+  address       String? // ที่อยู่หน้างาน
+  mapUrl        String? // ลิงก์ Google Maps
+  coverImageUrl String? // รูปปกโปรเจค
+
+  status          String @default("PLANNING") // PLANNING / IN_PROGRESS / ON_HOLD / DONE
+  progressPercent Int    @default(0) // 0..100 (ความคืบหน้าโดยรวม)
+
+  // ---------- planned schedule ----------
+  startPlanned  DateTime? // วันที่เริ่มตามแผน
+  finishPlanned DateTime? // วันที่เสร็จตามแผน
+  durationDays  Int? // ระยะเวลาตามแผน (วัน)
+
+  // ---------- actual schedule ----------
+  startActual  DateTime? // วันที่เริ่มจริง
+  finishActual DateTime? // วันที่เสร็จจริง
+
+  // ผู้สร้างโปรเจค
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  createdById Int
+  creator     user @relation("project_creator", fields: [createdById], references: [id])
+
+  members     project_user[] // คนที่ถูกลากเข้าโปรเจค
+  tasks       task[] // งานหลักในโปรเจค
+  taskDetails task_detail[] // งานย่อยทั้งหมดของโปรเจค
+  files       project_file[] // ไฟล์แนบของโปรเจค
+  imgs        project_img[] // รูปแนบของโปรเจค
+}
+
+// =====================================
+// ProjectFile = ไฟล์แนบโปรเจค (เอกสาร)
+// =====================================
+model project_file {
+  id        Int      @id @default(autoincrement())
+  fileName  String // ชื่อไฟล์ที่แสดง
+  fileUrl   String // URL ไฟล์จริง (S3/Spaces/etc.)
+  fileType  String? // ประเภทเอกสาร เช่น BOQ, PLAN
+  note      String? // โน้ตประกอบไฟล์
+  createdAt DateTime @default(now())
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int // FK -> project.id
+  project   project @relation(fields: [projectId], references: [id])
+
+  uploadedById Int?
+  uploader     user? @relation("project_file_uploader", fields: [uploadedById], references: [id])
+}
+
+// =====================================
+// ProjectFile = ไฟล์แนบโปรเจค (เอกสาร)
+// =====================================
+
+model project_img {
+  id Int @id @default(autoincrement())
+  imgName   String? // ชื่อรูปที่แสดง (ถ้ามี)
+  imgUrl    String // URL รูปจริง
+  imgType   String // ประเภทรูป เช่น SITE_BEFORE, SITE_PROGRESS, SITE_AFTER, OTHER
+  note      String? // โน้ตประกอบภาพ
+  createdAt DateTime @default(now())
+
+  // relations
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id])
+
+  uploadedById Int?
+  uploader     user? @relation("project_img_uploader", fields: [uploadedById], references: [id])
+}
+
+// =====================================
+// ProjectUser = ตารางกลาง "คนในทีมโปรเจค"
+// =====================================
+model project_user {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) // วันที่ถูกเพิ่มเข้าโปรเจค
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id (ไว้ filter ง่าย)
+  organization   organization @relation("org_project_users", fields: [organizationId], references: [id])
+
+  projectId Int // FK -> project.id
+  project   project @relation(fields: [projectId], references: [id])
+
+  userId Int // FK -> user.id
+  user   user @relation(fields: [userId], references: [id])
+}
+
+// =====================================
+// Task = งานหลัก (เช่น เทพื้น, ก่อกำแพง)
+// =====================================
+model task {
+  id              Int       @id @default(autoincrement())
+  taskName        String? // ชื่องาน เช่น "เทพื้น"
+  taskDesc        String? // รายละเอียดงาน
+  status          String    @default("TODO") // TODO / DOING / DONE / BLOCKED
+  progressPercent Int       @default(0) // ความคืบหน้า 0..100
+  coverImageUrl   String? // รูปตัวแทนงาน (1 รูป)
+  // planned schedule
+  startPlanned    DateTime?
+  finishPlanned   DateTime?
+  durationDays    Int?
+  // actual schedule
+  startActual     DateTime?
+  finishActual    DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int // FK -> project.id
+  project   project @relation(fields: [projectId], references: [id])
+
+  createdById Int // คนสร้าง task
+  creator     user @relation("task_creator", fields: [createdById], references: [id])
+
+  details task_detail[] // ขั้นตอนย่อยของ task
+}
+
+// =====================================
+// TaskDetail = ขั้นตอนย่อยของงานหลัก
+// =====================================
+model task_detail {
+  id              Int       @id @default(autoincrement())
+  detailName      String // ชื่อขั้นตอน เช่น "ผูกเหล็ก"
+  detailDesc      String? // รายละเอียดขั้นตอน
+  status          Boolean   @default(false) // สถานะบัญชี เปิด/ปิด
+  // สัดส่วนของขั้นตอน (รวมกันควร = 100)
+  weightPercent   Int       @default(0) // น้ำหนักขั้นตอน (0..100)
+  progressPercent Int       @default(0) // ความคืบหน้าขั้นตอน (0..100)
+  // planned schedule
+  startPlanned    DateTime?
+  finishPlanned   DateTime?
+  durationDays    Int?
+  // actual schedule
+  startActual     DateTime?
+  finishActual    DateTime?
+  sortOrder       Int       @default(0) // ลำดับขั้นตอน
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int // FK -> organization.id
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int // FK -> project.id
+  project   project @relation(fields: [projectId], references: [id])
+
+  taskId Int // FK -> task.id
+  task   task @relation(fields: [taskId], references: [id])
+}
