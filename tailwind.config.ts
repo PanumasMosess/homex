@@ -1,6 +1,6 @@
 import type { Config } from "tailwindcss";
 const defaultTheme = require("tailwindcss/defaultTheme");
-const {heroui} = require("@heroui/react");
+const { heroui } = require("@heroui/react");
 
 const config: Config = {
   content: [
@@ -26,13 +26,15 @@ const config: Config = {
         lamaYellowLight: "#FEFCE8",
       },
       fontFamily: {
-        sans: ["var(--font-kanit)", ...defaultTheme.fontFamily.sans],
+        sans: ["var(--font-sans)", ...defaultTheme.fontFamily.sans],
+        kanit: ["var(--font-kanit)", ...defaultTheme.fontFamily.sans],
         dotmatrix: ["Ndot", ...defaultTheme.fontFamily.sans],
       },
     },
   },
   darkMode: "class",
-  plugins: [heroui({
+  plugins: [
+    heroui({
       prefix: "heroui", // prefix for themes variables
       addCommonColors: false, // override common colors (e.g. "blue", "green", "pink").
       defaultTheme: "light", // default theme from the themes object
@@ -48,6 +50,7 @@ const config: Config = {
           colors: {}, // dark theme colors
         },
       },
-    })],
+    }),
+  ],
 };
 export default config;

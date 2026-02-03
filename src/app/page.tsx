@@ -1,14 +1,9 @@
-import { ThemeSwitcher } from "@/components/ThemeSwitcher";
 import Image from "next/image";
 import Link from "next/link";
 
 export default function LoginPage() {
   return (
     <div className="relative flex min-h-screen items-center justify-center bg-zinc-50 font-sans dark:bg-black px-6 transition-colors duration-300">
-      <div className="absolute top-6 right-6 z-10">
-        <ThemeSwitcher />
-      </div>
-
       <main className="flex w-full max-w-sm flex-col items-center gap-8 bg-white p-8 dark:bg-zinc-950 sm:p-12 rounded-[2.5rem] shadow-sm border border-zinc-100 dark:border-zinc-800 transition-colors duration-300">
         <Link href="/">
           <Image
@@ -61,18 +56,18 @@ export default function LoginPage() {
             />
           </div>
 
-          <button
-            type="submit"
+          <Link
+            href="/dashboard" 
             className="mt-2 flex h-12 w-full items-center justify-center rounded-full bg-black text-white text-sm font-medium transition-colors hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
           >
-            Sign In
-          </button>
+            เข้าสู่ระบบ
+          </Link>
         </form>
 
         <div className="text-center text-sm text-zinc-600 dark:text-zinc-400">
           Don&apos;t have an account?{" "}
           <Link
-            href="/signup"
+            href="/dashboard"
             className="font-semibold text-black dark:text-white hover:underline"
           >
             Get Started
