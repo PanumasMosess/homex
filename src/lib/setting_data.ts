@@ -1,8 +1,8 @@
 import { Box, Home, Settings, Users } from "lucide-react";
 
 export const menuItems = [
-  { name: "Dashboard", icon: Home, path: "/" },
-  { name: "Projects", icon: Box, path: "/Projects" },
+  { name: "Dashboard", icon: Home, path: "/dashboard" },
+  { name: "Projects", icon: Box, path: "/projects" },
   { name: "Customers", icon: Users, path: "/customers" },
   { name: "Settings", icon: Settings, path: "/settings" },
 ];

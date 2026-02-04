@@ -34,30 +34,48 @@ export const HomexSidebar = ({
 
       <aside className={sidebarClasses}>
         <div
-          className={`h-20 flex items-center ${isCollapsed ? "justify-center" : "px-20 justify-between"}`}
+          className={`h-20 flex items-center px-6 md:px-0 ${
+            isCollapsed ? "md:justify-center" : "justify-between md:px-6"
+          }`}
         >
-          {isCollapsed ? (
-            <Image
-              src="/logo.png"
-              alt="HOMEX Logo"
-              width={40}
-              height={40}
-              className="rounded-full object-cover dark:invert font-sans"
-            />
-          ) : (
-            <div className="flex items-center gap-3">
-              <Image
-                src="/logo.png"
-                alt="HOMEX Logo"
-                width={32}
-                height={32}
-                className="rounded-full object-cover dark:invert "
-              />
-              <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
-                HOMEX
-              </span>
-            </div>
-          )}
+          <div className={`${isCollapsed ? "hidden md:block" : "block"}`}>
+             {isCollapsed ? (
+                <Image
+                  src="/logo.png"
+                  alt="HOMEX Logo"
+                  width={40}
+                  height={40}
+                  className="rounded-full object-cover dark:invert font-sans"
+                />
+             ) : (
+               <div className="flex items-center gap-3">
+                 <Image
+                   src="/logo.png"
+                   alt="HOMEX Logo"
+                   width={32}
+                   height={32}
+                   className="rounded-full object-cover dark:invert "
+                 />
+                 <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
+                   HOMEX
+                 </span>
+               </div>
+             )}
+          </div>
+
+           <div className={`flex items-center gap-3 md:hidden ${isCollapsed ? "block" : "hidden"}`}>
+                 <Image
+                   src="/logo.png"
+                   alt="HOMEX Logo"
+                   width={32}
+                   height={32}
+                   className="rounded-full object-cover dark:invert "
+                 />
+                 <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
+                   HOMEX
+                 </span>
+           </div>
+
 
           <Button
             isIconOnly
@@ -85,30 +103,38 @@ export const HomexSidebar = ({
                       ? "bg-primary text-primary-foreground shadow-md shadow-primary/30"
                       : "text-default-500 hover:bg-default-100 hover:text-foreground"
                   }
-                  ${isCollapsed ? "justify-center aspect-square p-0 w-12 h-12 mx-auto" : ""}
+                  ${
+
+                    isCollapsed ? "md:justify-center md:aspect-square md:p-0 md:w-12 md:h-12 md:mx-auto" : ""
+                  }
                 `}
               >
                 <item.icon
-                  size={isCollapsed ? 22 : 20}
+                  size={isCollapsed ? 22 : 20} 
                   strokeWidth={isActive ? 2.5 : 2}
-                  className="transition-transform group-hover:scale-110 z-10"
+                  className={`transition-transform group-hover:scale-110 z-10 ${isCollapsed ? "md:w-[22px]" : "w-[20px]"}`} // Adjust icon size via class for responsiveness if needed
                 />
-                {!isCollapsed && (
-                  <span className="text-sm font-medium z-10">{item.name}</span>
-                )}
+                
+                <span className={`text-sm font-medium z-10 ${isCollapsed ? "block md:hidden" : "block"}`}>
+                    {item.name}
+                </span>
               </Link>
             );
 
             return isCollapsed ? (
-              <Tooltip
-                key={item.path}
-                content={item.name}
-                placement="right"
-                color="primary"
-                offset={10}
-              >
-                <div className="w-full flex justify-center">{LinkContent}</div>
-              </Tooltip>
+              <>
+                 <div className="md:hidden" key={item.path}>{LinkContent}</div>
+                 <Tooltip
+                    key={`tooltip-${item.path}`}
+                    content={item.name}
+                    placement="right"
+                    color="primary"
+                    offset={10}
+                    className="hidden md:block" 
+                  >
+                    <div className="w-full flex justify-center hidden md:flex">{LinkContent}</div>
+                  </Tooltip>
+              </>
             ) : (
               <div key={item.path}>{LinkContent}</div>
             );
@@ -116,22 +142,40 @@ export const HomexSidebar = ({
         </div>
 
         <div
-          className={`flex items-center w-full pb-6 ${isCollapsed ? "justify-center" : "px-6"}`}
+          className={`flex items-center w-full pb-6 ${
+            isCollapsed ? "md:justify-center" : "px-6"
+          } px-6`} 
         >
           {isCollapsed ? (
-            <Tooltip content="Logout" placement="right" color="danger">
-              <Button
-                as={Link}
-                href="/"
-                isIconOnly
-                variant="flat"
-                color="danger"
-                radius="full"
-                className="w-9 h-9 min-w-9"
-              >
-                <LogOut size={16} />
-              </Button>
-            </Tooltip>
+            <>
+                <Button
+                  as={Link}
+                  href="/"
+                  variant="flat"
+                  color="danger"
+                  radius="full"
+                  className="w-full justify-center gap-2 h-8 md:hidden"
+                  startContent={<LogOut size={16} />}
+                >
+                  <span className="font-medium text-xs">Logout</span>
+                </Button>
+
+                <div className="hidden md:block">
+                    <Tooltip content="Logout" placement="right" color="danger">
+                      <Button
+                        as={Link}
+                        href="/"
+                        isIconOnly
+                        variant="flat"
+                        color="danger"
+                        radius="full"
+                        className="w-9 h-9 min-w-9"
+                      >
+                        <LogOut size={16} />
+                      </Button>
+                    </Tooltip>
+                </div>
+            </>
           ) : (
             <Button
               as={Link}
