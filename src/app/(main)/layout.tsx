@@ -3,7 +3,10 @@ import "../globals.css";
 import MainLayoutClient from "./MainLayoutClient";
 
 export const metadata: Metadata = {
-  title: "Homex - Dashboard",
+  title: {
+    template: "HomeX | %s", 
+    default: "Homex", 
+  },
   description: "Construction Management System",
   icons: {
     icon: "/logo.png",
