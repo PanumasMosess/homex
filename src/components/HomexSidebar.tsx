@@ -1,6 +1,6 @@
 "use client";
 
-import { Home, Settings, Users, Box, LogOut, X } from "lucide-react";
+import { LogOut, X } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SidebarProps } from "@/lib/type";
@@ -39,43 +39,44 @@ export const HomexSidebar = ({
           }`}
         >
           <div className={`${isCollapsed ? "hidden md:block" : "block"}`}>
-             {isCollapsed ? (
+            {isCollapsed ? (
+              <Image
+                src="/logo.png"
+                alt="HOMEX Logo"
+                width={40}
+                height={40}
+                className="rounded-full object-cover dark:invert font-sans"
+              />
+            ) : (
+              <div className="flex items-center gap-3">
                 <Image
                   src="/logo.png"
                   alt="HOMEX Logo"
-                  width={40}
-                  height={40}
-                  className="rounded-full object-cover dark:invert font-sans"
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover dark:invert "
                 />
-             ) : (
-               <div className="flex items-center gap-3">
-                 <Image
-                   src="/logo.png"
-                   alt="HOMEX Logo"
-                   width={32}
-                   height={32}
-                   className="rounded-full object-cover dark:invert "
-                 />
-                 <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
-                   HOMEX
-                 </span>
-               </div>
-             )}
+                <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
+                  HOMEX
+                </span>
+              </div>
+            )}
           </div>
 
-           <div className={`flex items-center gap-3 md:hidden ${isCollapsed ? "block" : "hidden"}`}>
-                 <Image
-                   src="/logo.png"
-                   alt="HOMEX Logo"
-                   width={32}
-                   height={32}
-                   className="rounded-full object-cover dark:invert "
-                 />
-                 <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
-                   HOMEX
-                 </span>
-           </div>
-
+          <div
+            className={`flex items-center gap-3 md:hidden ${isCollapsed ? "block" : "hidden"}`}
+          >
+            <Image
+              src="/logo.png"
+              alt="HOMEX Logo"
+              width={32}
+              height={32}
+              className="rounded-full object-cover dark:invert "
+            />
+            <span className="text-xl font-bold bg-gradient-to-tr from-slate-200 to-slate-500 text-transparent bg-clip-text tracking-wide">
+              HOMEX
+            </span>
+          </div>
 
           <Button
             isIconOnly
@@ -104,37 +105,42 @@ export const HomexSidebar = ({
                       : "text-default-500 hover:bg-default-100 hover:text-foreground"
                   }
                   ${
-
-                    isCollapsed ? "md:justify-center md:aspect-square md:p-0 md:w-12 md:h-12 md:mx-auto" : ""
+                    isCollapsed
+                      ? "md:justify-center md:aspect-square md:p-0 md:w-12 md:h-12 md:mx-auto"
+                      : ""
                   }
                 `}
               >
                 <item.icon
-                  size={isCollapsed ? 22 : 20} 
+                  size={isCollapsed ? 22 : 20}
                   strokeWidth={isActive ? 2.5 : 2}
-                  className={`transition-transform group-hover:scale-110 z-10 ${isCollapsed ? "md:w-[22px]" : "w-[20px]"}`} // Adjust icon size via class for responsiveness if needed
+                  className={`transition-transform group-hover:scale-110 z-10 ${isCollapsed ? "md:w-[22px]" : "w-[20px]"}`}
                 />
-                
-                <span className={`text-sm font-medium z-10 ${isCollapsed ? "block md:hidden" : "block"}`}>
-                    {item.name}
+
+                <span
+                  className={`text-sm font-medium z-10 ${isCollapsed ? "block md:hidden" : "block"}`}
+                >
+                  {item.name}
                 </span>
               </Link>
             );
 
             return isCollapsed ? (
-              <>
-                 <div className="md:hidden" key={item.path}>{LinkContent}</div>
-                 <Tooltip
-                    key={`tooltip-${item.path}`}
-                    content={item.name}
-                    placement="right"
-                    color="primary"
-                    offset={10}
-                    className="hidden md:block" 
-                  >
-                    <div className="w-full flex justify-center hidden md:flex">{LinkContent}</div>
-                  </Tooltip>
-              </>
+              <div key={item.path} className="w-full">
+                <div className="md:hidden">{LinkContent}</div>
+                <Tooltip
+                  key={`tooltip-${item.path}`}
+                  content={item.name}
+                  placement="right"
+                  color="primary"
+                  offset={10}
+                  className="hidden md:block"
+                >
+                  <div className="w-full flex justify-center hidden md:flex">
+                    {LinkContent}
+                  </div>
+                </Tooltip>
+              </div>
             ) : (
               <div key={item.path}>{LinkContent}</div>
             );
@@ -144,37 +150,37 @@ export const HomexSidebar = ({
         <div
           className={`flex items-center w-full pb-6 ${
             isCollapsed ? "md:justify-center" : "px-6"
-          } px-6`} 
+          } px-6`}
         >
           {isCollapsed ? (
             <>
-                <Button
-                  as={Link}
-                  href="/"
-                  variant="flat"
-                  color="danger"
-                  radius="full"
-                  className="w-full justify-center gap-2 h-8 md:hidden"
-                  startContent={<LogOut size={16} />}
-                >
-                  <span className="font-medium text-xs">Logout</span>
-                </Button>
+              <Button
+                as={Link}
+                href="/"
+                variant="flat"
+                color="danger"
+                radius="full"
+                className="w-full justify-center gap-2 h-8 md:hidden"
+                startContent={<LogOut size={16} />}
+              >
+                <span className="font-medium text-xs">Logout</span>
+              </Button>
 
-                <div className="hidden md:block">
-                    <Tooltip content="Logout" placement="right" color="danger">
-                      <Button
-                        as={Link}
-                        href="/"
-                        isIconOnly
-                        variant="flat"
-                        color="danger"
-                        radius="full"
-                        className="w-9 h-9 min-w-9"
-                      >
-                        <LogOut size={16} />
-                      </Button>
-                    </Tooltip>
-                </div>
+              <div className="hidden md:block">
+                <Tooltip content="Logout" placement="right" color="danger">
+                  <Button
+                    as={Link}
+                    href="/"
+                    isIconOnly
+                    variant="flat"
+                    color="danger"
+                    radius="full"
+                    className="w-9 h-9 min-w-9"
+                  >
+                    <LogOut size={16} />
+                  </Button>
+                </Tooltip>
+              </div>
             </>
           ) : (
             <Button
