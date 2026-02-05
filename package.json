@@ -20,11 +20,18 @@
     "next-themes": "^0.4.6",
     "pg": "^8.17.2",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "@aws-sdk/client-s3": "^3.876.0",
+    "@aws-sdk/s3-request-presigner": "^3.876.0",
+    "@google/genai": "^1.16.0",
+    "@hookform/resolvers": "^5.2.1",
+    "zod": "^3.23.8",
+    "jsrsasign": "^11.1.0"
   },
   "devDependencies": {
     "@prisma/config": "^7.3.0",
     "@tailwindcss/postcss": "^4",
+    "@types/jsrsasign": "^10.5.15",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
