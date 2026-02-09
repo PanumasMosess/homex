@@ -7,7 +7,15 @@ export const metadata: Metadata = {
 };
 
 const Project = async () => {
-  return <MainPageProject></MainPageProject>;
+  const organizationId = 1;
+  const currentUserId = 1;
+
+  return (
+    <MainPageProject
+      organizationId={organizationId}
+      currentUserId={currentUserId}
+    ></MainPageProject>
+  );
 };
 
 export default Project;

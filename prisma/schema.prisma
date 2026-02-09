@@ -20,11 +20,11 @@ model organization {
   name      String // ชื่อบริษัท
   slug      String?  @unique // ชื่อย่อ/URL slug (ไม่ซ้ำ)
   createdAt DateTime @default(now()) // วันที่สร้างบริษัท
-  updatedAt DateTime @updatedAt // วันที่แก้ไขล่าสุด
+  updatedAt DateTime @default(now()) // วันที่แก้ไขล่าสุด
 
   // ---------- relations ----------
-  ownerId Int
-  owner   user @relation("org_owner", fields: [ownerId], references: [id])
+  ownerId Int?
+  owner   user? @relation("org_owner", fields: [ownerId], references: [id])
 
   users        user[]         @relation("org_users") // สมาชิกในบริษัททั้งหมด
   positions    position[] // ตำแหน่งของบริษัท
@@ -55,7 +55,7 @@ model user {
   avatarUrl    String? // รูปโปรไฟล์ (URL)
   // ---------- user type (ระดับหยาบ) ----------
   createdAt    DateTime @default(now()) // วันที่สร้างบัญชี
-  updatedAt    DateTime @updatedAt // วันที่แก้ไขล่าสุด
+  updatedAt    DateTime @default(now()) // วันที่แก้ไขล่าสุด
 
   // ---------- relations ----------
   // user เป็น "สมาชิกบริษัท"
@@ -63,8 +63,8 @@ model user {
   organization   organization @relation("org_users", fields: [organizationId], references: [id])
 
   // user มี "ตำแหน่ง" ในบริษัท
-  positionId Int // FK -> position.id (ตำแหน่งในบริษัท)
-  position   position @relation(fields: [positionId], references: [id])
+  positionId Int? // FK -> position.id (ตำแหน่งในบริษัท)
+  position   position? @relation(fields: [positionId], references: [id])
 
   // user เป็น "เจ้าของบริษัท" (อาจเป็นเจ้าของหลายบริษัท)
   ownedOrganizations organization[] @relation("org_owner")
@@ -94,7 +94,7 @@ model position {
   positionDesc String? // คำอธิบายตำแหน่ง
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   // ---------- relations ----------
   organizationId Int // FK -> organization.id (ตำแหน่งอยู่บริษัทไหน)
@@ -116,7 +116,7 @@ model permission {
   permissionDesc String? // รายละเอียดเพิ่มเติม
 
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   // ---------- relations ----------
   organizationId Int // FK -> organization.id
@@ -148,6 +148,10 @@ model project {
   projectCode   String // รหัสโปรเจค เช่น "PJ-2026-001"
   projectName   String? // ชื่อโปรเจค
   projectDesc   String? // รายละเอียด
+
+  customerName  String?   // ✅ ชื่อลูกค้า
+  budget        Decimal?  @db.Decimal(12,2) // งบประมาณ
+
   address       String? // ที่อยู่หน้างาน
   mapUrl        String? // ลิงก์ Google Maps
   coverImageUrl String? // รูปปกโปรเจค
@@ -166,7 +170,7 @@ model project {
 
   // ผู้สร้างโปรเจค
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime @default(now())
 
   // ---------- relations ----------
   organizationId Int // FK -> organization.id
@@ -263,7 +267,7 @@ model task {
   startActual     DateTime?
   finishActual    DateTime?
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  updatedAt       DateTime  @default(now())
 
   // ---------- relations ----------
   organizationId Int // FK -> organization.id
@@ -298,7 +302,7 @@ model task_detail {
   finishActual    DateTime?
   sortOrder       Int       @default(0) // ลำดับขั้นตอน
   createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  updatedAt       DateTime  @default(now())
 
   // ---------- relations ----------
   organizationId Int // FK -> organization.id
