@@ -9,24 +9,25 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@aws-sdk/client-s3": "^3.876.0",
+    "@aws-sdk/s3-request-presigner": "^3.876.0",
+    "@google/genai": "^1.16.0",
     "@heroui/react": "^2.8.7",
+    "@hookform/resolvers": "^5.2.1",
     "@prisma/adapter-mariadb": "^7.3.0",
     "@prisma/adapter-pg": "^7.3.0",
     "@prisma/client": "^7.3.0",
     "dotenv": "^17.2.3",
     "framer-motion": "^12.29.2",
+    "jsrsasign": "^11.1.0",
     "lucide-react": "^0.563.0",
     "next": "16.1.6",
     "next-themes": "^0.4.6",
     "pg": "^8.17.2",
     "react": "19.2.3",
     "react-dom": "19.2.3",
-    "@aws-sdk/client-s3": "^3.876.0",
-    "@aws-sdk/s3-request-presigner": "^3.876.0",
-    "@google/genai": "^1.16.0",
-    "@hookform/resolvers": "^5.2.1",
-    "zod": "^3.23.8",
-    "jsrsasign": "^11.1.0"
+    "react-toastify": "^11.0.5",
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@prisma/config": "^7.3.0",

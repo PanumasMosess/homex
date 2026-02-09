@@ -56,13 +56,21 @@ const projects = [
   },
 ];
 
-const MainPageProject = () => {
+type MainPageProjectProps = {
+  organizationId: number;
+  currentUserId: number;
+};
+
+const MainPageProject = ({
+  organizationId,
+  currentUserId,
+}: MainPageProjectProps) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
- return (
+  return (
     // ✅ Mobile Fix 1: ลด Padding รอบนอกเหลือ p-3 และเพิ่ม pb-24 (กันตกขอบล่าง)
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen pb-24">
-      
+
       {/* --- Header Section --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-8">
         <div>
@@ -103,15 +111,15 @@ const MainPageProject = () => {
       {/* ✅ Mobile Fix 3: Scroll แนวนอนได้ลื่นๆ ไม่ล้นจอ */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
         {["All", "In Progress", "Completed", "Planning"].map((tab, i) => (
-            <Chip
-              key={tab}
-              variant={i === 0 ? "solid" : "bordered"}
-              color={i === 0 ? "default" : "default"}
-              className="cursor-pointer border-default-200 shrink-0 h-8"
-              size="sm"
-            >
-              {tab}
-            </Chip>
+          <Chip
+            key={tab}
+            variant={i === 0 ? "solid" : "bordered"}
+            color={i === 0 ? "default" : "default"}
+            className="cursor-pointer border-default-200 shrink-0 h-8"
+            size="sm"
+          >
+            {tab}
+          </Chip>
         ))}
       </div>
 
@@ -124,7 +132,7 @@ const MainPageProject = () => {
 
         {/* Create Card Button */}
         <div onClick={onOpen} className="group h-full">
-          <Card 
+          <Card
             className="h-full min-h-[160px] sm:min-h-[360px] border border-dashed border-default-300 bg-transparent hover:border-primary hover:bg-default-50 transition-all cursor-pointer shadow-none"
           >
             <CardBody className="flex flex-col items-center justify-center gap-2 text-default-400">
@@ -137,7 +145,12 @@ const MainPageProject = () => {
         </div>
       </div>
 
-      <CreateProject isOpen={isOpen} onOpenChange={onOpenChange} />
+      <CreateProject
+        isOpen={isOpen}
+        onOpenChange={onOpenChange}
+        organizationId={organizationId}
+        currentUserId={currentUserId}
+      />
     </div>
   );
 };
