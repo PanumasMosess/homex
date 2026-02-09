@@ -36,11 +36,18 @@ export async function createProject(
     });
 
     return { success: true, error: false };
-  } catch (e: any) {
+  } catch (e: unknown) {
+    if (e instanceof Error) {
+      return {
+        success: false,
+        error: true,
+        message: e.message,
+      };
+    }
     return {
       success: false,
       error: true,
-      message: e.message,
+      message: "ไม่สามารถสร้างโครงการได้",
     };
   }
 }

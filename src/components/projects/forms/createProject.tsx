@@ -1,11 +1,11 @@
 "use client";
 
-import React, { 
-  useEffect, 
-  useRef, 
-  useState, 
-  useTransition, 
-  useActionState 
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useTransition,
+  useActionState
 } from "react";
 import {
   Modal,
@@ -84,13 +84,13 @@ export const CreateProject = ({
     },
   });
 
-const closeAndReset = () => {
-  formAddProject.reset();
-  setImagePreview(null);
-  setCoverImageUrl(undefined);
+  const closeAndReset = () => {
+    formAddProject.reset();
+    setImagePreview(null);
+    setCoverImageUrl(undefined);
 
-  onOpenChange(false); // ✅ ปิดแน่นอน
-};
+    onOpenChange(false); // ✅ ปิดแน่นอน
+  };
 
   const [state, formAction] = useActionState(createProject, {
     success: false,
@@ -188,7 +188,7 @@ const closeAndReset = () => {
               </div>
             </ModalHeader>
 
-             {/* Body */}
+            {/* Body */}
             <form onSubmit={formAddProject.handleSubmit((d) => onSubmit(d, onClose))}className="flex flex-col flex-1 overflow-hidden">
               <ModalBody>
 
@@ -198,20 +198,20 @@ const closeAndReset = () => {
 
                   {imagePreview ? (
                     <>
-                            <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
-                                <span className="text-white font-medium flex gap-2"><ImageIcon/> เปลี่ยนรูปภาพ</span>
-                            </div>
-                        </>
-                    ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-default-400 gap-3">
-                            <div className="p-4 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><UploadCloud size={32} className="text-primary"/></div>
-                            <div className="text-center">
-                                <p className="text-sm font-medium text-foreground">อัปโหลดรูปหน้างาน</p>
-                                <p className="text-xs">JPG, PNG ไม่เกิน 10MB</p>
-                            </div>
-                        </div>
-                    )}
+                      <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        <span className="text-white font-medium flex gap-2"><ImageIcon/> เปลี่ยนรูปภาพ</span>
+                      </div>
+                    </>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center h-full text-default-400 gap-3">
+                      <div className="p-4 bg-white dark:bg-zinc-800 rounded-full shadow-sm"><UploadCloud size={32} className="text-primary"/></div>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-foreground">อัปโหลดรูปหน้างาน</p>
+                        <p className="text-xs">JPG, PNG ไม่เกิน 10MB</p>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* ✅ Mobile Responsive Grid: 
@@ -224,24 +224,12 @@ const closeAndReset = () => {
                     variant="bordered"
                     startContent={<Building2 className="text-default-400" size={18} />}
                     {...formAddProject.register("projectName")}
-                    isInvalid={
-                      !!formAddProject.formState.errors.projectName
-                    }
-                    errorMessage={
-                      formAddProject.formState.errors.projectName?.message
-                    }
                   />
                   <Input
                     isRequired label="ชื่อลูกค้า" placeholder="ระบุชื่อลูกค้า" labelPlacement="outside"
                     variant="bordered"
                     startContent={<User className="text-default-400" size={18} />}
                     {...formAddProject.register("customerName")}
-                    isInvalid={
-                      !!formAddProject.formState.errors.customerName
-                    }
-                    errorMessage={
-                      formAddProject.formState.errors.customerName?.message
-                    }
                   />
                 </div>
 
@@ -259,21 +247,17 @@ const closeAndReset = () => {
                     startContent={<Wallet className="text-default-400" size={18} />}
                     endContent={<span className="text-default-400 text-xs">THB</span>}
                     {...formAddProject.register("budget")}
-                    isInvalid={!!formAddProject.formState.errors.budget}
-                    errorMessage={
-                      formAddProject.formState.errors.budget?.message
-                    }
                   />
                 </div>
 
                 {/* ---------- DATE ---------- */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                  <Input 
-                    type="date" label="เริ่มสัญญา" labelPlacement="outside" variant="bordered"
+                  <Input
+                    isRequired type="date" label="เริ่มสัญญา" labelPlacement="outside" variant="bordered"
                     {...formAddProject.register("startPlanned")}
                   />
                   <Input
-                    type="date" label="สิ้นสุดสัญญา" labelPlacement="outside" variant="bordered"
+                    isRequired type="date" label="สิ้นสุดสัญญา" labelPlacement="outside" variant="bordered"
                     {...formAddProject.register("finishPlanned")}
                   />
                 </div>
