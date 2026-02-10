@@ -10,6 +10,7 @@ generator client {
 
 datasource db {
   provider = "mysql"
+  url      = env("DATABASE_URL")
 }
 
 // =====================================
@@ -145,12 +146,12 @@ model position_permission {
 model project {
   id Int @id @default(autoincrement())
 
-  projectCode   String // รหัสโปรเจค เช่น "PJ-2026-001"
-  projectName   String? // ชื่อโปรเจค
-  projectDesc   String? // รายละเอียด
+  projectCode String // รหัสโปรเจค เช่น "PJ-2026-001"
+  projectName String? // ชื่อโปรเจค
+  projectDesc String? // รายละเอียด
 
-  customerName  String?   // ✅ ชื่อลูกค้า
-  budget        Decimal?  @db.Decimal(12,2) // งบประมาณ
+  customerName String? // ✅ ชื่อลูกค้า
+  budget       Decimal? @db.Decimal(12, 2) // งบประมาณ
 
   address       String? // ที่อยู่หน้างาน
   mapUrl        String? // ลิงก์ Google Maps
@@ -213,7 +214,7 @@ model project_file {
 // =====================================
 
 model project_img {
-  id Int @id @default(autoincrement())
+  id        Int      @id @default(autoincrement())
   imgName   String? // ชื่อรูปที่แสดง (ถ้ามี)
   imgUrl    String // URL รูปจริง
   imgType   String // ประเภทรูป เช่น SITE_BEFORE, SITE_PROGRESS, SITE_AFTER, OTHER

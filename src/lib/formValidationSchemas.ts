@@ -1,13 +1,16 @@
 import z from "zod";
 
+export const signInSchema_ = z.object({
+  username: z.string().min(1, { message: "กรุณากรอก Username" }).max(50),
+  passwordHash: z.string().min(1, { message: "กรุณากรอกรหัสผ่าน" }).max(50),
+});
+export type SignInSchema = z.infer<typeof signInSchema_>;
+
 export const ProjectSchema_ = z.object({
   id: z.number().optional(),
 
   projectName: z.string().min(1, { message: "กรุณากรอกชื่อโครงการ" }).max(255),
-  customerName: z
-    .string()
-    .min(1, { message: "กรุณากรอกชื่อลูกค้า" })
-    .max(255),
+  customerName: z.string().min(1, { message: "กรุณากรอกชื่อลูกค้า" }).max(255),
 
   address: z.string().optional(),
   mapUrl: z.string().optional(),
