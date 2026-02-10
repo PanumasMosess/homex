@@ -1,11 +1,13 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { Providers } from "../components/Providers/providers";
+import { SessionProvider } from "next-auth/react";
 import {
   IBM_Plex_Sans_Thai,
   IBM_Plex_Sans_Thai_Looped,
 } from "next/font/google";
 import { ToastContainer } from "react-toastify";
+import { auth } from "@/auth";
 
 const fontSans = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -32,28 +34,31 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable}  font-sans antialiased`}>
-        <Providers>{children}</Providers>
-        <ToastContainer
-          position="top-right"
-          autoClose={5000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="light"
-          toastClassName="default-toast-body"
-        />
+        <SessionProvider session={session}>
+          <Providers>{children}</Providers>
+          <ToastContainer
+            position="top-right"
+            autoClose={5000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="light"
+            toastClassName="default-toast-body"
+          />
+        </SessionProvider>
       </body>
     </html>
   );

@@ -9,6 +9,7 @@ import { Button } from "@heroui/button";
 import Image from "next/image";
 import { menuItems } from "@/lib/setting_data";
 import { handleSignOut } from "@/lib/actions/actionAuths";
+import { useSession } from "next-auth/react";
 
 export const HomexSidebar = ({
   isOpen,
@@ -16,6 +17,10 @@ export const HomexSidebar = ({
   setIsOpen,
 }: SidebarProps) => {
   const pathname = usePathname();
+   const { data: session } = useSession();
+
+   console.log(session);
+   
 
   const sidebarClasses = `
     fixed z-50 h-screen bg-background/90 backdrop-blur-xl border-r-small border-default-100 
