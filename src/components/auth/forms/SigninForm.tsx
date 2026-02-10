@@ -32,18 +32,21 @@ const SigninForm = () => {
   });
 
   const onSubmit = async (values: SignInSchema) => {
+    const finalData = { ...values };
     setIsSubmitting(true);
     try {
-      const result = await verifyCredentials(values);
+      const result = await verifyCredentials(finalData);
 
-      if (result?.message === "Invalid credentials") {
+      if (result.message === "Invalid credentials") {
         toast.error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
+        setIsSubmitting(false);
       } else {
-        toast.success("เข้าสู่ระบบสำเร็จ");
-        router.push("/dashboard");
+        setIsSubmitting(false);
       }
     } catch (error) {
-      console.error(error);
+      if (error instanceof Error && error.message.includes("NEXT_REDIRECT")) {
+        return;
+      }
       toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
       setIsSubmitting(false);

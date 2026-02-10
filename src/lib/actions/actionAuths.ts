@@ -11,8 +11,7 @@ export const verifyCredentials = async (finalData: SignInSchema) => {
     const result = await signIn("credentials", {
       username,
       passwordHash,
-      //   redirectTo: "/dashboard",
-      redirect: false,
+      redirectTo: "/dashboard",
     });
 
     return result;
@@ -20,13 +19,10 @@ export const verifyCredentials = async (finalData: SignInSchema) => {
     if (error instanceof AuthError) {
       switch (error.type) {
         case "CredentialsSignin":
-          return {
-            message: "Invalid credentials",
-          };
+        case "CallbackRouteError":
+          return { success: false, message: "Invalid credentials" };
         default:
-          return {
-            message: "Something went wrong.",
-          };
+          return { success: false, message: "Something went wrong." };
       }
     }
     throw error;
