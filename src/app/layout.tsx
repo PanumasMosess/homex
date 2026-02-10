@@ -5,6 +5,7 @@ import {
   IBM_Plex_Sans_Thai,
   IBM_Plex_Sans_Thai_Looped,
 } from "next/font/google";
+import { ToastContainer } from "react-toastify";
 
 const fontSans = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -40,6 +41,19 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable}  font-sans antialiased`}>
         <Providers>{children}</Providers>
+        <ToastContainer
+          position="top-right"
+          autoClose={5000}
+          hideProgressBar={false}
+          newestOnTop={false}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          toastClassName="default-toast-body"
+        />
       </body>
     </html>
   );

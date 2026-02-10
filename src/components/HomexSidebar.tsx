@@ -8,6 +8,7 @@ import { Tooltip } from "@heroui/tooltip";
 import { Button } from "@heroui/button";
 import Image from "next/image";
 import { menuItems } from "@/lib/setting_data";
+import { handleSignOut } from "@/lib/actions/actionAuths";
 
 export const HomexSidebar = ({
   isOpen,
@@ -153,10 +154,9 @@ export const HomexSidebar = ({
           } px-6`}
         >
           {isCollapsed ? (
-            <>
-              <Button
-                as={Link}
-                href="/"
+            <>           
+              <Button            
+                onPress={handleSignOut} 
                 variant="flat"
                 color="danger"
                 radius="full"
@@ -168,9 +168,8 @@ export const HomexSidebar = ({
 
               <div className="hidden md:block">
                 <Tooltip content="Logout" placement="right" color="danger">
-                  <Button
-                    as={Link}
-                    href="/"
+                  <Button                
+                    onPress={handleSignOut} 
                     isIconOnly
                     variant="flat"
                     color="danger"
@@ -184,8 +183,7 @@ export const HomexSidebar = ({
             </>
           ) : (
             <Button
-              as={Link}
-              href="/"
+              onPress={handleSignOut}
               variant="flat"
               color="danger"
               radius="full"
