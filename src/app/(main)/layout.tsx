@@ -4,8 +4,8 @@ import MainLayoutClient from "./MainLayoutClient";
 
 export const metadata: Metadata = {
   title: {
-    template: "HomeX | %s", 
-    default: "Homex", 
+    template: "HomeX | %s",
+    default: "Homex",
   },
   description: "Construction Management System",
   icons: {
@@ -13,10 +13,14 @@ export const metadata: Metadata = {
   },
 };
 
-export default function MainLayout({
+export default async function MainLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return <MainLayoutClient>{children}</MainLayoutClient>;
+
+
+  return (
+      <MainLayoutClient >{children}</MainLayoutClient>
+  );
 }
