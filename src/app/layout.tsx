@@ -8,6 +8,7 @@ import {
 } from "next/font/google";
 import { ToastContainer } from "react-toastify";
 import { auth } from "@/auth";
+import IdleTimeoutHandler from "@/components/IdleTimeoutHandler";
 
 const fontSans = IBM_Plex_Sans_Thai({
   subsets: ["thai", "latin"],
@@ -44,7 +45,10 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable}  font-sans antialiased`}>
         <SessionProvider session={session}>
-          <Providers>{children}</Providers>
+          <Providers>
+            {children}
+            <IdleTimeoutHandler />
+          </Providers>
           <ToastContainer
             position="top-right"
             autoClose={5000}
