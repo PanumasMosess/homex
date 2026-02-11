@@ -4,7 +4,6 @@ import { signInSchema_ } from "./lib/formValidationSchemas";
 import { userSignIn } from "./lib/auth-helpers";
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
-
   providers: [
     Credentials({
       credentials: {
@@ -37,6 +36,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       },
     }),
   ],
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60,
+    updateAge: 24 * 60 * 60,
+  },
   callbacks: {
     authorized({ request: { nextUrl }, auth }) {
       const isLoggedIn = !!auth?.user;

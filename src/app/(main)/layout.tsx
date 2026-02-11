@@ -18,9 +18,5 @@ export default async function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <MainLayoutClient>
-      {children}
-    </MainLayoutClient>
-  );
+  return <MainLayoutClient>{children}</MainLayoutClient>;
 }
