@@ -45,7 +45,7 @@ export default function MainLayoutClient({
   return (
     <div className="min-h-screen bg-background text-foreground flex relative">
       <HomexSidebar
-        isOpen={isSidebarOpen}
+        isOpenSideBar={isSidebarOpen}
         setIsOpen={setIsSidebarOpen}
         isCollapsed={isCollapsed}
       />
