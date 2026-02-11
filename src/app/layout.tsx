@@ -44,7 +44,11 @@ export default async function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className={`${fontSans.variable}  font-sans antialiased`}>
-        <SessionProvider session={session}>
+        <SessionProvider
+          session={session}
+          refetchInterval={0}
+          refetchOnWindowFocus={false}
+        >
           <IdleTimeoutHandler />
           <Providers>{children}</Providers>
           <ToastContainer
