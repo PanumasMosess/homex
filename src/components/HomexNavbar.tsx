@@ -7,12 +7,16 @@ import { NavbarProps } from "@/lib/type";
 import { Avatar } from "@heroui/avatar";
 import { Input } from "@heroui/input";
 import { linkUserTemp } from "@/lib/setting_data";
+import { useSession } from "next-auth/react";
 
 export const HomexNavbar = ({
   onMenuClick,
   onToggleCollapse,
   isCollapsed,
 }: NavbarProps) => {
+  const session = useSession();
+  const img_user = session.data?.user.avatarUrl?.toString();
+
   return (
     <Navbar
       isBordered
@@ -78,9 +82,9 @@ export const HomexNavbar = ({
           <Avatar
             isBordered
             as="button"
-            className="transition-transform hover:scale-105 ring-2 ring-offset-2 ring-primary/30"       
+            className="transition-transform hover:scale-105 ring-2 ring-offset-2 ring-primary/30"
             size="sm"
-            src={linkUserTemp[0].path}
+            src={img_user || linkUserTemp[0]?.path}
           />
         </NavbarItem>
       </NavbarContent>

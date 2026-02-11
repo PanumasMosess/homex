@@ -16,7 +16,6 @@ import {
   Button,
   Input,
   Textarea,
-  // Divider,
 } from "@heroui/react";
 import {
   Building2,
@@ -25,7 +24,6 @@ import {
   UploadCloud,
   User,
   Image as ImageIcon,
-  // X,
 } from "lucide-react";
 
 import { useForm } from "react-hook-form";
@@ -89,7 +87,7 @@ export const CreateProject = ({
     setImagePreview(null);
     setCoverImageUrl(undefined);
 
-    onOpenChange(false); // ✅ ปิดแน่นอน
+    onOpenChange(false); 
   };
 
   const [state, formAction] = useActionState(createProject, {

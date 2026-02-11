@@ -9,7 +9,6 @@ import {
 } from "@heroui/react";
 import { ArrowRight, Calendar, MapPin, MoreVertical } from "lucide-react";
 import Link from "next/link";
-import React from "react";
 
 const getStatusProjectColor = (status: string) => {
   switch (status) {

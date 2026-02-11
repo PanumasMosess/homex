@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "../globals.css";
 import MainLayoutClient from "./MainLayoutClient";
+import IdleTimeoutHandler from "@/components/IdleTimeoutHandler";
 
 export const metadata: Metadata = {
   title: {
@@ -18,9 +19,10 @@ export default async function MainLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
-
   return (
-      <MainLayoutClient >{children}</MainLayoutClient>
+    <MainLayoutClient>
+      {children}
+      <IdleTimeoutHandler />
+    </MainLayoutClient>
   );
 }
