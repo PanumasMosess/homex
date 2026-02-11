@@ -5,7 +5,7 @@ export interface NavbarProps {
 }
 
 export interface SidebarProps {
-  isOpen: boolean;
+  isOpenSideBar: boolean;
   isCollapsed: boolean;
   setIsOpen: (v: boolean) => void;
 }

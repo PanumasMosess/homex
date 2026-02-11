@@ -9,18 +9,20 @@ import { Button } from "@heroui/button";
 import Image from "next/image";
 import { menuItems } from "@/lib/setting_data";
 import { handleSignOut } from "@/lib/actions/actionAuths";
+import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, useDisclosure } from "@heroui/react";
 
 export const HomexSidebar = ({
-  isOpen,
+  isOpenSideBar,
   isCollapsed,
   setIsOpen,
 }: SidebarProps) => {
   const pathname = usePathname();
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
   const sidebarClasses = `
     fixed z-50 h-screen bg-background/90 backdrop-blur-xl border-r-small border-default-100 
     transition-all duration-300 ease-in-out shadow-xl
-    ${isOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"} 
+    ${isOpenSideBar ? "translate-x-0" : "-translate-x-full md:translate-x-0"} 
     ${isCollapsed ? "md:w-[80px]" : "md:w-[280px]"} 
     w-[280px] flex flex-col rounded-r-3xl
   `;
@@ -29,7 +31,7 @@ export const HomexSidebar = ({
     <>
       <div
         className={`fixed inset-0 bg-black/30 backdrop-blur-sm z-40 transition-opacity duration-300 md:hidden
-        ${isOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
+        ${isOpenSideBar ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
         onClick={() => setIsOpen(false)}
       />
 
@@ -156,7 +158,7 @@ export const HomexSidebar = ({
           {isCollapsed ? (
             <>
               <Button
-                onPress={handleSignOut}
+                onPress={onOpen} 
                 variant="flat"
                 color="danger"
                 radius="full"
@@ -169,7 +171,7 @@ export const HomexSidebar = ({
               <div className="hidden md:block">
                 <Tooltip content="Logout" placement="right" color="danger">
                   <Button
-                    onPress={handleSignOut}
+                    onPress={onOpen} 
                     isIconOnly
                     variant="flat"
                     color="danger"
@@ -183,7 +185,7 @@ export const HomexSidebar = ({
             </>
           ) : (
             <Button
-              onPress={handleSignOut}
+              onPress={onOpen}
               variant="flat"
               color="danger"
               radius="full"
@@ -193,6 +195,41 @@ export const HomexSidebar = ({
               <span className="font-medium text-xs">Logout</span>
             </Button>
           )}
+
+          <Modal
+            isOpen={isOpen}
+            onOpenChange={onOpenChange}
+            backdrop="blur"
+            isDismissable={false}
+          >
+            <ModalContent>
+              {(onClose) => (
+                <>
+                  <ModalHeader className="flex flex-col gap-1">
+                    ยืนยันการออกจากระบบ
+                  </ModalHeader>
+                  <ModalBody>
+                    <p>คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?</p>
+                  </ModalBody>
+                  <ModalFooter>
+                    <Button color="default" variant="light" onPress={onClose}>
+                      ยกเลิก
+                    </Button>
+
+                    <Button
+                      color="danger"
+                      onPress={() => {
+                        handleSignOut(); 
+                        onClose(); 
+                      }}
+                    >
+                      ออกจากระบบ
+                    </Button>
+                  </ModalFooter>
+                </>
+              )}
+            </ModalContent>
+          </Modal>
         </div>
       </aside>
     </>
