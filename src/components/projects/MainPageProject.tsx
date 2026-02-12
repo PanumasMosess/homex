@@ -5,6 +5,7 @@ import { Plus, Search, Building2 } from "lucide-react";
 import ProjectCard from "./ProjectCard";
 import { CreateProject } from "./forms/createProject";
 import React, { useMemo, useState } from "react";
+import { MainPageProjectProps } from "@/lib/type";
 
 // const projects = [
 //   {
@@ -57,29 +58,6 @@ import React, { useMemo, useState } from "react";
 //   },
 // ];
 
-type ProjectUI = {
-  id: number;
-  name: string | null;
-  client: string;
-  address: string;
-  status: string;
-  progress: number;
-  // dueDate: string;
-  image: string;
-  budget: number | null;
-
-  startPlanned: Date | string | null;
-  finishPlanned: Date | string | null;
-  durationDays: number | null;
-  startActual: Date | string | null;
-  mapUrl: string | null;
-};
-
-type MainPageProjectProps = {
-  organizationId: number;
-  currentUserId: number;
-  projects: ProjectUI[]; // ✅ เพิ่มตรงนี้
-};
 
 const MainPageProject = ({
   organizationId,

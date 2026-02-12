@@ -93,8 +93,8 @@ const ProjectCard = ({ project }: { project: any }) => {
 
   const plannedDays =
     project.durationDays != null
-      ? Number(project.durationDays)          // ใช้ค่าที่เก็บมา (inclusive)
-      : diffDaysInclusive(startPlanned, finishPlanned); // ✅ fallback inclusive
+      ? Number(project.durationDays)        
+      : diffDaysInclusive(startPlanned, finishPlanned); 
 
 
   const startForElapsed = project.startActual ?? startPlanned;
