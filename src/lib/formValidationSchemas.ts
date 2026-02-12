@@ -15,16 +15,16 @@ export const ProjectSchema_ = z.object({
   address: z.string().optional(),
   mapUrl: z.string().optional(),
 
-  // เงิน: ฟอร์มเป็น input number => coerce เป็น number
-  budget: z.coerce.number().min(0, { message: "งบประมาณห้ามติดลบ" }),
+  budget: z.coerce
+    .number({ invalid_type_error: "กรุณาระบุตัวเลข" }) 
+    .min(1, "กรุณาระบุงบประมาณ (ต้องมากกว่า 0)") 
+    .nonnegative("งบประมาณต้องไม่ติดลบ"),
 
-  // date input: จะได้เป็น string (YYYY-MM-DD)
   startPlanned: z.string().optional(),
   finishPlanned: z.string().optional(),
 
   projectDesc: z.string().optional(),
 
-  // รูป: ตอนนี้ยังไม่อัปโหลดจริง ก็ปล่อย any ไว้ก่อน
   coverImageUrl: z.string().optional(),
   coverImageFile: z.any().optional(),
 

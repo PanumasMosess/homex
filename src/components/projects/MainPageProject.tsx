@@ -7,58 +7,6 @@ import { CreateProject } from "./forms/createProject";
 import React, { useMemo, useState } from "react";
 import { MainPageProjectProps } from "@/lib/type";
 
-// const projects = [
-//   {
-//     id: 1,
-//     name: "บ้านพักอาศัยคุณสมชาย",
-//     client: "คุณสมชาย ใจดี",
-//     address: "บางนา, กรุงเทพฯ",
-//     status: "In Progress",
-//     progress: 65,
-//     dueDate: "30 Dec 2024",
-//     image:
-//       "https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=2070&auto=format&fit=crop",
-//     budget: "4.5M",
-//   },
-//   {
-//     id: 2,
-//     name: "Renovate ร้านกาแฟ Aroi",
-//     client: "บริษัท อร่อย จำกัด",
-//     address: "ทองหล่อ, กรุงเทพฯ",
-//     status: "Planning",
-//     progress: 15,
-//     dueDate: "15 Feb 2025",
-//     image:
-//       "https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=2089&auto=format&fit=crop",
-//     budget: "1.2M",
-//   },
-//   {
-//     id: 3,
-//     name: "อาคารพาณิชย์ 3 คูหา",
-//     client: "คุณวิชัย ลงทุน",
-//     address: "เมือง, ชลบุรี",
-//     status: "Completed",
-//     progress: 100,
-//     dueDate: "01 Jan 2024",
-//     image:
-//       "https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?q=80&w=2070&auto=format&fit=crop",
-//     budget: "8.0M",
-//   },
-//   {
-//     id: 4,
-//     name: "ต่อเติมครัวหลังบ้าน",
-//     client: "คุณแม่ณี",
-//     address: "นนทบุรี",
-//     status: "In Progress",
-//     progress: 40,
-//     dueDate: "20 Mar 2024",
-//     image:
-//       "https://images.unsplash.com/photo-1590674899505-1c5c4195c326?q=80&w=2070&auto=format&fit=crop",
-//     budget: "0.3M",
-//   },
-// ];
-
-
 const MainPageProject = ({
   organizationId,
   currentUserId,
@@ -91,13 +39,11 @@ const MainPageProject = ({
   }, [q]);
 
   const filteredProjects = useMemo(() => {
-    // 1) filter by tab ก่อน
     let list = projects;
     if (activeTab !== "All") {
       list = list.filter((p) => normalizeStatus(p.status) === activeTab);
     }
 
-    // 2) filter by search
     const keyword = norm(qDebounced);
     if (!keyword) return list;
 
