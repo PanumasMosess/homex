@@ -17,3 +17,26 @@ export interface CreateProjectProps {
   currentUserId: number;
 }
 
+export type ProjectUI = {
+  id: number;
+  name: string | null;
+  client: string;
+  address: string;
+  status: string;
+  progress: number;
+  // dueDate: string;
+  image: string;
+  budget: number | null;
+
+  startPlanned: Date | string | null;
+  finishPlanned: Date | string | null;
+  durationDays: number | null;
+  startActual: Date | string | null;
+  mapUrl: string | null;
+};
+
+export interface MainPageProjectProps {
+  organizationId: number;
+  currentUserId: number;
+  projects: ProjectUI[];
+}
