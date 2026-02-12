@@ -7,7 +7,7 @@ export function useIdleTimeout(timeout: number) {
   const [idle, setIdle] = useState(false);
 
   const handleSignOut = useCallback(() => {
-    signOut({ callbackUrl: '/' });
+    signOut({ redirectTo: '/' });
   }, []);
 
   useEffect(() => {
