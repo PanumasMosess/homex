@@ -9,7 +9,10 @@ type ActionState = {
   message?: string;
 };
 
-function calcDurationDays(start?: string | Date | null, finish?: string | Date | null) {
+function calcDurationDays(
+  start?: string | Date | null,
+  finish?: string | Date | null,
+) {
   if (!start || !finish) return null;
 
   const s = new Date(start);
@@ -30,11 +33,13 @@ function calcDurationDays(start?: string | Date | null, finish?: string | Date |
 
 export async function createProject(
   _prevState: ActionState,
-  data: ProjectSchema
+  data: ProjectSchema,
 ): Promise<ActionState> {
   try {
     const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
-    const finishPlanned = data.finishPlanned ? new Date(data.finishPlanned) : null;
+    const finishPlanned = data.finishPlanned
+      ? new Date(data.finishPlanned)
+      : null;
     const durationDays = calcDurationDays(startPlanned, finishPlanned);
     await prisma.project.create({
       data: {
@@ -55,8 +60,16 @@ export async function createProject(
         startPlanned,
         finishPlanned,
         durationDays,
-        organizationId: data.organizationId,
-        createdById: data.createdById,
+        organization: {
+          connect: {
+            id: data.organizationId,
+          },
+        },
+        creator: {
+          connect: {
+            id: data.createdById,
+          },
+        },
       },
     });
 

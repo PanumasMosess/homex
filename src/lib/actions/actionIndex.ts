@@ -9,6 +9,7 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
 import { KEYUTIL, KJUR, stob64, hextorstr } from "jsrsasign";
+import { Folder } from "lucide-react";
 
 const s3Client = new S3Client({
   endpoint: process.env.ENDPOINT!,
@@ -38,7 +39,7 @@ export const deleteFileS3 = async (key: string) => {
 export const getPresignedUrl = async (
   fileType: string,
   fileSize: number,
-  fileFolder: string
+  fileFolder: string,
 ) => {
   try {
     if (fileSize > 10 * 1024 * 1024) {
@@ -48,7 +49,7 @@ export const getPresignedUrl = async (
     const randomBytes = crypto.randomBytes(16);
     const uniqueFilename = randomBytes.toString("hex");
     const fileExtension = fileType.split("/")[1];
-    const key = `uploads/${fileFolder}/${uniqueFilename}.${fileExtension}`;
+    const key = `${fileFolder}/${uniqueFilename}.${fileExtension}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.S3_BUCKET!,
@@ -58,7 +59,7 @@ export const getPresignedUrl = async (
       ACL: "public-read",
     });
 
-    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 }); 
+    const url = await getSignedUrl(s3Client, command, { expiresIn: 3600 });
 
     return { success: true, url, key };
   } catch (error) {
@@ -94,4 +95,26 @@ export const sendbase64toS3Data = async (base64Data: string, path: string) => {
     console.error("Error uploading Base64 image:", error);
     return { success: false, error: "Failed to upload image." };
   }
+};
+
+export const handleImageUpload = async (
+  file: File,
+  folder: string,
+): Promise<string> => {
+  const result = await getPresignedUrl(file.type, file.size, folder);
+  if (!result.success || !result.url) {
+    throw new Error(result.error || "ไม่สามารถขอสิทธิ์อัปโหลดได้");
+  }
+
+  const uploadResponse = await fetch(result.url, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": file.type, "x-amz-acl": "public-read" },
+  });
+
+  if (!uploadResponse.ok) {
+    throw new Error("การอัปโหลดไฟล์ล้มเหลว");
+  }
+
+  return result.url.split("?")[0];
 };
