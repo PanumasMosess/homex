@@ -3,6 +3,7 @@
 import { useIdleTimeout } from "@/lib/useIdleTimeout";
 
 export default function IdleTimeoutHandler() {
-  useIdleTimeout(3600000);
+  const TIMEOUT = 60 * 60 * 1000; //มิลลิวินาที
+  useIdleTimeout(TIMEOUT);
   return null;
 }
