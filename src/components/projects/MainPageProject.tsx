@@ -29,6 +29,13 @@ const MainPageProject = ({
 
   const [q, setQ] = useState("");
 
+  const INITIAL_COUNT = 11;
+  const LOAD_MORE_COUNT = 12;
+
+  const [visibleCount, setVisibleCount] = useState(INITIAL_COUNT);
+
+  const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
+
   const norm = (s?: any) => String(s ?? "").toLowerCase().trim();
 
   // debounce เบาๆ กันกระตุก
@@ -37,6 +44,11 @@ const MainPageProject = ({
     const t = setTimeout(() => setQDebounced(q), 200);
     return () => clearTimeout(t);
   }, [q]);
+
+  // รีเซ็ตตอนเปลี่ยน tab หรือ search
+  React.useEffect(() => {
+    setVisibleCount(INITIAL_COUNT);
+  }, [activeTab, qDebounced]);
 
   const filteredProjects = useMemo(() => {
     let list = projects;
@@ -65,6 +77,26 @@ const MainPageProject = ({
     });
   }, [projects, activeTab, qDebounced]);
 
+  // infinite scroll
+  React.useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) =>
+            Math.min(prev + LOAD_MORE_COUNT, filteredProjects.length)
+          );
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    const current = loadMoreRef.current;
+    if (current) observer.observe(current);
+
+    return () => {
+      if (current) observer.unobserve(current);
+    };
+  }, [filteredProjects.length]);
   return (
     // ✅ Mobile Fix 1: ลด Padding รอบนอกเหลือ p-3 และเพิ่ม pb-24 (กันตกขอบล่าง)
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen pb-24">
@@ -133,7 +165,7 @@ const MainPageProject = ({
       {/* --- Grid Section --- */}
       {/* ✅ Mobile Fix 4: gap-3 พอดีมือถือ, grid-cols-1 เต็มจอแนวนอน */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-        {filteredProjects.map((project) => (
+        {filteredProjects.slice(0, visibleCount).map((project) => (
           <ProjectCard key={project.id} project={project} />
         ))}
 
@@ -151,6 +183,15 @@ const MainPageProject = ({
           </Card>
         </div>
       </div>
+      {/* 🔽 Infinite Scroll Trigger */}
+      {visibleCount < filteredProjects.length && (
+        <div
+          ref={loadMoreRef}
+          className="h-16 flex items-center justify-center text-sm text-gray-400"
+        >
+          กำลังโหลดเพิ่มเติม...
+        </div>
+      )}
 
       <CreateProject
         isOpen={isOpen}
