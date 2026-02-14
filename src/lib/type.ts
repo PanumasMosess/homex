@@ -40,3 +40,22 @@ export interface MainPageProjectProps {
   currentUserId: number;
   projects: ProjectUI[];
 }
+
+export type Status = "todo" | "progress" | "done";
+
+export type Tab = "all" | "progress" | "done" | "todo";
+
+export interface Subtask {
+  id: number;
+  name: string;
+  done: boolean;
+}
+
+export interface Task {
+  id: number;
+  name: string;
+  image: string;
+  status: Status;
+  startAt?: string;
+  subtasks: Subtask[];
+}

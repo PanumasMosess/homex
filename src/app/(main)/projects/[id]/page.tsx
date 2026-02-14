@@ -28,25 +28,7 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 
-/* ================= TYPES ================= */
-
-type Status = "todo" | "progress" | "done";
-type Tab = "all" | "progress" | "done" | "todo";
-
-interface Subtask {
-  id: number;
-  name: string;
-  done: boolean;
-}
-
-interface Task {
-  id: number;
-  name: string;
-  image: string;
-  status: Status;
-  startAt?: string;
-  subtasks: Subtask[];
-}
+import type { Tab, Task } from "@/lib/type";
 
 /* ================= MOCK ================= */
 
@@ -199,7 +181,7 @@ export default function ProjectDetail() {
   const [selected, setSelected] = useState<Task | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
   const [q, setQ] = useState("");
-  const [priority, setPriority] = useState<"urgent" | "high" | "normal" | null>(null)
+  const [priority, setPriority] = useState<"urgent" | "high" | "normal" | null>(null);
 
   React.useEffect(() => {
     if (view === "board") {
@@ -209,7 +191,20 @@ export default function ProjectDetail() {
   }, [view]);
   const { onOpen } = useDisclosure();
 
-  const sensors = useSensors(useSensor(PointerSensor), useSensor(TouchSensor));
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 150,
+        tolerance: 5,
+      },
+    }),
+  );
+
   const calcProgress = (t: Task) => {
     const done = t.subtasks.filter((s) => s.done).length;
     return Math.round((done / t.subtasks.length) * 100);
@@ -258,12 +253,14 @@ export default function ProjectDetail() {
       <div
         ref={setNodeRef}
         style={style}
-        {...listeners}
-        {...attributes}
         className="bg-default-200 dark:bg-zinc-800 rounded-lg cursor-grab touch-none"
       >
-        {/* CLICK ZONE (แก้ modal ไม่ขึ้น) */}
-        <div onClick={() => setSelected(t)} className="flex gap-3 p-3">
+        <div
+          {...listeners}
+          {...attributes}
+          onClick={() => setSelected(t)}
+          className="flex gap-3 p-3"
+        >
           <img src={t.image} className="w-12 h-12 rounded object-cover" />
           <div>
             <p className="text-sm">{t.name}</p>
@@ -401,15 +398,15 @@ export default function ProjectDetail() {
                         border
 
                         ${active
-                        ? "bg-primary text-white border-primary shadow-sm"
-                        : `
+                            ? "bg-primary text-white border-primary shadow-sm"
+                            : `
                         bg-transparent
                         text-default-900 dark:text-zinc-300
                         border-default-300 dark:border-zinc-700
                         hover:border-primary
                         hover:text-primary
                       `
-                      }
+                        }
                   `}
                   >
                     {tab.label}
@@ -482,35 +479,26 @@ export default function ProjectDetail() {
             ))}
 
             {/* ADD NEW TASK CARD */}
-<div onClick={onOpen} className="group h-full">
-
-  <Card className="
-    h-full
-    border
-    border-dashed
-    border-default-300
-    bg-transparent
-    hover:border-primary
-    transition-all
-    cursor-pointer
-    shadow-none
-  ">
-
-    <CardBody className="h-full flex items-center justify-center flex-col gap-2">
-
-      <div className="p-3 rounded-full bg-default-100 group-hover:bg-primary/10">
-        <Plus size={24}/>
-      </div>
-
-      <span>Create New</span>
-
-    </CardBody>
-
-  </Card>
-
-</div>
-
-
+            <div onClick={onOpen} className="group h-full">
+              <Card className="
+                h-full
+                border
+                border-dashed
+                border-default-300
+                bg-transparent
+                hover:border-primary
+                transition-all
+                cursor-pointer
+                shadow-none
+              ">
+                <CardBody className="h-full flex items-center justify-center flex-col gap-2">
+                  <div className="p-3 rounded-full bg-default-100 group-hover:bg-primary/10">
+                    <Plus size={24}/>
+                  </div>
+                  <span>Create New</span>
+                </CardBody>
+              </Card>
+            </div>
           </div>
         </>
       )}
@@ -714,9 +702,9 @@ export default function ProjectDetail() {
                         className={`
                             cursor-pointer transition-all
                             ${priority === "urgent"
-                            ? "bg-orange-500/20 text-orange-400 border border-orange-500"
-                            : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-orange-400"
-                          }
+                                ? "bg-orange-500/20 text-orange-400 border border-orange-500"
+                                : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-orange-400"
+                            }
                         `}
                       >
                         🔥 เร่งด่วน
@@ -728,8 +716,8 @@ export default function ProjectDetail() {
                         className={`
                           cursor-pointer transition-all
                           ${priority === "high"
-                            ? "bg-red-500/20 text-red-500 border border-red-500"
-                            : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300  border border-zinc-700 hover:border-red-400"
+                              ? "bg-red-500/20 text-red-500 border border-red-500"
+                              : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300  border border-zinc-700 hover:border-red-400"
                           }
                         `}
                       >
@@ -742,9 +730,9 @@ export default function ProjectDetail() {
                         className={`
                             cursor-pointer transition-all
                             ${priority === "normal"
-                            ? "bg-blue-500/20 text-blue-400 border border-blue-500"
-                            : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-blue-400"
-                          }
+                                ? "bg-blue-500/20 text-blue-400 border border-blue-500"
+                                : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-blue-400"
+                            }
                        `}
                       >
                         ⏳ เรื่อยๆ
