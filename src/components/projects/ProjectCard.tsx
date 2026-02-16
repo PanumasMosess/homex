@@ -270,7 +270,7 @@ const ProjectCard = ({ project }: { project: any }) => {
         </div>
 
         <Link
-          href={`/projects/${project.id}`}
+          href="/projects/projectdetail"
           className="group/link flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-600 transition-colors"
         >
           View Details

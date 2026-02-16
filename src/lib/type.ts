@@ -59,3 +59,8 @@ export interface Task {
   startAt?: string;
   subtasks: Subtask[];
 }
+
+export interface ProjectDetailProps {
+  organizationId: number;
+  currentUserId: number;
+}
