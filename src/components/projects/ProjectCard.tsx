@@ -1,3 +1,4 @@
+import { diffDaysInclusive, fmtDate, fmtMoney, getDueInfo, getStatusProjectColor } from "@/lib/setting_data";
 import {
   Button,
   Card,
@@ -16,89 +17,29 @@ import {
   Clock,
   Wallet,
 } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
-const getStatusProjectColor = (status: string) => {
-  switch ((status ?? "").toUpperCase()) {
-    case "DONE": return "success";
-    case "IN_PROGRESS": return "primary";
-    case "ON_HOLD": return "danger";
-    case "PLANNING": return "warning";
-    default: return "default";
-  }
-};
-
-const fmtDate = (d?: any) => {
-  if (!d) return "-";
-  const dt = new Date(d);
-  if (Number.isNaN(dt.getTime())) return "-";
-  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
-};
-
-const diffDaysInclusive = (from?: any, to?: any) => {
-  if (!from || !to) return null;
-  const a = new Date(from);
-  const b = new Date(to);
-  const a0 = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-  const b0 = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-  const ms = b0.getTime() - a0.getTime();
-  const days = Math.floor(ms / (1000 * 60 * 60 * 24));
-  if (days < 0) return null;
-  return days + 1; // ✅ รวมวันเริ่มด้วย
-};
-
-const dayStart = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-
-const daysDiff = (from: Date, to: Date) => {
-  // from -> to (จำนวนวันต่างแบบ exclusive)
-  const ms = dayStart(to).getTime() - dayStart(from).getTime();
-  return Math.floor(ms / (1000 * 60 * 60 * 24));
-};
-
-const getDueInfo = (finishPlanned?: any, status?: string, progress?: number) => {
-  // Completed condition
-  if (status === "DONE" || (progress ?? 0) >= 100) {
-    return { label: "Completed", tone: "success" as const };
-  }
-
-  if (!finishPlanned) {
-    return { label: "No deadline", tone: "default" as const };
-  }
-
-  const today = new Date();
-  const finish = new Date(finishPlanned);
-  if (Number.isNaN(finish.getTime())) {
-    return { label: "Invalid deadline", tone: "default" as const };
-  }
-
-  const diff = daysDiff(today, finish); // วันนี้ -> วันกำหนดเสร็จ
-
-  if (diff > 0) return { label: `Due in ${diff} days`, tone: "primary" as const };
-  if (diff === 0) return { label: "Due today", tone: "warning" as const };
-  return { label: `Overdue ${Math.abs(diff)} days`, tone: "danger" as const };
-};
-
-
-const fmtMoney = (v?: any) => {
-  if (v == null || v === "" || v === "-") return "-";
-  const n = typeof v === "string" ? Number(v) : Number(v);
-  if (Number.isNaN(n)) return String(v);
-  return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(n);
-};
 
 const ProjectCard = ({ project }: { project: any }) => {
+  const router = useRouter();
   const startPlanned = project.startPlanned ?? null;
   const finishPlanned = project.finishPlanned ?? null;
   const dueInfo = getDueInfo(finishPlanned, project.status, project.progress);
 
   const plannedDays =
     project.durationDays != null
-      ? Number(project.durationDays)        
-      : diffDaysInclusive(startPlanned, finishPlanned); 
-
+      ? Number(project.durationDays)
+      : diffDaysInclusive(startPlanned, finishPlanned);
 
   const startForElapsed = project.startActual ?? startPlanned;
-  const elapsedDays = startForElapsed ? diffDaysInclusive(startForElapsed, new Date()) : null;
+  const elapsedDays = startForElapsed
+    ? diffDaysInclusive(startForElapsed, new Date())
+    : null;
+
+  const handleViewDetail = () => {
+    localStorage.setItem("currentProjectId", "1");
+    router.push("/projects/projectdetail");
+  };
 
   return (
     <Card
@@ -182,7 +123,9 @@ const ProjectCard = ({ project }: { project: any }) => {
               <div className="text-[11px] text-default-400 uppercase tracking-wider font-semibold">
                 Client
               </div>
-              <div className="text-sm font-semibold truncate">{project.client}</div>
+              <div className="text-sm font-semibold truncate">
+                {project.client}
+              </div>
             </div>
           </div>
 
@@ -194,20 +137,23 @@ const ProjectCard = ({ project }: { project: any }) => {
           </div>
         </div>
 
-        {/* Timeline pills (เริ่ม/จบ/กี่วัน/ทำไปกี่วัน) */}
         <div className="grid grid-cols-2 gap-2">
           <div className="rounded-xl border border-default-200/60 dark:border-white/10 bg-default-50/60 dark:bg-default-100/5 p-3">
             <div className="text-[11px] text-default-500 font-semibold flex items-center gap-1">
               <Calendar size={12} className="text-default-400" /> Start
             </div>
-            <div className="text-sm font-semibold mt-1">{fmtDate(startPlanned)}</div>
+            <div className="text-sm font-semibold mt-1">
+              {fmtDate(startPlanned)}
+            </div>
           </div>
 
           <div className="rounded-xl border border-default-200/60 dark:border-white/10 bg-default-50/60 dark:bg-default-100/5 p-3">
             <div className="text-[11px] text-default-500 font-semibold flex items-center gap-1">
               <Calendar size={12} className="text-default-400" /> Finish
             </div>
-            <div className="text-sm font-semibold mt-1">{fmtDate(finishPlanned)}</div>
+            <div className="text-sm font-semibold mt-1">
+              {fmtDate(finishPlanned)}
+            </div>
           </div>
 
           <div className="rounded-xl border border-default-200/60 dark:border-white/10 bg-default-50/60 dark:bg-default-100/5 p-3">
@@ -228,8 +174,6 @@ const ProjectCard = ({ project }: { project: any }) => {
             </div>
           </div>
         </div>
-
-        {/* Progress (ชัดขึ้น แต่ไม่หนา) */}
         <div className="space-y-2">
           <div className="flex justify-between items-center text-xs font-semibold">
             <span className="text-default-500">Progress</span>
@@ -246,8 +190,6 @@ const ProjectCard = ({ project }: { project: any }) => {
       </CardBody>
 
       <Divider className="opacity-60" />
-
-      {/* Footer */}
       <CardFooter className="px-4 py-3 sm:px-5 sm:py-4 flex justify-between items-center bg-default-50/40 dark:bg-zinc-900/20">
         <div className="flex items-center gap-2 text-xs font-medium">
           <Calendar size={14} className="text-default-400" />
@@ -268,14 +210,17 @@ const ProjectCard = ({ project }: { project: any }) => {
             {dueInfo.label}
           </span>
         </div>
-
-        <Link
-          href="/projects/projectdetail"
-          className="group/link flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-600 transition-colors"
+        <div
+          onClick={handleViewDetail}
+          role="button"
+          className="group/link flex items-center gap-1 text-sm font-bold text-primary hover:text-primary-600 transition-colors cursor-pointer"
         >
           View Details
-          <ArrowRight size={16} className="group-hover/link:translate-x-1 transition-transform" />
-        </Link>
+          <ArrowRight
+            size={16}
+            className="group-hover/link:translate-x-1 transition-transform"
+          />
+        </div>
       </CardFooter>
     </Card>
   );
