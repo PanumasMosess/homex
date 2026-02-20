@@ -16,11 +16,13 @@ const Project = async () => {
   const projects = await prisma.project.findMany({
     where: {
       organizationId: organizationId,
+      status: { not: "DELETED" },
     },
     orderBy: { id: "desc" },
     // select ตามที่หน้า UI ต้องใช้
     select: {
       id: true,
+      projectCode: true,
       projectName: true,
       customerName: true,
       address: true,
@@ -60,6 +62,8 @@ const Project = async () => {
     durationDays: p.durationDays ?? null,
     startActual: p.startActual ?? null,
     mapUrl: p.mapUrl ?? null,
+    projectsCode: p.projectCode ?? "",
+    customerName: p.customerName ?? "",
   }));
 
   return (

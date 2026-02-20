@@ -9,7 +9,6 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
 import { KEYUTIL, KJUR, stob64, hextorstr } from "jsrsasign";
-import { Folder } from "lucide-react";
 
 const s3Client = new S3Client({
   endpoint: process.env.ENDPOINT!,
@@ -73,7 +72,36 @@ export const sendbase64toS3Data = async (base64Data: string, path: string) => {
     const buffer = Buffer.from(base64Data, "base64");
 
     const randomBytes = crypto.randomBytes(16);
-    const key = `uploads/${path}/${randomBytes.toString("hex")}.png`;
+    const key = `${path}/${randomBytes.toString("hex")}.png`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.S3_BUCKET!,
+      Key: key,
+      Body: buffer,
+      ContentType: "image/png",
+      ACL: "public-read",
+    });
+
+    const data = await s3Client.send(command);
+
+    let publicUrl;
+    if (data) {
+      publicUrl = `https://sgp1.digitaloceanspaces.com/${process.env.S3_BUCKET}/${key}`;
+    }
+
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error("Error uploading Base64 image:", error);
+    return { success: false, error: "Failed to upload image." };
+  }
+};
+
+export const sendbase64toS3DataVdo = async (base64Data: string, path: string) => {
+  try {
+    const buffer = Buffer.from(base64Data, "base64");
+
+    const randomBytes = crypto.randomBytes(16);
+    const key = `${path}/${randomBytes.toString("hex")}.mp4`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.S3_BUCKET!,
@@ -118,3 +146,4 @@ export const handleImageUpload = async (
 
   return result.url.split("?")[0];
 };
+

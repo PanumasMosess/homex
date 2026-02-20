@@ -1,4 +1,5 @@
 import { Box, Home, Settings, Users } from "lucide-react";
+import { Task } from "./type";
 
 export const menuItems = [
   { name: "Dashboard", icon: Home, path: "/dashboard" },
@@ -75,7 +76,7 @@ export const getDueInfo = (
     return { label: "Invalid deadline", tone: "default" as const };
   }
 
-  const diff = daysDiff(today, finish); 
+  const diff = daysDiff(today, finish);
 
   if (diff > 0)
     return { label: `Due in ${diff} days`, tone: "primary" as const };
@@ -89,3 +90,39 @@ export const fmtMoney = (v?: any) => {
   if (Number.isNaN(n)) return String(v);
   return new Intl.NumberFormat("th-TH", { maximumFractionDigits: 2 }).format(n);
 };
+
+export const calcProgress = (t: Task) => {
+  if (!t.subtasks || t.subtasks.length === 0) return t.progressPercent || 0;
+  const done = t.subtasks.filter((s) => s.status === 1).length;
+  return Math.round((done / t.subtasks.length) * 100);
+};
+
+export const formatDate = (date: Date | string | null | undefined) => {
+  if (!date) return "-";
+  const d = new Date(date);
+  return isNaN(d.getTime()) ? "-" : d.toLocaleDateString("th-TH");
+};
+
+export const delay = (ms: number) =>
+  new Promise((resolve) => setTimeout(resolve, ms));
+
+export function calcDurationDays(
+  start?: string | Date | null,
+  finish?: string | Date | null,
+) {
+  if (!start || !finish) return null;
+
+  const s = new Date(start);
+  const f = new Date(finish);
+
+  const s0 = new Date(s.getFullYear(), s.getMonth(), s.getDate());
+  const f0 = new Date(f.getFullYear(), f.getMonth(), f.getDate());
+
+  const diffMs = f0.getTime() - s0.getTime();
+  const days = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  if (days < 0) return null;
+
+  // return days + 1;
+  return days;
+}

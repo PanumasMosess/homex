@@ -1,4 +1,11 @@
-import { diffDaysInclusive, fmtDate, fmtMoney, getDueInfo, getStatusProjectColor } from "@/lib/setting_data";
+import { deleteProject } from "@/lib/actions/actionProject";
+import {
+  diffDaysInclusive,
+  fmtDate,
+  fmtMoney,
+  getDueInfo,
+  getStatusProjectColor,
+} from "@/lib/setting_data";
 import {
   Button,
   Card,
@@ -6,7 +13,17 @@ import {
   CardFooter,
   Chip,
   Divider,
+  Dropdown,
+  DropdownItem,
+  DropdownMenu,
+  DropdownTrigger,
   Progress,
+  useDisclosure,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
 } from "@heroui/react";
 import {
   ArrowRight,
@@ -16,14 +33,19 @@ import {
   ExternalLink,
   Clock,
   Wallet,
+  Trash2,
+  Edit,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-
+import { useState } from "react";
+import { toast } from "react-toastify";
 
 const ProjectCard = ({ project }: { project: any }) => {
   const router = useRouter();
   const startPlanned = project.startPlanned ?? null;
   const finishPlanned = project.finishPlanned ?? null;
+  const deleteModal = useDisclosure();
+  const [isDeleting, setIsDeleting] = useState(false);
   const dueInfo = getDueInfo(finishPlanned, project.status, project.progress);
 
   const plannedDays =
@@ -37,8 +59,27 @@ const ProjectCard = ({ project }: { project: any }) => {
     : null;
 
   const handleViewDetail = () => {
-    localStorage.setItem("currentProjectId", "1");
+    localStorage.setItem("currentProjectId", project.id.toString());
+    localStorage.setItem("currentProjectCode", project.projectsCode ?? "");
+    localStorage.setItem("currentProjectName", project.name ?? "");
+    localStorage.setItem("currentProjectCustomer", project.customerName ?? "");
+    localStorage.setItem("currentProjectImage", project.image ?? "");   
     router.push("/projects/projectdetail");
+  };
+
+  const handleDelete = async () => {
+    setIsDeleting(true);
+    try {
+      await deleteProject(project.id);
+      deleteModal.onClose();
+      toast.success("ยกเลิก Project สำเร็จ!");
+      router.refresh();
+    } catch (error) {
+      console.error("ลบไม่สำเร็จ", error);
+      toast.error("ยกเลิก Project ไม่สำเร็จ!");
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   return (
@@ -48,18 +89,13 @@ const ProjectCard = ({ project }: { project: any }) => {
       className="w-full h-full overflow-hidden border border-default-200/50 dark:border-white/10 bg-content1/80 dark:bg-content1/60 backdrop-blur-md
                  hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 group"
     >
-      {/* Cover */}
       <div className="relative h-44 sm:h-52 w-full overflow-hidden">
         <img
           alt={project.name}
           className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
           src={project.image}
         />
-
-        {/* nicer overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/15 to-transparent" />
-
-        {/* top actions */}
         <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <Chip
@@ -88,14 +124,39 @@ const ProjectCard = ({ project }: { project: any }) => {
               </Button>
             ) : null}
 
-            <Button
-              isIconOnly
-              size="sm"
-              variant="flat"
-              className="bg-black/35 text-white border border-white/10 h-8"
-            >
-              <MoreVertical size={18} />
-            </Button>
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="flat"
+                  className="bg-black/35 text-white border border-white/10 h-8"
+                >
+                  <MoreVertical size={18} />
+                </Button>
+              </DropdownTrigger>
+
+              <DropdownMenu aria-label="Project Actions" variant="flat">
+                <DropdownItem
+                  key="edit"
+                  startContent={<Edit size={18} />}
+                  onPress={() => {
+                    console.log("กดแก้ไข", project.id);
+                  }}
+                >
+                  แก้ไขโครงการ
+                </DropdownItem>
+                <DropdownItem
+                  key="delete"
+                  className="text-danger"
+                  color="danger"
+                  startContent={<Trash2 size={18} />}
+                  onPress={deleteModal.onOpen}
+                >
+                  ยกเลิกโครงการ
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
           </div>
         </div>
 
@@ -222,6 +283,43 @@ const ProjectCard = ({ project }: { project: any }) => {
           />
         </div>
       </CardFooter>
+
+      <Modal
+        isOpen={deleteModal.isOpen}
+        onOpenChange={deleteModal.onOpenChange}
+        backdrop="blur"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader className="flex flex-col gap-1">
+                ยืนยันการยกเลิกโครงการ
+              </ModalHeader>
+              <ModalBody>
+                <p>
+                  คุณแน่ใจหรือไม่ที่จะยกเลิกโครงการ <b>{project.name}</b>?
+                </p>
+                <p className="text-sm text-default-500">
+                  การกระทำนี้ไม่สามารถย้อนกลับได้
+                  ข้อมูลทั้งหมดที่เกี่ยวข้องจะถูกลบ
+                </p>
+              </ModalBody>
+              <ModalFooter>
+                <Button color="default" variant="light" onPress={onClose}>
+                  ปิด
+                </Button>
+                <Button
+                  color="danger"
+                  onPress={handleDelete}
+                  isLoading={isDeleting}
+                >
+                  ยืนยันลบ
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </Card>
   );
 };

@@ -27,15 +27,16 @@ model organization {
   ownerId Int?
   owner   user? @relation("org_owner", fields: [ownerId], references: [id])
 
-  users        user[]         @relation("org_users") // สมาชิกในบริษัททั้งหมด
-  positions    position[] // ตำแหน่งของบริษัท
-  permissions  permission[] // สิทธิ์ของบริษัท
-  projects     project[] // โปรเจคของบริษัท
-  projectUsers project_user[] @relation("org_project_users") // คนที่ถูกดึงเข้าโปรเจค (ตารางกลาง)
-  projectFiles project_file[] // ไฟล์แนบโปรเจค
-  projectImgs  project_img[] // รูปแนบโปรเจค
-  tasks        task[] // งานหลักทั้งหมดของบริษัท (ทุกโปรเจค)
-  taskDetails  task_detail[] // งานย่อยทั้งหมดของบริษัท (ทุกโปรเจค)
+  users            user[]             @relation("org_users") // สมาชิกในบริษัททั้งหมด
+  positions        position[] // ตำแหน่งของบริษัท
+  permissions      permission[] // สิทธิ์ของบริษัท
+  projects         project[] // โปรเจคของบริษัท
+  projectUsers     project_user[]     @relation("org_project_users") // คนที่ถูกดึงเข้าโปรเจค (ตารางกลาง)
+  projectFiles     project_file[] // ไฟล์แนบโปรเจค
+  projectImgs      project_img[] // รูปแนบโปรเจค
+  tasks            task[] // งานหลักทั้งหมดของบริษัท (ทุกโปรเจค)
+  taskDetails      task_detail[] // งานย่อยทั้งหมดของบริษัท (ทุกโปรเจค)
+  projectsRunnings projects_running[]
 }
 
 // =====================================
@@ -146,7 +147,6 @@ model position_permission {
 model project {
   id Int @id @default(autoincrement())
 
-  projectCode String // รหัสโปรเจค เช่น "PJ-2026-001"
   projectName String? // ชื่อโปรเจค
   projectDesc String? // รายละเอียด
 
@@ -156,6 +156,7 @@ model project {
   address       String? // ที่อยู่หน้างาน
   mapUrl        String? // ลิงก์ Google Maps
   coverImageUrl String? // รูปปกโปรเจค
+  coverVideoUrl String? // รูปปกโปรเจค
 
   status          String @default("PLANNING") // PLANNING / IN_PROGRESS / ON_HOLD / DONE
   progressPercent Int    @default(0) // 0..100 (ความคืบหน้าโดยรวม)
@@ -179,6 +180,9 @@ model project {
 
   createdById Int
   creator     user @relation("project_creator", fields: [createdById], references: [id])
+
+  projectCode String?           @unique // รหัสโปรเจคที่ไม่ซ้ำ (เช่น "PROJ-001")
+  code        projects_running? @relation(fields: [projectCode], references: [runningCode])
 
   members     project_user[] // คนที่ถูกลากเข้าโปรเจค
   tasks       task[] // งานหลักในโปรเจค
@@ -314,4 +318,15 @@ model task_detail {
 
   taskId Int // FK -> task.id
   task   task @relation(fields: [taskId], references: [id])
+}
+
+model projects_running {
+  id          Int      @id @default(autoincrement())
+  runningCode String   @unique
+  createdAt   DateTime @default(now())
+
+  organizationId Int?
+  organization   organization? @relation(fields: [organizationId], references: [id])
+
+  project project[]
 }

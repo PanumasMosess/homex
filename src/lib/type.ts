@@ -47,20 +47,49 @@ export type Tab = "all" | "progress" | "done" | "todo";
 
 export interface Subtask {
   id: number;
-  name: string;
-  done: boolean;
+  taskId: number;
+  detailName: string;
+  detailDesc?: string | null;
+  status: number; 
+  weightPercent?: number;
+  progressPercent?: number;
+  startPlanned?: string | Date | null;
+  finishPlanned?: string | Date | null;
+  startActual?: string | Date | null;
+  finishActual?: string | Date | null;
+
+  durationDays?: number;
+  sortOrder?: number;
 }
 
 export interface Task {
   id: number;
-  name: string;
-  image: string;
-  status: Status;
-  startAt?: string;
-  subtasks: Subtask[];
+  taskName?: string | null;
+  taskDesc?: string | null;
+  coverImageUrl?: string | null;
+  status: string; 
+  
+  progressPercent: number;
+  startPlanned?: Date | string | null;
+  finishPlanned?: Date | string | null;
+  startActual?: Date | string | null;
+  finishActual?: Date | string | null;
+  
+  durationDays?: number | null;
+  subtasks?: Subtask[]; 
 }
 
 export interface ProjectDetailProps {
   organizationId: number;
   currentUserId: number;
+  dataDetail: Task[];
+}
+
+export interface CreateMainTaskProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+  projectCode: string;
 }

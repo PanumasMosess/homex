@@ -219,6 +219,7 @@ export const HomexSidebar = ({
                     <Button
                       color="danger"
                       onPress={() => {
+                        localStorage.clear();
                         handleSignOut(); 
                         onClose(); 
                       }}
