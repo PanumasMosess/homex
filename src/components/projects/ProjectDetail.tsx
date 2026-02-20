@@ -34,10 +34,10 @@ import CreateMainTask from "./forms/createMainTask";
 import { calcProgress, formatDate } from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
-import { startVideoGeneration } from "@/lib/ai/geminiAI";
 import { toast } from "react-toastify";
 import {} from "@/lib/actions/actionIndex";
-import {} from "@/lib/actions/actionProject";
+import { updateVdoProject } from "@/lib/actions/actionProject";
+import { checkVideoStatus, startVideoJob } from "@/lib/ai/geminiAI";
 
 const ProjectDetail = ({
   organizationId,
@@ -90,12 +90,11 @@ const ProjectDetail = ({
       image: localStorage.getItem("currentProjectImage") || "",
       video: localStorage.getItem("currentProjectVideo") || "",
     });
-   
 
     const initialFilteredTasks = dataDetail.filter(
       (t: any) => t.projectId === Number(id),
     );
-    setTasks(initialFilteredTasks);   
+    setTasks(initialFilteredTasks);
   }, [dataDetail, router]);
 
   useEffect(() => {
@@ -154,23 +153,64 @@ const ProjectDetail = ({
     setIsGeneratingVideo(true);
 
     try {
+      setIsGeneratingVideo(true); 
+
       const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
-      const startRes = await startVideoGeneration(
-        prompt_vdo,
-        projectInfo.image,
+
+      const startRes = await startVideoJob(prompt_vdo, projectInfo.image);
+
+      if (!startRes.success || !startRes.operationName) {
+        toast.error(startRes.error || "ไม่สามารถเริ่มสร้างวิดีโอได้");
+        setIsGeneratingVideo(false);
+        return;
+      }
+
+      console.log("ได้บัตรคิวมาแล้ว:", startRes.operationName);
+      toast.info(
+        "กำลังสร้างวิดีโอด้วย AI (อาจใช้เวลา 1-3 นาที) โปรดรอสักครู่...",
       );
 
-      if (startRes.success && startRes.videoUrl) {
-        console.log("ได้ Video URL แล้ว:", startRes.videoUrl);
+      let isDone = false;
+      let finalVideoUrl = "";
+
+      while (!isDone) {
+        await new Promise((resolve) => setTimeout(resolve, 10000));
+
+        console.log("กำลังเช็คความคืบหน้า...");
+        const checkRes = await checkVideoStatus(startRes.operationName);
+
+        if (checkRes.status === "success" && checkRes.videoUrl) {
+          isDone = true;
+          finalVideoUrl = checkRes.videoUrl;
+        } else if (checkRes.status === "error") {
+          // ❌ เกิด Error ระหว่างทาง
+          isDone = true;
+          throw new Error(checkRes.error || "เกิดข้อผิดพลาดระหว่างสร้างวิดีโอ");
+        } else {
+          // ⏳ status === "processing" (ยังทำไม่เสร็จ ให้วน Loop ต่อไป)
+          console.log("AI ยังทำไม่เสร็จ รอเช็ครอบถัดไป...");
+        }
+      }
+
+      // 3. เมื่อได้ URL วิดีโอสุดท้ายมาแล้ว ให้อัปเดต State และ Database
+      if (finalVideoUrl) {
+        console.log("✅ ได้ Video URL สมบูรณ์แล้ว:", finalVideoUrl);
+
         setProjectInfo((prev) => ({
           ...prev,
-          video: startRes.videoUrl,
+          video: finalVideoUrl,
         }));
-      } else {
-        toast.error(startRes.error || "สร้างวิดีโอไม่สำเร็จ");
+
+        const updateRes = await updateVdoProject(
+          parseInt(projectInfo.id),
+          finalVideoUrl,
+        );
+
+        toast.success("สร้างและบันทึกวิดีโอสำเร็จ!");
       }
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ:", error);
+      toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
     } finally {
       setIsGeneratingVideo(false);
     }

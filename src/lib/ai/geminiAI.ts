@@ -13,24 +13,20 @@ const model_version_img =
 const model_visesion_video =
   process.env.GEMINI_VIDEO_MODEL || "veo-3.1-generate-preview";
 
-export async function startVideoGeneration(prompt: string, img_Url: string) {
+export async function startVideoJob(prompt: string, img_Url: string) {
   try {
-    const API_KEY =
-      process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
-    if (!API_KEY) {
-      throw new Error("ไม่พบ API KEY ในระบบ");
-    }
+    const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!API_KEY) throw new Error("ไม่พบ API KEY ในระบบ");
 
     const imageResponse = await fetch(img_Url);
-    if (!imageResponse.ok) {
-      throw new Error(`ไม่สามารถโหลดรูปภาพได้: ${imageResponse.statusText}`);
-    }
+    if (!imageResponse.ok) throw new Error(`ไม่สามารถโหลดรูปภาพได้: ${imageResponse.statusText}`);
+    
     const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
     const arrayBuffer = await imageResponse.arrayBuffer();
     const imageBytesBase64 = Buffer.from(arrayBuffer).toString("base64");
 
     const initialOperation = await ai_gemini.models.generateVideos({
-      model: model_visesion_video,
+      model: model_visesion_video, 
       prompt: prompt,
       image: {
         imageBytes: imageBytesBase64,
@@ -39,87 +35,86 @@ export async function startVideoGeneration(prompt: string, img_Url: string) {
     });
 
     const operationName = initialOperation.name;
-    console.log(`เริ่มสร้างวิดีโอ... บัตรคิวเลขที่: ${operationName}`);
+    console.log(`✅ เริ่มสร้างวิดีโอสำเร็จ... บัตรคิวเลขที่: ${operationName}`);
 
-    let isDone = false;
-    let finalVideoUri = null;
-    while (!isDone) {
-      console.log("กำลังสร้างวิดีโอ... รอ 10 วินาทีก่อนเช็คใหม่");
-      await new Promise((resolve) => setTimeout(resolve, 10000));
+    return { 
+      success: true, 
+      operationName: operationName 
+    };
 
-      const checkUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${API_KEY}`;
-      const res = await fetch(checkUrl, {
-        method: "GET",
-        headers: { "Content-Type": "application/json" },
-      });
-
-      if (!res.ok) {
-        throw new Error(`HTTP Error ตอนเช็คสถานะ: ${res.status}`);
-      }
-
-      const data = await res.json();
-
-      if (data.done) {
-        isDone = true;
-
-        console.log(
-          "✅ ข้อมูลดิบที่ Google ส่งมาเมื่อเสร็จสิ้น:",
-          JSON.stringify(data, null, 2),
-        );
-
-        if (data.error) {
-          throw new Error(data.error.message || "เกิดข้อผิดพลาดจากฝั่ง AI");
-        }
-
-        const resBody = data.response || {};
-
-        finalVideoUri =
-          resBody.generateVideoResponse?.generatedSamples?.[0]?.video?.uri ||
-          resBody.generatedVideos?.[0]?.video?.uri ||
-          resBody.videos?.[0]?.video?.uri;
-
-        if (!finalVideoUri) {
-          throw new Error(
-            "ระบบ AI ทำงานเสร็จแต่ไม่พบวิดีโอ (อาจติด Safety Filter, รูปไม่เหมาะสม, หรือรูปแบบ API เปลี่ยนไป ให้เช็ค Console)",
-          );
-        }
-      }
-    }
-
-    if (finalVideoUri) {
-      if (!finalVideoUri.includes("key=")) {
-        finalVideoUri = `${finalVideoUri}&key=${API_KEY}`;
-      }
-
-      console.log(`กำลังดาวน์โหลดวิดีโอจาก Google...`);
-
-      const videoFetchRes = await fetch(finalVideoUri);
-      if (!videoFetchRes.ok) {
-        throw new Error("ไม่สามารถดาวน์โหลดไฟล์วิดีโอจาก Google API ได้");
-      }
-
-      const videoArrayBuffer = await videoFetchRes.arrayBuffer();
-      const videoBase64 = Buffer.from(videoArrayBuffer).toString("base64");
-
-      console.log("แปลงไฟล์เป็น Base64 สำเร็จ! กำลังอัปโหลดขึ้น S3...");
-
-      const s3Response = await sendbase64toS3DataVdo(videoBase64, "vdo_projects");
-
-      if (s3Response && s3Response.url) {
-        console.log(`✅ อัปโหลดขึ้น S3 สำเร็จสมบูรณ์! URL: ${s3Response.url}`);
-        return {
-          success: true,
-          videoUrl: s3Response.url,
-        };
-      } else {
-        throw new Error("การอัปโหลดไฟล์ไปยัง S3 ล้มเหลว (ไม่พบ URL ตอบกลับ)");
-      }
-    } else {
-      throw new Error("วิดีโอสร้างเสร็จแล้ว แต่ไม่พบ URL ของวิดีโอในระบบ");
-    }
   } catch (error: any) {
-    console.error("Start Error:", error);
+    console.error("Start Job Error:", error);
     return { success: false, error: error.message };
+  }
+}
+
+export async function checkVideoStatus(operationName: string) {
+  try {
+    const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    if (!API_KEY) throw new Error("ไม่พบ API KEY ในระบบ");
+
+    const checkUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${API_KEY}`;
+    const res = await fetch(checkUrl, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    if (!res.ok) throw new Error(`HTTP Error ตอนเช็คสถานะ: ${res.status}`);
+    
+    const data = await res.json();
+
+    if (!data.done) {
+      console.log(`บัตรคิว ${operationName}: กำลังประมวลผล...`);
+      return { status: "processing" };
+    }
+
+    console.log("✅ AI สร้างวิดีโอเสร็จแล้ว กำลังจัดการไฟล์...");
+
+    if (data.error) {
+      throw new Error(data.error.message || "เกิดข้อผิดพลาดจากฝั่ง AI");
+    }
+
+    const resBody = data.response || {};
+    let finalVideoUri =
+      resBody.generateVideoResponse?.generatedSamples?.[0]?.video?.uri ||
+      resBody.generatedVideos?.[0]?.video?.uri ||
+      resBody.videos?.[0]?.video?.uri;
+
+    if (!finalVideoUri) {
+      throw new Error("ระบบ AI ทำงานเสร็จแต่ไม่พบวิดีโอ (อาจติด Safety Filter)");
+    }
+
+    let downloadUrl = finalVideoUri;
+    if (downloadUrl.includes("?")) {
+      downloadUrl = `${downloadUrl}&key=${API_KEY}&alt=media`;
+    } else {
+      downloadUrl = `${downloadUrl}?key=${API_KEY}&alt=media`;
+    }
+
+    const videoFetchRes = await fetch(downloadUrl);
+    if (!videoFetchRes.ok) throw new Error("ไม่สามารถดาวน์โหลดไฟล์วิดีโอจาก Google API ได้");
+
+    const videoArrayBuffer = await videoFetchRes.arrayBuffer();
+    const videoBase64 = Buffer.from(videoArrayBuffer).toString("base64");
+    
+    const base64WithPrefix = `data:video/mp4;base64,${videoBase64}`;
+
+    console.log("แปลงไฟล์สำเร็จ! กำลังอัปโหลดขึ้น S3...");
+    const s3Response = await sendbase64toS3DataVdo(base64WithPrefix, "vdo_projects");
+
+    if (s3Response && s3Response.url) {
+      console.log(`✅ อัปโหลดขึ้น S3 สมบูรณ์! URL: ${s3Response.url}`);
+      return {
+        status: "success",
+        videoUrl: s3Response.url,
+      };
+    } else {
+      throw new Error("การอัปโหลดไฟล์ไปยัง S3 ล้มเหลว (ไม่พบ URL ตอบกลับ)");
+    }
+
+  } catch (error: any) {
+    console.error("Check Status Error:", error);
+    return { status: "error", error: error.message };
   }
 }
 
