@@ -145,9 +145,7 @@ export const HomexNavbar = ({
                   </ModalHeader>
 
                   <ModalBody>
-                    <p>
-                      คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?
-                    </p>
+                    <p>คุณแน่ใจหรือไม่ว่าต้องการออกจากระบบ?</p>
                   </ModalBody>
 
                   <ModalFooter>
@@ -157,6 +155,7 @@ export const HomexNavbar = ({
                     <Button
                       color="danger"
                       onPress={() => {
+                        localStorage.clear();
                         onLogoutConfirm();
                         onClose();
                       }}

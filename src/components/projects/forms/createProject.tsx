@@ -49,6 +49,7 @@ export const CreateProject = ({
     undefined,
   );
   const [isUploading, setIsUploading] = useState(false);
+  const [isGeneratingVideo, setIsGeneratingVideo] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isSuccessRef = useRef(false);
@@ -124,13 +125,24 @@ export const CreateProject = ({
 
     try {
       const imageUrl = await handleImageUpload(file, "img_projects");
-      console.log("Upload Success, URL:", imageUrl);
+      setIsUploading(false);
+      // setIsGeneratingVideo(true);
+      // const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
+      // const startRes = await startVideoGeneration(prompt_vdo, imageUrl);
+
+      // if (startRes.success && startRes.videoUrl) {
+      //   console.log("ได้ Video URL แล้ว:", startRes.videoUrl);
+      // } else {
+      //   toast.error(startRes.error || "สร้างวิดีโอไม่สำเร็จ");
+      // }
+
       setCoverImageUrl(imageUrl);
     } catch (error) {
       toast.error("อัปโหลดรูปภาพไม่สำเร็จ");
       setImagePreview(null);
     } finally {
       setIsUploading(false);
+      setIsGeneratingVideo(false);
     }
   };
 
@@ -235,12 +247,15 @@ export const CreateProject = ({
                     className="absolute inset-0 w-full h-full opacity-0 z-20 cursor-pointer disabled:cursor-not-allowed"
                   />
 
-                  {/* Loading State Overlay */}
-                  {(isUploading || isDeleting) && (
+                  {(isUploading || isDeleting || isGeneratingVideo) && (
                     <div className="absolute inset-0 z-30 flex flex-col items-center justify-center bg-black/50 backdrop-blur-sm">
                       <Spinner color="warning" />
-                      <span className="text-white text-xs mt-2 font-medium">
-                        {isDeleting ? "กำลังลบรูป..." : "กำลังอัปโหลดรูป..."}
+                      <span className="text-white text-xs mt-2 font-medium text-center px-4">
+                        {isDeleting
+                          ? "กำลังลบรูป..."
+                          : isGeneratingVideo
+                            ? "AI กำลังสร้างวิดีโอ (อาจใช้เวลา 1-3 นาที)..."
+                            : "กำลังอัปโหลดรูป..."}
                       </span>
                     </div>
                   )}

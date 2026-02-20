@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardBody, Button, Input, Chip, useDisclosure } from "@heroui/react";
-import { Plus, Search, Building2 } from "lucide-react";
+import { Plus, Search, Building2, FolderSearch } from "lucide-react"; 
 import ProjectCard from "./ProjectCard";
 import { CreateProject } from "./forms/createProject";
 import React, { useMemo, useState } from "react";
@@ -38,14 +38,12 @@ const MainPageProject = ({
 
   const norm = (s?: any) => String(s ?? "").toLowerCase().trim();
 
-  // debounce เบาๆ กันกระตุก
   const [qDebounced, setQDebounced] = useState("");
   React.useEffect(() => {
     const t = setTimeout(() => setQDebounced(q), 200);
     return () => clearTimeout(t);
   }, [q]);
 
-  // รีเซ็ตตอนเปลี่ยน tab หรือ search
   React.useEffect(() => {
     setVisibleCount(INITIAL_COUNT);
   }, [activeTab, qDebounced]);
@@ -97,11 +95,10 @@ const MainPageProject = ({
       if (current) observer.unobserve(current);
     };
   }, [filteredProjects.length]);
+
   return (
-    // ✅ Mobile Fix 1: ลด Padding รอบนอกเหลือ p-3 และเพิ่ม pb-24 (กันตกขอบล่าง)
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen pb-24">
 
-      {/* --- Header Section --- */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-8">
         <div>
           <h1 className="text-lg sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
@@ -112,7 +109,6 @@ const MainPageProject = ({
           </p>
         </div>
 
-        {/* ✅ Mobile Fix 2: Search Bar เต็มความกว้าง แต่ไม่สูงเกินไป */}
         <div className="flex flex-col sm:flex-row w-full md:w-auto gap-2 sm:gap-3">
           <Input
             classNames={{
@@ -141,8 +137,6 @@ const MainPageProject = ({
         </div>
       </div>
 
-      {/* --- Filter Tabs --- */}
-      {/* ✅ Mobile Fix 3: Scroll แนวนอนได้ลื่นๆ ไม่ล้นจอ */}
       <div className="flex gap-2 mb-4 overflow-x-auto pb-2 scrollbar-hide -mx-3 px-3 sm:mx-0 sm:px-0">
         {tabs.map((tab) => {
           const isActive = tab === activeTab;
@@ -162,29 +156,55 @@ const MainPageProject = ({
         })}
       </div>
 
-      {/* --- Grid Section --- */}
-      {/* ✅ Mobile Fix 4: gap-3 พอดีมือถือ, grid-cols-1 เต็มจอแนวนอน */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
-        {filteredProjects.slice(0, visibleCount).map((project) => (
-          <ProjectCard key={project.id} project={project} />
-        ))}
-
-        {/* Create Card Button */}
-        <div onClick={onOpen} className="group h-full">
-          <Card
-            className="h-full min-h-[160px] sm:min-h-[360px] border border-dashed border-default-300 bg-transparent hover:border-primary hover:bg-default-50 transition-all cursor-pointer shadow-none"
-          >
-            <CardBody className="flex flex-col items-center justify-center gap-2 text-default-400">
-              <div className="p-3 rounded-full bg-default-100 group-hover:bg-primary/10 transition-colors">
-                <Plus size={24} />
+      {filteredProjects.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-10 w-full animate-fade-in">
+          <Card className="w-full max-w-md bg-transparent border-dashed border-2 border-default-300 shadow-none">
+            <CardBody className="flex flex-col items-center justify-center gap-4 py-10 text-center">
+              <div className="p-4 rounded-full bg-default-100 text-default-400">
+                <FolderSearch size={48} strokeWidth={1.5} />
               </div>
-              <span className="font-medium text-sm sm:text-lg">Create New</span>
+              <div className="space-y-1">
+                <h3 className="text-lg font-semibold text-default-700">ไม่พบโครงการที่ค้นหา</h3>
+                <p className="text-sm text-default-500">
+                  ลองเปลี่ยนคำค้นหา หรือสร้างโครงการใหม่
+                </p>
+              </div>
+              <Button
+                onPress={onOpen}
+                color="primary"
+                variant="flat"
+                radius="full"
+                className="mt-2"
+                startContent={<Plus size={18} />}
+              >
+                สร้างโครงการ
+              </Button>
             </CardBody>
           </Card>
         </div>
-      </div>
-      {/* 🔽 Infinite Scroll Trigger */}
-      {visibleCount < filteredProjects.length && (
+      ) : (
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6">
+          {filteredProjects.slice(0, visibleCount).map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+
+          <div onClick={onOpen} className="group h-full">
+            <Card
+              className="h-full min-h-[160px] sm:min-h-[360px] border border-dashed border-default-300 bg-transparent hover:border-primary hover:bg-default-50 transition-all cursor-pointer shadow-none"
+            >
+              <CardBody className="flex flex-col items-center justify-center gap-2 text-default-400">
+                <div className="p-3 rounded-full bg-default-100 group-hover:bg-primary/10 transition-colors">
+                  <Plus size={24} />
+                </div>
+                <span className="font-medium text-sm sm:text-lg">Create New</span>
+              </CardBody>
+            </Card>
+          </div>
+        </div>
+      )}
+
+      {filteredProjects.length > 0 && visibleCount < filteredProjects.length && (
         <div
           ref={loadMoreRef}
           className="h-16 flex items-center justify-center text-sm text-gray-400"
