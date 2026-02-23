@@ -31,13 +31,17 @@ import {
 import type { Tab, Task, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
-import { calcProgress, formatDate } from "@/lib/setting_data";
+import { calcProgress, formatDate, getMediaType } from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
 import {} from "@/lib/actions/actionIndex";
 import { updateVdoProject } from "@/lib/actions/actionProject";
-import { checkVideoStatus, startVideoJob } from "@/lib/ai/geminiAI";
+import {
+  checkVideoStatus,
+  generationImage3D,
+  startVideoJob,
+} from "@/lib/ai/geminiAI";
 
 const ProjectDetail = ({
   organizationId,
@@ -153,7 +157,7 @@ const ProjectDetail = ({
     setIsGeneratingVideo(true);
 
     try {
-      setIsGeneratingVideo(true); 
+      setIsGeneratingVideo(true);
 
       const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
 
@@ -196,17 +200,21 @@ const ProjectDetail = ({
       if (finalVideoUrl) {
         console.log("✅ ได้ Video URL สมบูรณ์แล้ว:", finalVideoUrl);
 
+        // const finalVideoUrl = await generationImage3D(projectInfo.image);
+        // if (finalVideoUrl) {
         setProjectInfo((prev) => ({
           ...prev,
+          // video: finalVideoUrl.answer ?? "",
           video: finalVideoUrl,
         }));
 
         const updateRes = await updateVdoProject(
           parseInt(projectInfo.id),
+          // finalVideoUrl.answer ?? "",
           finalVideoUrl,
         );
 
-        toast.success("สร้างและบันทึกวิดีโอสำเร็จ!");
+        toast.success("สร้างและบันทึกสำเร็จ!");
       }
     } catch (error) {
       console.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ:", error);
@@ -216,32 +224,63 @@ const ProjectDetail = ({
     }
   };
 
+  const mediaUrl = projectInfo.video;
+  const mediaType = getMediaType(mediaUrl);
+
   return (
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen space-y-6">
       <div className="bg-default-100 dark:bg-zinc-900 rounded-3xl p-6 lg:p-8 grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[560px_1fr] gap-6 items-center overflow-hidden">
         <div className="relative w-full h-[200px] sm:h-[240px] md:h-[220px] lg:h-[320px] rounded-2xl overflow-hidden bg-zinc-800">
+          {/* ส่วน Loading Overlay */}
           {isGeneratingVideo && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
               <Spinner color="primary" size="lg" />
               <p className="text-white text-sm mt-3 font-medium animate-pulse">
-                AI กำลังสร้างวิดีโอ... อาจใช้เวลา 1-5 นาทีโปรดรอซักครู่นะครับ
+                AI กำลังทำงาน... อาจใช้เวลา 1-5 นาทีโปรดรอซักครู่นะครับ
               </p>
             </div>
           )}
 
-          <video
-            key={projectInfo.video || "default_video"}
-            autoPlay
-            muted
-            loop
-            playsInline
-            preload="auto"
-            className="w-full h-full object-cover"
-            src={
-              projectInfo.video ||
-              "https://homex.sgp1.cdn.digitaloceanspaces.com/vdo_projects/ai_gen.mp4"
-            }
-          />
+          {/* ส่วนแสดงผล Media โดยเช็คจาก mediaType */}
+          {mediaType === "video" ? (
+            <video
+              key={mediaUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
+              className="w-full h-full object-cover"
+              src={mediaUrl}
+            />
+          ) : mediaType === "image" ? (
+            <img
+              key={mediaUrl}
+              src={mediaUrl}
+              alt="Project Media"
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center bg-zinc-800/50 border-2 border-dashed border-zinc-700 text-zinc-500">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                width="40"
+                height="40"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                className="mb-3 opacity-60"
+              >
+                <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
+                <circle cx="9" cy="9" r="2" />
+                <path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21" />
+              </svg>
+              <p className="text-sm font-medium">ไม่มีรูปภาพหรือวิดีโอ</p>
+            </div>
+          )}
         </div>
 
         {/* ข้อมูลโปรเจกต์ */}

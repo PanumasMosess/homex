@@ -152,6 +152,11 @@ export const CreateProject = ({
       return;
     }
 
+    if (!coverImageUrl) {
+      toast.error("กรุณาอัปโหลดรูปภาพหน้างานก่อนสร้างโครงการ");
+      return;
+    }
+
     try {
       const finalData: ProjectSchema = {
         ...dataForm,
@@ -282,7 +287,8 @@ export const CreateProject = ({
                       </div>
                       <div className="text-center">
                         <p className="text-sm font-medium text-foreground">
-                          อัปโหลดรูปหน้างาน
+                          อัปโหลดรูปหน้างาน{" "}
+                          <span className="text-danger">*</span>
                         </p>
                         <p className="text-xs">JPG, PNG ไม่เกิน 10MB</p>
                       </div>

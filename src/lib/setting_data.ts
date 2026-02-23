@@ -126,3 +126,20 @@ export function calcDurationDays(
   // return days + 1;
   return days;
 }
+
+export const getMediaType = (
+  url: string | undefined | null,
+): "video" | "image" | "unknown" => {
+  if (!url) return "unknown";
+
+  const cleanUrl = url.split("?")[0].toLowerCase();
+
+  if (cleanUrl.match(/\.(mp4|webm|ogg|mov)$/i)) {
+    return "video";
+  }
+  if (cleanUrl.match(/\.(jpeg|jpg|gif|png|webp|svg)$/i)) {
+    return "image";
+  }
+
+  return "unknown";
+};
