@@ -98,7 +98,8 @@ export const sendbase64toS3Data = async (base64Data: string, path: string) => {
 
 export const sendbase64toS3DataVdo = async (base64Data: string, path: string) => {
   try {
-    const buffer = Buffer.from(base64Data, "base64");
+    const base64Clean = base64Data.replace(/^data:(.*);base64,/, "");
+    const buffer = Buffer.from(base64Clean, "base64");
 
     const randomBytes = crypto.randomBytes(16);
     const key = `${path}/${randomBytes.toString("hex")}.mp4`;
@@ -107,7 +108,7 @@ export const sendbase64toS3DataVdo = async (base64Data: string, path: string) =>
       Bucket: process.env.S3_BUCKET!,
       Key: key,
       Body: buffer,
-      ContentType: "image/png",
+      ContentType: "video/mp4", 
       ACL: "public-read",
     });
 
@@ -120,8 +121,9 @@ export const sendbase64toS3DataVdo = async (base64Data: string, path: string) =>
 
     return { success: true, url: publicUrl };
   } catch (error) {
-    console.error("Error uploading Base64 image:", error);
-    return { success: false, error: "Failed to upload image." };
+    // 3. ปรับข้อความ Error ให้สื่อว่าเป็นวิดีโอ
+    console.error("Error uploading Base64 video:", error); 
+    return { success: false, error: "Failed to upload video." };
   }
 };
 
