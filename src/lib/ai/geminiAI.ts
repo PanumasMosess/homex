@@ -1,7 +1,11 @@
 "use server";
 
 import { GoogleGenAI } from "@google/genai";
-import { sendbase64toS3Data, sendbase64toS3DataVdo } from "../actions/actionIndex";
+import {
+  sendbase64toS3Data,
+  sendbase64toS3DataVdo,
+} from "../actions/actionIndex";
+import { error } from "console";
 
 const ai_gemini = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY,
@@ -15,18 +19,20 @@ const model_visesion_video =
 
 export async function startVideoJob(prompt: string, img_Url: string) {
   try {
-    const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const API_KEY =
+      process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!API_KEY) throw new Error("ไม่พบ API KEY ในระบบ");
 
     const imageResponse = await fetch(img_Url);
-    if (!imageResponse.ok) throw new Error(`ไม่สามารถโหลดรูปภาพได้: ${imageResponse.statusText}`);
-    
+    if (!imageResponse.ok)
+      throw new Error(`ไม่สามารถโหลดรูปภาพได้: ${imageResponse.statusText}`);
+
     const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
     const arrayBuffer = await imageResponse.arrayBuffer();
     const imageBytesBase64 = Buffer.from(arrayBuffer).toString("base64");
 
     const initialOperation = await ai_gemini.models.generateVideos({
-      model: model_visesion_video, 
+      model: model_visesion_video,
       prompt: prompt,
       image: {
         imageBytes: imageBytesBase64,
@@ -37,11 +43,10 @@ export async function startVideoJob(prompt: string, img_Url: string) {
     const operationName = initialOperation.name;
     console.log(`✅ เริ่มสร้างวิดีโอสำเร็จ... บัตรคิวเลขที่: ${operationName}`);
 
-    return { 
-      success: true, 
-      operationName: operationName 
+    return {
+      success: true,
+      operationName: operationName,
     };
-
   } catch (error: any) {
     console.error("Start Job Error:", error);
     return { success: false, error: error.message };
@@ -50,7 +55,8 @@ export async function startVideoJob(prompt: string, img_Url: string) {
 
 export async function checkVideoStatus(operationName: string) {
   try {
-    const API_KEY = process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+    const API_KEY =
+      process.env.GEMINI_API_KEY || process.env.NEXT_PUBLIC_GEMINI_API_KEY;
     if (!API_KEY) throw new Error("ไม่พบ API KEY ในระบบ");
 
     const checkUrl = `https://generativelanguage.googleapis.com/v1beta/${operationName}?key=${API_KEY}`;
@@ -60,7 +66,7 @@ export async function checkVideoStatus(operationName: string) {
     });
 
     if (!res.ok) throw new Error(`HTTP Error ตอนเช็คสถานะ: ${res.status}`);
-    
+
     const data = await res.json();
 
     if (!data.done) {
@@ -81,7 +87,9 @@ export async function checkVideoStatus(operationName: string) {
       resBody.videos?.[0]?.video?.uri;
 
     if (!finalVideoUri) {
-      throw new Error("ระบบ AI ทำงานเสร็จแต่ไม่พบวิดีโอ (อาจติด Safety Filter)");
+      throw new Error(
+        "ระบบ AI ทำงานเสร็จแต่ไม่พบวิดีโอ (อาจติด Safety Filter)",
+      );
     }
 
     let downloadUrl = finalVideoUri;
@@ -92,15 +100,19 @@ export async function checkVideoStatus(operationName: string) {
     }
 
     const videoFetchRes = await fetch(downloadUrl);
-    if (!videoFetchRes.ok) throw new Error("ไม่สามารถดาวน์โหลดไฟล์วิดีโอจาก Google API ได้");
+    if (!videoFetchRes.ok)
+      throw new Error("ไม่สามารถดาวน์โหลดไฟล์วิดีโอจาก Google API ได้");
 
     const videoArrayBuffer = await videoFetchRes.arrayBuffer();
     const videoBase64 = Buffer.from(videoArrayBuffer).toString("base64");
-    
+
     const base64WithPrefix = `data:video/mp4;base64,${videoBase64}`;
 
     console.log("แปลงไฟล์สำเร็จ! กำลังอัปโหลดขึ้น S3...");
-    const s3Response = await sendbase64toS3DataVdo(base64WithPrefix, "vdo_projects");
+    const s3Response = await sendbase64toS3DataVdo(
+      base64WithPrefix,
+      "vdo_projects",
+    );
 
     if (s3Response && s3Response.url) {
       console.log(`✅ อัปโหลดขึ้น S3 สมบูรณ์! URL: ${s3Response.url}`);
@@ -111,7 +123,6 @@ export async function checkVideoStatus(operationName: string) {
     } else {
       throw new Error("การอัปโหลดไฟล์ไปยัง S3 ล้มเหลว (ไม่พบ URL ตอบกลับ)");
     }
-
   } catch (error: any) {
     console.error("Check Status Error:", error);
     return { status: "error", error: error.message };
@@ -151,6 +162,74 @@ export const generationImage = async (userCommand: string) => {
     return {
       success: false,
       error: "Failed to process gen with AI.",
+    };
+  } catch (error) {
+    console.error("Gemini image generation error:", error);
+    return { success: false, error: "Failed to process gen with AI." };
+  }
+};
+
+export const generationImage3D = async (img_Url: string) => {
+  // ตัดเรื่องเวลาและการเคลื่อนไหวออก เน้นบรรยากาศ ณ ช่วงเวลาหนึ่ง
+  const promptText = `A professional architectural photograph of a busy construction site. The modern building from the reference image is actively under construction (approximately 50% complete), with visible structural elements, scaffolding, and busy tower cranes. Workers and building materials are present on site. The surrounding environment, street, cars, and trees match the reference image exactly. Realistic daylight, highly detailed texture.`;
+
+  try {
+    let imagePart = null;
+    if (img_Url) {
+      const imageResponse = await fetch(img_Url);
+      if (!imageResponse.ok) {
+        throw new Error(`ไม่สามารถโหลดรูปภาพได้: ${imageResponse.statusText}`);
+      }
+      const mimeType =
+        imageResponse.headers.get("content-type") || "image/jpeg";
+      const arrayBuffer = await imageResponse.arrayBuffer();
+      const imageBytesBase64 = Buffer.from(arrayBuffer).toString("base64");
+
+      imagePart = {
+        inlineData: {
+          data: imageBytesBase64,
+          mimeType: mimeType,
+        },
+      };
+    }
+
+    const contentsPayload = imagePart ? [promptText, imagePart] : promptText;
+
+    const response = await ai_gemini.models.generateContent({
+      model: model_version_img,
+      contents: contentsPayload,
+    });
+
+    const parts = response.candidates?.[0]?.content?.parts;
+
+    if (parts) {
+      let url;
+      let imageData: string | undefined;
+
+      for (const part of parts) {
+        if (part.inlineData && part.inlineData.data) {
+          imageData = part.inlineData.data;
+
+          if (imageData && imageData.startsWith("data:")) {
+            imageData = imageData.replace(/^data:image\/\w+;base64,/, "");
+          }
+        }
+      }
+
+      if (imageData) {
+        url = await sendbase64toS3Data(imageData, "vdo_projects");
+      }
+
+      return {
+        success: true,
+        error: false,
+        answer: url?.url,
+      };
+    }
+
+    return {
+      success: false,
+      error: "AI ประมวลผลสำเร็จ แต่ไม่พบข้อมูลรูปภาพตอบกลับมา",
     };
   } catch (error) {
     console.error("Gemini image generation error:", error);
