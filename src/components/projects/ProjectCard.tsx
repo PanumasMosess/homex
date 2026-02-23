@@ -63,7 +63,8 @@ const ProjectCard = ({ project }: { project: any }) => {
     localStorage.setItem("currentProjectCode", project.projectsCode ?? "");
     localStorage.setItem("currentProjectName", project.name ?? "");
     localStorage.setItem("currentProjectCustomer", project.customerName ?? "");
-    localStorage.setItem("currentProjectImage", project.image ?? "");   
+    localStorage.setItem("currentProjectImage", project.image ?? "");  
+    localStorage.setItem("currentProjectVideo", project.video ?? "");  
     router.push("/projects/projectdetail");
   };
 
