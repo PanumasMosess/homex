@@ -31,6 +31,7 @@ const Project = async () => {
       startPlanned: true,
       finishPlanned: true,
       coverImageUrl: true,
+      coverVideoUrl: true,
       durationDays: true,
       budget: true,
       mapUrl: true,
@@ -64,6 +65,7 @@ const Project = async () => {
     mapUrl: p.mapUrl ?? null,
     projectsCode: p.projectCode ?? "",
     customerName: p.customerName ?? "",
+    video: p.coverVideoUrl ?? "",
   }));
 
   return (
