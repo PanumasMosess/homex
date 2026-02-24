@@ -40,7 +40,13 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
 
-const ProjectCard = ({ project }: { project: any }) => {
+const ProjectCard = ({
+  project,
+  onEdit,
+}: {
+  project: any;
+  onEdit?: (project: any) => void;
+}) => {
   const router = useRouter();
   const startPlanned = project.startPlanned ?? null;
   const finishPlanned = project.finishPlanned ?? null;
@@ -63,8 +69,8 @@ const ProjectCard = ({ project }: { project: any }) => {
     localStorage.setItem("currentProjectCode", project.projectsCode ?? "");
     localStorage.setItem("currentProjectName", project.name ?? "");
     localStorage.setItem("currentProjectCustomer", project.customerName ?? "");
-    localStorage.setItem("currentProjectImage", project.image ?? "");  
-    localStorage.setItem("currentProjectVideo", project.video ?? "");  
+    localStorage.setItem("currentProjectImage", project.image ?? "");
+    localStorage.setItem("currentProjectVideo", project.video ?? "");
     router.push("/projects/projectdetail");
   };
 
@@ -142,7 +148,9 @@ const ProjectCard = ({ project }: { project: any }) => {
                   key="edit"
                   startContent={<Edit size={18} />}
                   onPress={() => {
-                    console.log("กดแก้ไข", project.id);
+                    if (onEdit) {
+                      onEdit(project);
+                    }
                   }}
                 >
                   แก้ไขโครงการ
