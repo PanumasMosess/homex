@@ -30,7 +30,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { ProjectSchema, ProjectSchema_ } from "@/lib/formValidationSchemas";
-import { createProject } from "@/lib/actions/actionProject";
+import { createProject, updateProject } from "@/lib/actions/actionProject";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CreateProjectProps } from "@/lib/type";
@@ -41,8 +41,11 @@ export const CreateProject = ({
   onOpenChange,
   organizationId,
   currentUserId,
-}: CreateProjectProps) => {
+  editData,
+}: CreateProjectProps & { editData?: any }) => {
   const router = useRouter();
+
+  const isEditMode = !!editData;
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [coverImageUrl, setCoverImageUrl] = useState<string | undefined>(
@@ -54,26 +57,56 @@ export const CreateProject = ({
 
   const isSuccessRef = useRef(false);
 
+  const defaultFormValues = {
+    projectName: "",
+    customerName: "",
+    address: "",
+    mapUrl: "",
+    budget: undefined as unknown as number,
+    startPlanned: "",
+    finishPlanned: "",
+    projectDesc: "",
+    coverImageUrl: "",
+    createdById: currentUserId,
+    organizationId: organizationId,
+  };
+
   const formAddProject = useForm<ProjectSchema>({
     resolver: zodResolver(ProjectSchema_),
-    defaultValues: {
-      projectName: "",
-      customerName: "",
-      address: "",
-      mapUrl: "",
-      // budget: 0,
-      budget: undefined as unknown as number,
-      startPlanned: "",
-      finishPlanned: "",
-      projectDesc: "",
-      coverImageUrl: "",
-      createdById: currentUserId,
-      organizationId: organizationId,
-    },
+    defaultValues: defaultFormValues,
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && editData) {
+        formAddProject.reset({
+          projectName: editData.name || editData.projectName || "",
+          customerName: editData.client || editData.customerName || "",
+          address: editData.address || "",
+          mapUrl: editData.mapUrl || "",
+          budget: editData.budget || (undefined as unknown as number),
+          startPlanned: editData.startPlanned
+            ? new Date(editData.startPlanned).toISOString().split("T")[0]
+            : "",
+          finishPlanned: editData.finishPlanned
+            ? new Date(editData.finishPlanned).toISOString().split("T")[0]
+            : "",
+          projectDesc: editData.projectDesc || editData.description || "",
+          coverImageUrl: editData.image || editData.coverImageUrl || "",
+          createdById: editData.createdById || currentUserId,
+          organizationId: editData.organizationId || organizationId,
+        });
+        setImagePreview(editData.image || editData.coverImageUrl || null);
+        setCoverImageUrl(editData.image || editData.coverImageUrl || undefined);
+      } else {
+        // โหมดสร้างใหม่
+        resetFormState();
+      }
+    }
+  }, [isOpen, isEditMode, editData]);
+
   const resetFormState = () => {
-    formAddProject.reset();
+    formAddProject.reset(defaultFormValues);
     setImagePreview(null);
     setCoverImageUrl(undefined);
     setIsUploading(false);
@@ -88,7 +121,8 @@ export const CreateProject = ({
       return;
     }
 
-    if (coverImageUrl) {
+    const originalImage = editData?.image || editData?.coverImageUrl;
+    if (coverImageUrl && coverImageUrl !== originalImage) {
       setIsDeleting(true);
       try {
         const urlObj = new URL(coverImageUrl);
@@ -96,7 +130,6 @@ export const CreateProject = ({
         if (fileKey.startsWith("homex/")) {
           fileKey = fileKey.replace("homex/", "");
         }
-
         await deleteFileS3(fileKey);
       } catch (err) {
       } finally {
@@ -126,16 +159,6 @@ export const CreateProject = ({
     try {
       const imageUrl = await handleImageUpload(file, "img_projects");
       setIsUploading(false);
-      // setIsGeneratingVideo(true);
-      // const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
-      // const startRes = await startVideoGeneration(prompt_vdo, imageUrl);
-
-      // if (startRes.success && startRes.videoUrl) {
-      //   console.log("ได้ Video URL แล้ว:", startRes.videoUrl);
-      // } else {
-      //   toast.error(startRes.error || "สร้างวิดีโอไม่สำเร็จ");
-      // }
-
       setCoverImageUrl(imageUrl);
     } catch (error) {
       toast.error("อัปโหลดรูปภาพไม่สำเร็จ");
@@ -153,7 +176,7 @@ export const CreateProject = ({
     }
 
     if (!coverImageUrl) {
-      toast.error("กรุณาอัปโหลดรูปภาพหน้างานก่อนสร้างโครงการ");
+      toast.error("กรุณาอัปโหลดรูปภาพหน้างานก่อนบันทึกโครงการ");
       return;
     }
 
@@ -165,8 +188,20 @@ export const CreateProject = ({
         coverImageUrl: coverImageUrl,
       };
 
-      startTransition(() => {
-        formAction(finalData);
+      startTransition(async () => {
+        if (isEditMode) {
+          const res = await updateProject(editData.id, finalData);
+          if (res?.success || !res?.error) {
+            toast.success("บันทึกการแก้ไขเรียบร้อย!");
+            router.refresh();
+            isSuccessRef.current = true;
+            handleModalClose();
+          } else {
+            toast.error(res?.error || "แก้ไขข้อมูลไม่สำเร็จ");
+          }
+        } else {
+          formAction(finalData);
+        }
       });
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "เกิดข้อผิดพลาด");
@@ -176,7 +211,7 @@ export const CreateProject = ({
   const handledRef = useRef(false);
 
   useEffect(() => {
-    if (state.success && !handledRef.current) {
+    if (state.success && !handledRef.current && !isEditMode) {
       handledRef.current = true;
       toast.success("สร้างโครงการเรียบร้อย!");
       router.refresh();
@@ -186,11 +221,11 @@ export const CreateProject = ({
       return;
     }
 
-    if (state.error && !handledRef.current) {
+    if (state.error && !handledRef.current && !isEditMode) {
       handledRef.current = true;
       toast.error(state.message || "บันทึกไม่สำเร็จ");
     }
-  }, [state.success, state.error]);
+  }, [state.success, state.error, isEditMode]);
 
   const isBusy = isPending || isUploading || isDeleting;
 
@@ -227,10 +262,11 @@ export const CreateProject = ({
               </div>
               <div className="flex flex-col">
                 <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                  Create Project
+                  {/* 📌 เปลี่ยนหัวข้อตามโหมด */}
+                  {isEditMode ? "Edit Project" : "Create Project"}
                 </h2>
                 <p className="text-default-400 text-xs font-normal">
-                  สร้างโครงการใหม่
+                  {isEditMode ? "แก้ไขข้อมูลโครงการ" : "สร้างโครงการใหม่"}
                 </p>
               </div>
             </ModalHeader>
@@ -242,7 +278,6 @@ export const CreateProject = ({
               className="flex flex-col flex-1 overflow-hidden"
             >
               <ModalBody>
-                {/* Image Upload Section */}
                 <div className="relative group w-full h-48 sm:h-56 rounded-2xl border-2 border-dashed border-default-200 hover:border-primary transition-all bg-default-50/50 dark:bg-default-100/10 overflow-hidden cursor-pointer shrink-0">
                   <input
                     type="file"
@@ -397,7 +432,9 @@ export const CreateProject = ({
                       ? "กำลังลบ..."
                       : isPending
                         ? "กำลังบันทึก..."
-                        : "สร้างโครงการ"}
+                        : isEditMode
+                          ? "บันทึกการแก้ไข" 
+                          : "สร้างโครงการ"}
                 </Button>
               </ModalFooter>
             </form>

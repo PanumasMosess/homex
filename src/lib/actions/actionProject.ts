@@ -224,3 +224,50 @@ export async function deleteProject(projectId: number): Promise<ActionState> {
     };
   }
 }
+
+export async function updateProject(
+  id: number | string,
+  data: ProjectSchema,
+): Promise<ActionState> {
+  try {
+    const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
+    const finishPlanned = data.finishPlanned
+      ? new Date(data.finishPlanned)
+      : null;
+    const durationDays = calcDurationDays(startPlanned, finishPlanned); 
+
+    await prisma.project.update({
+      where: {
+        id: Number(id), 
+      },
+      data: {
+        projectName: data.projectName,
+        customerName: data.customerName,
+        projectDesc: data.projectDesc ?? null,
+        address: data.address ?? null,
+        mapUrl: data.mapUrl ?? null,
+        coverImageUrl: data.coverImageUrl ?? null,
+        budget: data.budget,
+        startPlanned,
+        finishPlanned,
+        durationDays,
+      },
+    });
+
+    return { success: true, error: false };
+  } catch (e: unknown) {
+    console.error("Update Project Error:", e);
+    if (e instanceof Error) {
+      return {
+        success: false,
+        error: true,
+        message: e.message,
+      };
+    }
+    return {
+      success: false,
+      error: true,
+      message: "ไม่สามารถแก้ไขโครงการได้",
+    };
+  }
+}
