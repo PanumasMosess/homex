@@ -36,7 +36,7 @@ import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
 import {} from "@/lib/actions/actionIndex";
-import { updateVdoProject } from "@/lib/actions/actionProject";
+import { updateTaskStatus, updateVdoProject } from "@/lib/actions/actionProject";
 import {
   checkVideoStatus,
   generationImage3D,
@@ -132,15 +132,15 @@ const ProjectDetail = ({
   }, [tasks]);
 
   // Callbacks
-  const handleDragEnd = useCallback((e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over) return;
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === active.id ? { ...t, status: over.id as string } : t,
-      ),
-    );
-  }, []);
+  // const handleDragEnd = useCallback((e: DragEndEvent) => {
+  //   const { active, over } = e;
+  //   if (!over) return;
+  //   setTasks((prev) =>
+  //     prev.map((t) =>
+  //       t.id === active.id ? { ...t, status: over.id as string } : t,
+  //     ),
+  //   );
+  // }, []);
 
   const handleSelectTask = useCallback((id: number) => {
     setSelectedId(id);
@@ -187,11 +187,9 @@ const ProjectDetail = ({
           isDone = true;
           finalVideoUrl = checkRes.videoUrl;
         } else if (checkRes.status === "error") {
-          // ❌ เกิด Error ระหว่างทาง
           isDone = true;
           throw new Error(checkRes.error || "เกิดข้อผิดพลาดระหว่างสร้างวิดีโอ");
         } else {
-          // ⏳ status === "processing" (ยังทำไม่เสร็จ ให้วน Loop ต่อไป)
           console.log("AI ยังทำไม่เสร็จ รอเช็ครอบถัดไป...");
         }
       }
@@ -200,7 +198,7 @@ const ProjectDetail = ({
       if (finalVideoUrl) {
         console.log("✅ ได้ Video URL สมบูรณ์แล้ว:", finalVideoUrl);
 
-        // const finalVideoUrl = await generationImage3D(projectInfo.image);
+        // const finalVideoUrl = await generationImage3D(projectInfo.image, 25);
         // if (finalVideoUrl) {
         setProjectInfo((prev) => ({
           ...prev,
@@ -223,6 +221,43 @@ const ProjectDetail = ({
       setIsGeneratingVideo(false);
     }
   };
+
+  const handleDragEnd = useCallback(async (e: DragEndEvent) => {
+    const { active, over } = e;
+    if (!over) return;
+
+    const taskId = active.id as number;
+    const newStatus = over.id as string; 
+
+    const taskToUpdate = tasks.find((t) => t.id === taskId);
+    if (!taskToUpdate || taskToUpdate.status === newStatus) return;
+
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId ? { ...t, status: newStatus } : t,
+      ),
+    );
+
+    try {
+
+      const res = await updateTaskStatus(taskId, newStatus); 
+      
+      if (!res.success) {
+        throw new Error(res.error || "บันทึกไม่สำเร็จ");
+      }
+      
+      toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
+    } catch (error) {
+      console.error("Update Task Error:", error);
+      toast.error("อัปเดตสถานะไม่สำเร็จ ระบบจะดึงข้อมูลเดิมกลับมา");
+      
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId ? { ...t, status: taskToUpdate.status } : t,
+        ),
+      );
+    }
+  }, [tasks]); 
 
   const mediaUrl = projectInfo.video;
   const mediaType = getMediaType(mediaUrl);

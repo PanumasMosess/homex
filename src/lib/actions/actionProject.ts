@@ -234,11 +234,11 @@ export async function updateProject(
     const finishPlanned = data.finishPlanned
       ? new Date(data.finishPlanned)
       : null;
-    const durationDays = calcDurationDays(startPlanned, finishPlanned); 
+    const durationDays = calcDurationDays(startPlanned, finishPlanned);
 
     await prisma.project.update({
       where: {
-        id: Number(id), 
+        id: Number(id),
       },
       data: {
         projectName: data.projectName,
@@ -271,3 +271,17 @@ export async function updateProject(
     };
   }
 }
+
+export const updateTaskStatus = async (taskId: number, newStatus: string) => {
+  try {
+    await prisma.task.update({
+      where: { id: taskId },
+      data: { status: newStatus },
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating task status:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล" };
+  }
+};
