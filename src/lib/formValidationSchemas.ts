@@ -94,3 +94,44 @@ export const SubTaskSchema_ = z.object({
 });
 
 export type SubTaskSchema = z.infer<typeof SubTaskSchema_>;
+
+export const EmployeeSchema_ = z.object({
+  id: z.number().optional(),
+  username: z.string().min(1, { message: "กรุณากรอก Username" }).max(50),
+  password: z.string().min(1, { message: "กรุณากรอกรหัสผ่าน" }),
+  displayName: z.string().optional(),
+  phone: z.string().optional(),
+  email: z
+    .union([
+      z.string().email({ message: "รูปแบบ Email ไม่ถูกต้อง" }),
+      z.literal(""),
+    ])
+    .optional(),
+  address: z.string().optional(),
+  note: z.string().optional(),
+  positionId: z.coerce
+    .number({ invalid_type_error: "กรุณาเลือกตำแหน่ง" })
+    .min(1, { message: "กรุณาเลือกตำแหน่ง" }),
+  imageUrl: z.string().optional(),
+});
+
+export type EmployeeSchema = z.infer<typeof EmployeeSchema_>;
+
+export const CustomerSchema_ = z.object({
+  id: z.number().optional(),
+  username: z.string().min(1, { message: "กรุณากรอก Username" }).max(50),
+  password: z.string().min(1, { message: "กรุณากรอกรหัสผ่าน" }),
+  displayName: z.string().optional(),
+  phone: z.string().optional(),
+  email: z
+    .union([
+      z.string().email({ message: "รูปแบบ Email ไม่ถูกต้อง" }),
+      z.literal(""),
+    ])
+    .optional(),
+  address: z.string().optional(),
+  note: z.string().optional(),
+  imageUrl: z.string().optional(),
+});
+
+export type CustomerSchema = z.infer<typeof CustomerSchema_>;

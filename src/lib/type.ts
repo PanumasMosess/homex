@@ -50,7 +50,7 @@ export interface Subtask {
   taskId: number;
   detailName: string;
   detailDesc?: string | null;
-  status: boolean; 
+  status: boolean;
   weightPercent?: number;
   progressPercent?: number;
   startPlanned?: string | Date | null;
@@ -67,16 +67,16 @@ export interface Task {
   taskName?: string | null;
   taskDesc?: string | null;
   coverImageUrl?: string | null;
-  status: string; 
-  
+  status: string;
+
   progressPercent: number;
   startPlanned?: Date | string | null;
   finishPlanned?: Date | string | null;
   startActual?: Date | string | null;
   finishActual?: Date | string | null;
-  
+
   durationDays?: number | null;
-  subtasks?: Subtask[]; 
+  subtasks?: Subtask[];
 }
 
 export interface ProjectDetailProps {
@@ -92,4 +92,52 @@ export interface CreateMainTaskProps {
   organizationId: number;
   currentUserId: number;
   projectCode: string;
+}
+
+export interface CreateEmployeeProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  positions?: {
+    id: number;
+    positionName: string;
+  }[];
+}
+
+export interface CreateCustomerProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export interface MainPageUserProps {
+  users: any[];
+  positions: any[];
+}
+
+export interface ActionState {
+  success: boolean;
+  error: boolean;
+  message?: string;
+}
+
+export interface CreateEmployeeData {
+  username: string;
+  password: string;
+  displayName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  note?: string;
+  positionId: number; // employee เลือกเอง
+  avatarUrl?: string;
+}
+
+export interface CreateCustomerData {
+  username: string;
+  password: string;
+  displayName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  note?: string;
+  avatarUrl?: string;
 }
