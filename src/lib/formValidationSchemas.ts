@@ -57,3 +57,40 @@ export const MainTaskSchema_ = z.object({
 });
 
 export type MainTaskSchema = z.infer<typeof MainTaskSchema_>;
+
+export const SubTaskSchema_ = z.object({
+  id: z.number().optional(),
+  detailName: z
+    .string()
+    .min(1, { message: "กรุณากรอกชื่อรายการย่อย" })
+    .max(191),
+  detailDesc: z.string().optional(),
+  status: z.boolean().default(false).optional(),
+  weightPercent: z.coerce
+    .number()
+    .min(0, "น้ำหนักต้องไม่ต่ำกว่า 0%")
+    .max(100, "น้ำหนักต้องไม่เกิน 100%")
+    .default(0)
+    .optional(),
+
+  progressPercent: z.coerce
+    .number()
+    .min(0, "ความคืบหน้าต้องไม่ต่ำกว่า 0%")
+    .max(100, "ความคืบหน้าต้องไม่เกิน 100%")
+    .default(0)
+    .optional(),
+
+  startPlanned: z.string().optional(),
+  finishPlanned: z.string().optional(),
+  startActual: z.string().optional(),
+  finishActual: z.string().optional(),
+  durationDays: z.coerce.number().optional(),
+
+  sortOrder: z.coerce.number().default(0).optional(),
+
+  organizationId: z.coerce.number().min(1, "ต้องมี ID บริษัท"),
+  projectId: z.coerce.number().min(1, "ต้องมี ID โครงการ"),
+  taskId: z.coerce.number().min(1, "ต้องมี ID งานหลัก (Task)"),
+});
+
+export type SubTaskSchema = z.infer<typeof SubTaskSchema_>;

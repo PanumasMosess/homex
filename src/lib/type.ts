@@ -50,7 +50,7 @@ export interface Subtask {
   taskId: number;
   detailName: string;
   detailDesc?: string | null;
-  status: number; 
+  status: boolean; 
   weightPercent?: number;
   progressPercent?: number;
   startPlanned?: string | Date | null;
