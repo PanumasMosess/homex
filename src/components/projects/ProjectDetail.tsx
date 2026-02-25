@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
-import { Plus, Search, Building2 } from "lucide-react";
+import { Plus, Search, Building2, Clock } from "lucide-react";
 
 import {
   Card,
@@ -16,6 +16,7 @@ import {
   useDisclosure,
   Checkbox,
   Spinner,
+  Textarea,
 } from "@heroui/react";
 
 import {
@@ -36,7 +37,10 @@ import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
 import {} from "@/lib/actions/actionIndex";
-import { updateTaskStatus, updateVdoProject } from "@/lib/actions/actionProject";
+import {
+  updateTaskStatus,
+  updateVdoProject,
+} from "@/lib/actions/actionProject";
 import {
   checkVideoStatus,
   generationImage3D,
@@ -72,6 +76,27 @@ const ProjectDetail = ({
   // Debounce Search
   const [q, setQ] = useState("");
   const [debouncedQ, setDebouncedQ] = useState("");
+
+  // States for Task Edit Mode
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editFormData, setEditFormData] = useState<any>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isUpdatingStatusMainTask, setIsUpdatingStatusMainTask] =
+    useState(false);
+
+  // States for Subtask Form
+  const [isAddingSubtask, setIsAddingSubtask] = useState(false);
+  const [isSavingSubtask, setIsSavingSubtask] = useState(false);
+  const [newSubtask, setNewSubtask] = useState({
+    detailName: "",
+    detailDesc: "",
+    startPlanned: "",
+    durationDays: "",
+    weightPercent: "",
+  });
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
@@ -131,17 +156,6 @@ const ProjectDetail = ({
     return Math.round(total / tasks.length);
   }, [tasks]);
 
-  // Callbacks
-  // const handleDragEnd = useCallback((e: DragEndEvent) => {
-  //   const { active, over } = e;
-  //   if (!over) return;
-  //   setTasks((prev) =>
-  //     prev.map((t) =>
-  //       t.id === active.id ? { ...t, status: over.id as string } : t,
-  //     ),
-  //   );
-  // }, []);
-
   const handleSelectTask = useCallback((id: number) => {
     setSelectedId(id);
   }, []);
@@ -157,8 +171,6 @@ const ProjectDetail = ({
     setIsGeneratingVideo(true);
 
     try {
-      setIsGeneratingVideo(true);
-
       const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
 
       const startRes = await startVideoJob(prompt_vdo, projectInfo.image);
@@ -194,21 +206,16 @@ const ProjectDetail = ({
         }
       }
 
-      // 3. เมื่อได้ URL วิดีโอสุดท้ายมาแล้ว ให้อัปเดต State และ Database
       if (finalVideoUrl) {
         console.log("✅ ได้ Video URL สมบูรณ์แล้ว:", finalVideoUrl);
 
-        // const finalVideoUrl = await generationImage3D(projectInfo.image, 25);
-        // if (finalVideoUrl) {
         setProjectInfo((prev) => ({
           ...prev,
-          // video: finalVideoUrl.answer ?? "",
           video: finalVideoUrl,
         }));
 
         const updateRes = await updateVdoProject(
           parseInt(projectInfo.id),
-          // finalVideoUrl.answer ?? "",
           finalVideoUrl,
         );
 
@@ -222,51 +229,184 @@ const ProjectDetail = ({
     }
   };
 
-  const handleDragEnd = useCallback(async (e: DragEndEvent) => {
-    const { active, over } = e;
-    if (!over) return;
+  const handleDragEnd = useCallback(
+    async (e: DragEndEvent) => {
+      const { active, over } = e;
+      if (!over) return;
 
-    const taskId = active.id as number;
-    const newStatus = over.id as string; 
+      const taskId = active.id as number;
+      const newStatus = over.id as string;
 
-    const taskToUpdate = tasks.find((t) => t.id === taskId);
-    if (!taskToUpdate || taskToUpdate.status === newStatus) return;
+      const taskToUpdate = tasks.find((t) => t.id === taskId);
+      if (!taskToUpdate || taskToUpdate.status === newStatus) return;
 
-    setTasks((prev) =>
-      prev.map((t) =>
-        t.id === taskId ? { ...t, status: newStatus } : t,
-      ),
-    );
+      setTasks((prev) =>
+        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+      );
 
-    try {
+      try {
+        const res = await updateTaskStatus(taskId, newStatus);
 
-      const res = await updateTaskStatus(taskId, newStatus); 
-      
-      if (!res.success) {
-        throw new Error(res.error || "บันทึกไม่สำเร็จ");
+        if (!res.success) {
+          throw new Error(res.error || "บันทึกไม่สำเร็จ");
+        }
+
+        toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
+      } catch (error) {
+        console.error("Update Task Error:", error);
+        toast.error("อัปเดตสถานะไม่สำเร็จ ระบบจะดึงข้อมูลเดิมกลับมา");
+
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId ? { ...t, status: taskToUpdate.status } : t,
+          ),
+        );
       }
-      
-      toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
-    } catch (error) {
-      console.error("Update Task Error:", error);
-      toast.error("อัปเดตสถานะไม่สำเร็จ ระบบจะดึงข้อมูลเดิมกลับมา");
-      
+    },
+    [tasks],
+  );
+
+  useEffect(() => {
+    if (selected) {
+      setEditFormData(selected);
+      setIsEditMode(false);
+    }
+  }, [selected]);
+
+  const handleSaveTaskEdit = async () => {
+    setIsSaving(true);
+    try {
+      // ⚠️ เรียก API Update ของคุณตรงนี้ เช่น:
+      // await updateTask(editFormData.id, editFormData);
+
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === taskId ? { ...t, status: taskToUpdate.status } : t,
+          t.id === editFormData.id ? { ...t, ...editFormData } : t,
         ),
       );
+
+      toast.success("บันทึกข้อมูลเรียบร้อย");
+      setIsEditMode(false);
+    } catch (error) {
+      toast.error("บันทึกไม่สำเร็จ");
+    } finally {
+      setIsSaving(false);
     }
-  }, [tasks]); 
+  };
+
+  const handleDeleteTask = async () => {
+    if (!selected) return;
+    setIsDeletingTask(true);
+
+    try {
+      await updateTaskStatus(selected.id, "DELETED");
+      await new Promise((resolve) => setTimeout(resolve, 800));
+
+      setTasks((prev) => prev.filter((t) => t.id !== selected.id));
+      setSelectedId(null);
+      setIsDeleteModalOpen(false);
+
+      toast.success("ลบงานเรียบร้อย");
+    } catch (error) {
+      toast.error("ลบไม่สำเร็จ");
+    } finally {
+      setIsDeletingTask(false);
+    }
+  };
+
+  const handleSaveSubtask = async () => {
+    if (!newSubtask.detailName.trim()) {
+      toast.warning("กรุณากรอกชื่อรายการย่อย");
+      return;
+    }
+
+    setIsSavingSubtask(true);
+    try {
+      const payload = {
+        detailName: newSubtask.detailName,
+        detailDesc: newSubtask.detailDesc || undefined,
+        startPlanned: newSubtask.startPlanned
+          ? new Date(newSubtask.startPlanned).toISOString()
+          : undefined,
+        durationDays: newSubtask.durationDays
+          ? Number(newSubtask.durationDays)
+          : undefined,
+        weightPercent: newSubtask.weightPercent
+          ? Number(newSubtask.weightPercent)
+          : 0,
+        organizationId: organizationId,
+        projectId: Number(projectInfo.id),
+        taskId: selected?.id,
+        status: false,
+      };
+
+      // ⚠️ เรียก API Create SubTask ของคุณตรงนี้ เช่น:
+      // await createSubTask(payload);
+
+      await new Promise((resolve) => setTimeout(resolve, 800)); // จำลองโหลด
+
+      // จำลองข้อมูลอัปเดตใส่ State ทันที
+      const createdMock = { ...payload, id: Math.random(), status: false };
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === selected?.id
+            ? { ...t, subtasks: [...(t.subtasks || []), createdMock as any] }
+            : t,
+        ),
+      );
+
+      toast.success("เพิ่มรายการย่อยสำเร็จ");
+      setIsAddingSubtask(false);
+      setNewSubtask({
+        detailName: "",
+        detailDesc: "",
+        startPlanned: "",
+        durationDays: "",
+        weightPercent: "",
+      });
+    } catch (error) {
+      toast.error("บันทึกไม่สำเร็จ");
+    } finally {
+      setIsSavingSubtask(false);
+    }
+  };
+
+  const handleUpdateStatusMainTask = async (newStatus: string) => {
+    if (!selected) return;
+    setIsUpdatingStatusMainTask(true);
+
+    try {
+      const res = await updateTaskStatus(selected.id, newStatus);
+
+      if (!res.success) {
+        throw new Error(res.error || "อัปเดตสถานะไม่สำเร็จ");
+      }
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === selected.id ? { ...t, status: newStatus } : t,
+        ),
+      );
+
+      toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
+    } catch (error) {
+      console.error("Update Status Error:", error);
+      toast.error("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ");
+    } finally {
+      setIsUpdatingStatusMainTask(false);
+    }
+  };
 
   const mediaUrl = projectInfo.video;
   const mediaType = getMediaType(mediaUrl);
 
   return (
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen space-y-6">
+      {/* --- HERO SECTION --- */}
       <div className="bg-default-100 dark:bg-zinc-900 rounded-3xl p-6 lg:p-8 grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[560px_1fr] gap-6 items-center overflow-hidden">
         <div className="relative w-full h-[200px] sm:h-[240px] md:h-[220px] lg:h-[320px] rounded-2xl overflow-hidden bg-zinc-800">
-          {/* ส่วน Loading Overlay */}
           {isGeneratingVideo && (
             <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
               <Spinner color="primary" size="lg" />
@@ -276,7 +416,6 @@ const ProjectDetail = ({
             </div>
           )}
 
-          {/* ส่วนแสดงผล Media โดยเช็คจาก mediaType */}
           {mediaType === "video" ? (
             <video
               key={mediaUrl}
@@ -332,7 +471,6 @@ const ProjectDetail = ({
           </div>
           <Progress value={projectProgress} />
 
-          {/* 🌟 ปุ่มสร้างวิดีโอ */}
           <div className="pt-2">
             <Button
               color="secondary"
@@ -459,7 +597,7 @@ const ProjectDetail = ({
                     </div>
                     <p className="text-xs text-default-500 dark:text-zinc-400">
                       Checklist{" "}
-                      {t.subtasks?.filter((s) => s.status === 1).length || 0}/
+                      {t.subtasks?.filter((s) => !!s.status).length || 0}/
                       {t.subtasks?.length || 0}
                     </p>
                     <Progress value={calcProgress(t)} />
@@ -519,114 +657,468 @@ const ProjectDetail = ({
         </DndContext>
       )}
 
-      {/* --- MODAL --- */}
+      {/* --- MODAL TASK DETAILS & EDIT --- */}
       <Modal
         isOpen={!!selected}
-        onOpenChange={() => setSelectedId(null)}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) {
+            setSelectedId(null);
+            setIsEditMode(false);
+            setIsAddingSubtask(false);
+            setNewSubtask({
+              detailName: "",
+              detailDesc: "",
+              startPlanned: "",
+              durationDays: "",
+              weightPercent: "",
+            });
+          }
+        }}
         size="3xl"
         classNames={{
           base: `md:rounded-xl md:max-w-4xl md:my-10 md:max-h-[90vh] max-md:rounded-none max-md:m-0 max-md:h-screen max-md:max-w-full`,
+          closeButton: "top-4 right-4 bg-default-100 hover:bg-default-200 z-50",
         }}
       >
         <ModalContent className="max-md:h-screen max-md:flex max-md:flex-col max-md:overflow-hidden">
           {selected ? (
             <>
-              <div className="md:hidden p-4 flex items-center gap-3 border-b border-zinc-800">
-                <button onClick={() => setSelectedId(null)}>←</button>
-                <p className="font-semibold truncate">
-                  {selected.taskName || "Untitled Task"}
-                </p>
+              {/* --- HEADER (Mobile) --- */}
+              <div className="md:hidden p-4 flex items-center justify-between border-b border-zinc-800">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <button onClick={() => setSelectedId(null)}>←</button>
+                  <p className="font-semibold truncate">
+                    {isEditMode
+                      ? "แก้ไขรายละเอียดงาน"
+                      : selected.taskName || "Untitled Task"}
+                  </p>
+                </div>
               </div>
 
-              <ModalBody className="space-y-5 md:py-8 md:px-2 md:overflow-y-auto md:my-auto scrollbar-hide max-md:flex-1 max-md:overflow-y-auto max-md:pb-20">
-                <div className="flex flex-col md:flex-row gap-8 md:px-6">
-                  <img
-                    src={selected.coverImageUrl || "/placeholder-image.jpg"}
-                    className="w-full md:w-[320px] h-[220px] md:h-[200px] object-cover rounded-xl"
-                    alt={selected.taskName || "Task Image"}
-                  />
-                  <div className="flex-1 space-y-5">
-                    <div className="flex gap-3">
+              <ModalBody className="space-y-5 md:py-8 md:px-2 md:overflow-y-auto md:my-auto scrollbar-hide max-md:flex-1 max-md:overflow-y-auto max-md:pb-20 relative">
+                {/* 📌 เครื่องมือ (มุมขวาบน - Desktop) */}
+                <div className="hidden md:flex absolute top-4 right-16 gap-2 z-10">
+                  {isEditMode ? (
+                    <>
                       <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsEditMode(false)}
+                        isDisabled={isSaving}
+                      >
+                        ยกเลิก
+                      </Button>
+                      <Button
+                        size="sm"
                         color="primary"
-                        className="flex-1 md:flex-none md:px-8 h-11"
+                        onPress={handleSaveTaskEdit}
+                        isLoading={isSaving}
                       >
-                        ✓ เริ่มงาน
+                        บันทึก
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onPress={() => setIsEditMode(true)}
+                      >
+                        ✏️ แก้ไข
                       </Button>
                       <Button
-                        variant="bordered"
-                        className="flex-1 md:flex-none md:px-8 h-11"
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsDeleteModalOpen(true)}
                       >
-                        เสร็จ
+                        🗑️ ลบ
                       </Button>
-                    </div>
-                    <div className="text-sm text-default-500 dark:text-zinc-400">
-                      เริ่มเมื่อ:{" "}
-                      <span className="text-white ml-1">
-                        {formatDate(selected.startPlanned)}
-                      </span>
-                    </div>
-                    <div className="space-y-2 max-w-xl">
-                      <div className="flex justify-between text-sm">
-                        <span className="text-default-500 dark:text-zinc-400">
-                          Progress
-                        </span>
-                        <span>{calcProgress(selected)}%</span>
-                      </div>
-                      <Progress
-                        value={calcProgress(selected)}
-                        className="h-2"
-                      />
-                    </div>
-                    <Button color="primary" variant="flat">
-                      + เพิ่มรายละเอียดงาน
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-3 md:px-6">
-                  {selected.subtasks && selected.subtasks.length > 0 ? (
-                    selected.subtasks.map((s) => (
-                      <div key={s.id} className="flex items-center gap-3">
-                        <Checkbox isSelected={s.status === 1}>
-                          {s.detailName}
-                        </Checkbox>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-default-400 italic">
-                      ไม่มีรายการย่อย (Subtasks)
-                    </p>
+                    </>
                   )}
                 </div>
 
-                <div className="space-y-6 md:px-6">
-                  {/* INFO */}
+                {/* 📌 เครื่องมือ (Mobile - แทรกด้านบน) */}
+                <div className="md:hidden flex justify-end gap-2 px-4 pt-4">
+                  {isEditMode ? (
+                    <>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsEditMode(false)}
+                        isDisabled={isSaving}
+                      >
+                        ยกเลิก
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        onPress={handleSaveTaskEdit}
+                        isLoading={isSaving}
+                      >
+                        บันทึก
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onPress={() => setIsEditMode(true)}
+                      >
+                        ✏️ แก้ไข
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={handleDeleteTask}
+                        isLoading={isDeletingTask}
+                      >
+                        🗑️ ลบ
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                <div className="flex flex-col md:flex-row gap-8 md:px-6 mt-2">
+                  <img
+                    src={selected.coverImageUrl || "/placeholder-image.jpg"}
+                    className="w-full md:w-[320px] h-[220px] md:h-[200px] object-cover rounded-xl shrink-0"
+                    alt={selected.taskName || "Task Image"}
+                  />
+
+                  <div className="flex-1 space-y-5">
+                    {isEditMode ? (
+                      <div className="space-y-4">
+                        <Input
+                          label="ชื่องาน (Task Name)"
+                          variant="bordered"
+                          value={editFormData.taskName || ""}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              taskName: e.target.value,
+                            })
+                          }
+                        />
+                        <Textarea
+                          label="รายละเอียดงาน (Description)"
+                          variant="bordered"
+                          minRows={2}
+                          value={editFormData.taskDesc || ""}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              taskDesc: e.target.value,
+                            })
+                          }
+                        />
+
+                        <div className="grid grid-cols-2 gap-3 items-start">
+                          <Input
+                            label="วันที่เริ่ม (Start)"
+                            type="date"
+                            labelPlacement="outside"
+                            variant="bordered"
+                            value={
+                              editFormData.startPlanned
+                                ? new Date(editFormData.startPlanned)
+                                    .toISOString()
+                                    .split("T")[0]
+                                : ""
+                            }
+                            onChange={(e) =>
+                              setEditFormData({
+                                ...editFormData,
+                                startPlanned: e.target.value,
+                              })
+                            }
+                            description={
+                              <span className="invisible">&nbsp;</span>
+                            }
+                          />
+                          <Input
+                            type="number"
+                            label="ระยะเวลาทำงาน (วัน)"
+                            placeholder="เช่น 7, 14, 30"
+                            labelPlacement="outside"
+                            variant="bordered"
+                            min={1}
+                            value={
+                              editFormData.durationDays
+                                ? editFormData.durationDays.toString()
+                                : ""
+                            }
+                            onValueChange={(val) => {
+                              setEditFormData({
+                                ...editFormData,
+                                durationDays: val ? Number(val) : null,
+                              });
+                            }}
+                            startContent={
+                              <Clock className="text-default-400" size={18} />
+                            }
+                            endContent={
+                              <span className="text-default-400 text-xs">
+                                วัน
+                              </span>
+                            }
+                            description={
+                              editFormData.startPlanned &&
+                              editFormData.finishPlanned
+                                ? `กำหนดเสร็จ: ${new Date(
+                                    editFormData.finishPlanned,
+                                  ).toLocaleDateString("th-TH", {
+                                    day: "numeric",
+                                    month: "short",
+                                    year: "numeric",
+                                  })}`
+                                : "เลือกวันเริ่มและใส่จำนวนวัน"
+                            }
+                          />
+                        </div>
+                        {/* <Input
+                          label="ความคืบหน้า (%)"
+                          type="number"
+                          min={0}
+                          max={100}
+                          variant="bordered"
+                          value={editFormData.progressPercent || 0}
+                          onChange={(e) =>
+                            setEditFormData({
+                              ...editFormData,
+                              progressPercent: parseInt(e.target.value) || 0,
+                            })
+                          }
+                        /> */}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="flex gap-3">
+                          <Button
+                            color="primary"
+                            className="flex-1 md:flex-none md:px-8 h-11 font-medium"
+                            onPress={() => handleUpdateStatusMainTask("PROGRESS")}
+                            isLoading={isUpdatingStatusMainTask}
+                            isDisabled={
+                              selected.status === "PROGRESS" ||
+                              selected.status === "DONE"
+                            }
+                          >
+                            ✓ เริ่มงาน
+                          </Button>
+
+                          <Button
+                            variant="bordered"
+                            className="flex-1 md:flex-none md:px-8 h-11 font-medium bg-default-100 hover:bg-success hover:text-white hover:border-success transition-colors"
+                            onPress={() => handleUpdateStatusMainTask("DONE")}
+                            isLoading={isUpdatingStatusMainTask}
+                            isDisabled={selected.status === "DONE"}
+                          >
+                            เสร็จสมบูรณ์
+                          </Button>
+                        </div>
+                        {selected.taskDesc && (
+                          <div className="text-sm text-default-600 dark:text-zinc-300 bg-default-50 dark:bg-zinc-800/50 p-3 rounded-lg">
+                            {selected.taskDesc}
+                          </div>
+                        )}
+                        <div className="grid grid-cols-2 gap-4 text-sm text-default-500 dark:text-zinc-400">
+                          <div>
+                            <p>กำหนดเริ่ม:</p>
+                            <p className="text-foreground font-medium">
+                              {selected.startPlanned
+                                ? formatDate(selected.startPlanned)
+                                : "-"}
+                            </p>
+                          </div>
+                          <div>
+                            <p>กำหนดเสร็จ:</p>
+                            <p className="text-foreground font-medium">
+                              {selected.finishPlanned
+                                ? formatDate(selected.finishPlanned)
+                                : "-"}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="space-y-2 max-w-xl">
+                          <div className="flex justify-between text-sm font-medium">
+                            <span className="text-default-500 dark:text-zinc-400">
+                              ความคืบหน้า (Progress)
+                            </span>
+                            <span className="text-primary">
+                              {selected.progressPercent || 0}%
+                            </span>
+                          </div>
+                          <Progress
+                            value={selected.progressPercent || 0}
+                            color="primary"
+                            className="h-2"
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* 📌 ส่วนแสดงและฟอร์มสร้าง Subtasks */}
+                {!isEditMode && (
+                  <div className="space-y-3 md:px-6">
+                    <h3 className="font-semibold text-sm">
+                      รายการย่อย (Subtasks)
+                    </h3>
+
+                    {/* List รายการเดิม */}
+                    {selected.subtasks && selected.subtasks.length > 0 ? (
+                      selected.subtasks.map((s) => (
+                        <div key={s.id} className="flex items-center gap-3">
+                          <Checkbox isSelected={!!s.status}>
+                            {s.detailName}
+                          </Checkbox>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-sm text-default-400 italic">
+                        ไม่มีรายการย่อย
+                      </p>
+                    )}
+
+                    {/* Inline Form สำหรับเพิ่ม Subtask */}
+                    {!isAddingSubtask ? (
+                      <Button
+                        color="primary"
+                        variant="flat"
+                        size="sm"
+                        className="mt-2"
+                        onPress={() => setIsAddingSubtask(true)}
+                      >
+                        + เพิ่มรายการย่อย
+                      </Button>
+                    ) : (
+                      <div className="bg-default-50 dark:bg-zinc-800/50 p-4 rounded-xl space-y-3 mt-3 border border-default-200 dark:border-zinc-700 animate-appearance-in">
+                        <p className="text-sm font-semibold text-primary">
+                          เพิ่มรายการย่อยใหม่
+                        </p>
+
+                        <Input
+                          size="sm"
+                          isRequired
+                          label="ชื่อรายการย่อย"
+                          variant="bordered"
+                          value={newSubtask.detailName}
+                          onValueChange={(val) =>
+                            setNewSubtask({ ...newSubtask, detailName: val })
+                          }
+                        />
+
+                        <Textarea
+                          size="sm"
+                          label="รายละเอียด (Optional)"
+                          variant="bordered"
+                          minRows={1}
+                          value={newSubtask.detailDesc}
+                          onValueChange={(val) =>
+                            setNewSubtask({ ...newSubtask, detailDesc: val })
+                          }
+                        />
+
+                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                          <Input
+                            size="sm"
+                            type="date"
+                            label="วันที่เริ่ม"
+                            variant="bordered"
+                            value={newSubtask.startPlanned}
+                            onValueChange={(val) =>
+                              setNewSubtask({
+                                ...newSubtask,
+                                startPlanned: val,
+                              })
+                            }
+                          />
+                          <Input
+                            size="sm"
+                            type="number"
+                            label="ระยะเวลา (วัน)"
+                            variant="bordered"
+                            min={1}
+                            value={newSubtask.durationDays}
+                            onValueChange={(val) =>
+                              setNewSubtask({
+                                ...newSubtask,
+                                durationDays: val,
+                              })
+                            }
+                          />
+                          <Input
+                            size="sm"
+                            type="number"
+                            label="น้ำหนักงาน (%)"
+                            variant="bordered"
+                            min={0}
+                            max={100}
+                            value={newSubtask.weightPercent}
+                            onValueChange={(val) =>
+                              setNewSubtask({
+                                ...newSubtask,
+                                weightPercent: val,
+                              })
+                            }
+                          />
+                        </div>
+
+                        <div className="flex justify-end gap-2 pt-2">
+                          <Button
+                            size="sm"
+                            variant="light"
+                            color="danger"
+                            onPress={() => setIsAddingSubtask(false)}
+                            isDisabled={isSavingSubtask}
+                          >
+                            ยกเลิก
+                          </Button>
+                          <Button
+                            size="sm"
+                            color="primary"
+                            onPress={handleSaveSubtask}
+                            isLoading={isSavingSubtask}
+                          >
+                            บันทึก
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-6 md:px-6 pb-6">
+                  {/* INFO BOX */}
                   <div className="bg-default-100 dark:bg-zinc-900 border border-default-200 dark:border-zinc-800 rounded-xl p-5 space-y-3 text-sm">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-default-500 dark:text-zinc-400">
                         ผู้รับผิดชอบ
                       </span>
-                      <span>P'Ohm</span>
+                      <span className="font-medium">P'Ohm</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-default-500 dark:text-zinc-400">
-                        งานที่ทำ
+                        สถานะงาน
                       </span>
-                      <span>{selected.taskName || "-"}</span>
+                      <span className="text-primary capitalize font-medium">
+                        {selected.status || "TODO"}
+                      </span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-default-500 dark:text-zinc-400">
-                        เริ่มเมื่อ
+                        ระยะเวลา (Duration)
                       </span>
-                      <span>{formatDate(selected.startPlanned)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-default-500 dark:text-zinc-400">
-                        สถานะ
-                      </span>
-                      <span className="text-primary capitalize">
-                        {selected.status || "Todo"}
+                      <span>
+                        {selected.durationDays
+                          ? `${selected.durationDays} วัน`
+                          : "-"}
                       </span>
                     </div>
                   </div>
@@ -637,31 +1129,19 @@ const ProjectDetail = ({
                     <div className="flex gap-2 flex-wrap">
                       <Chip
                         onClick={() => setPriority("urgent")}
-                        className={`cursor-pointer transition-all ${
-                          priority === "urgent"
-                            ? "bg-orange-500/20 text-orange-400 border border-orange-500"
-                            : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-orange-400"
-                        }`}
+                        className={`cursor-pointer transition-all ${priority === "urgent" ? "bg-orange-500/20 text-orange-400 border border-orange-500" : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-orange-400"}`}
                       >
                         🔥 เร่งด่วน
                       </Chip>
                       <Chip
                         onClick={() => setPriority("high")}
-                        className={`cursor-pointer transition-all ${
-                          priority === "high"
-                            ? "bg-red-500/20 text-red-500 border border-red-500"
-                            : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-red-400"
-                        }`}
+                        className={`cursor-pointer transition-all ${priority === "high" ? "bg-red-500/20 text-red-500 border border-red-500" : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-red-400"}`}
                       >
                         ❗ ด่วน
                       </Chip>
                       <Chip
                         onClick={() => setPriority("normal")}
-                        className={`cursor-pointer transition-all ${
-                          priority === "normal"
-                            ? "bg-blue-500/20 text-blue-400 border border-blue-500"
-                            : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-blue-400"
-                        }`}
+                        className={`cursor-pointer transition-all ${priority === "normal" ? "bg-blue-500/20 text-blue-400 border border-blue-500" : "bg-default-200 dark:bg-zinc-800 text-default-900 dark:text-zinc-300 border border-zinc-700 hover:border-blue-400"}`}
                       >
                         ⏳ เรื่อยๆ
                       </Chip>
@@ -669,13 +1149,15 @@ const ProjectDetail = ({
                   </div>
 
                   {/* COMMENTS */}
-                  <div className="bg-default-100 dark:bg-zinc-900 border border-default-200 dark:border-zinc-800 rounded-xl p-5 space-y-3">
-                    <p className="font-semibold">Comments</p>
-                    <input
-                      placeholder="เขียนความคิดเห็น..."
-                      className="w-full bg-default-200 dark:bg-zinc-800 rounded-lg p-3 outline-none text-sm"
-                    />
-                  </div>
+                  {!isEditMode && (
+                    <div className="bg-default-100 dark:bg-zinc-900 border border-default-200 dark:border-zinc-800 rounded-xl p-5 space-y-3">
+                      <p className="font-semibold">Comments</p>
+                      <input
+                        placeholder="เขียนความคิดเห็น..."
+                        className="w-full bg-default-200 dark:bg-zinc-800 rounded-lg p-3 outline-none text-sm"
+                      />
+                    </div>
+                  )}
                 </div>
               </ModalBody>
             </>
@@ -683,6 +1165,70 @@ const ProjectDetail = ({
             <div className="flex h-full items-center justify-center">
               <p>ไม่พบข้อมูลงาน</p>
             </div>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* --- MODAL ยืนยันการลบ --- */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        size="sm"
+        placement="center"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <ModalBody className="py-6 text-center">
+              <div className="flex justify-center mb-2">
+                <div className="p-3 bg-danger-50 text-danger rounded-full">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    <line x1="10" x2="10" y1="11" y2="17" />
+                    <line x1="14" x2="14" y1="11" y2="17" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold">ยืนยันการลบงาน</h3>
+              <p className="text-sm text-default-500 mt-1">
+                คุณแน่ใจหรือไม่ที่จะลบงาน{" "}
+                <span className="font-semibold text-foreground">
+                  "{selected?.taskName}"
+                </span>{" "}
+                ? <br />
+                การกระทำนี้ไม่สามารถย้อนกลับได้
+              </p>
+
+              <div className="flex gap-3 justify-center mt-5">
+                <Button
+                  variant="flat"
+                  onPress={onClose}
+                  isDisabled={isDeletingTask}
+                  className="px-6 font-medium"
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  color="danger"
+                  onPress={handleDeleteTask}
+                  isLoading={isDeletingTask}
+                  className="px-6 font-medium"
+                >
+                  ใช่, ลบงานเลย
+                </Button>
+              </div>
+            </ModalBody>
           )}
         </ModalContent>
       </Modal>

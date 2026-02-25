@@ -1,7 +1,11 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { MainTaskSchema, ProjectSchema } from "@/lib/formValidationSchemas";
+import {
+  MainTaskSchema,
+  ProjectSchema,
+  SubTaskSchema,
+} from "@/lib/formValidationSchemas";
 import { calcDurationDays } from "../setting_data";
 
 type ActionState = {
@@ -285,3 +289,48 @@ export const updateTaskStatus = async (taskId: number, newStatus: string) => {
     return { success: false, error: "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล" };
   }
 };
+
+export async function createSubTask(data: SubTaskSchema): Promise<ActionState> {
+  try {
+    const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
+    const finishPlanned = data.finishPlanned
+      ? new Date(data.finishPlanned)
+      : null;
+
+    const newTaskDetail = await prisma.task_detail.create({
+      data: {
+        detailName: data.detailName,
+        detailDesc: data.detailDesc || null,
+        weightPercent: data.weightPercent || 0,
+        startPlanned,
+        finishPlanned,
+        durationDays: data.durationDays || null,
+        sortOrder: data.sortOrder || 0,
+        organization: { connect: { id: data.organizationId } },
+        project: { connect: { id: data.projectId } },
+        task: { connect: { id: data.taskId } },
+      },
+    });
+
+    if (!newTaskDetail || !newTaskDetail.id) {
+      return {
+        success: false,
+        error: true,
+        message: "เกิดข้อผิดพลาด: ไม่สามารถสร้างรายการย่อยได้",
+      };
+    }
+
+    return {
+      success: true,
+      error: false,
+      message: "สร้างรายการย่อยสำเร็จ",
+    };
+  } catch (error: any) {
+    console.error("Create Task Detail Error:", error);
+    return {
+      success: false,
+      error: true,
+      message: error.message || "ไม่สามารถสร้างรายการย่อยได้",
+    };
+  }
+}
