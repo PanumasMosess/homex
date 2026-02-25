@@ -6,7 +6,7 @@ import type { Task } from "@/lib/type";
 
 const calcProgress = (t: Task) => {
   if (!t.subtasks || t.subtasks.length === 0) return t.progressPercent || 0;
-  const done = t.subtasks.filter((s) => s.status === 1).length;
+  const done = t.subtasks.filter((s) => s.status === true).length;
   return Math.round((done / t.subtasks.length) * 100);
 };
 
