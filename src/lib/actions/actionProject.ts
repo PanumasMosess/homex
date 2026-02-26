@@ -321,11 +321,12 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
   }
 };
 
-
 export async function createSubTask(data: any) {
   try {
     const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
-    let finishPlanned = data.finishPlanned ? new Date(data.finishPlanned) : null;
+    let finishPlanned = data.finishPlanned
+      ? new Date(data.finishPlanned)
+      : null;
 
     if (startPlanned && data.durationDays && !finishPlanned) {
       finishPlanned = new Date(startPlanned);
@@ -341,7 +342,7 @@ export async function createSubTask(data: any) {
         finishPlanned,
         durationDays: data.durationDays || null,
         sortOrder: data.sortOrder || 0,
-        status: data.status || false, 
+        status: data.status || false,
         organization: { connect: { id: data.organizationId } },
         project: { connect: { id: data.projectId } },
         task: { connect: { id: data.taskId } },
@@ -360,7 +361,7 @@ export async function createSubTask(data: any) {
       success: true,
       error: false,
       message: "สร้างรายการย่อยสำเร็จ",
-      data: newTaskDetail, 
+      data: newTaskDetail,
     };
   } catch (error: any) {
     console.error("Create Task Detail Error:", error);
@@ -372,7 +373,10 @@ export async function createSubTask(data: any) {
   }
 }
 
-export async function toggleSubtaskStatus(subtaskId: number, newStatus: boolean) {
+export async function toggleSubtaskStatus(
+  subtaskId: number,
+  newStatus: boolean,
+) {
   try {
     await prisma.task_detail.update({
       where: { id: subtaskId },
@@ -382,5 +386,38 @@ export async function toggleSubtaskStatus(subtaskId: number, newStatus: boolean)
   } catch (error: any) {
     console.error("Toggle Subtask Error:", error);
     return { success: false, error: "เกิดข้อผิดพลาดในการอัปเดตสถานะ" };
+  }
+}
+
+export async function updateSubtask(subtaskId: number, data: any) {
+  try {
+    const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
+    let finishPlanned = data.finishPlanned
+      ? new Date(data.finishPlanned)
+      : null;
+
+    if (startPlanned && data.durationDays && !finishPlanned) {
+      finishPlanned = new Date(startPlanned);
+      finishPlanned.setDate(
+        finishPlanned.getDate() + Number(data.durationDays),
+      );
+    }
+
+    const updatedDetail = await prisma.task_detail.update({
+      where: { id: subtaskId },
+      data: {
+        detailName: data.detailName,
+        detailDesc: data.detailDesc || null,
+        weightPercent: data.weightPercent ? Number(data.weightPercent) : 0,
+        startPlanned,
+        finishPlanned,
+        durationDays: data.durationDays ? Number(data.durationDays) : null,
+      },
+    });
+
+    return { success: true, data: updatedDetail };
+  } catch (error: any) {
+    console.error("Update Subtask Error:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการแก้ไขรายการย่อย" };
   }
 }
