@@ -1,12 +1,6 @@
 "use client";
 
-import React, {
-  useEffect,
-  useRef,
-  useState,
-  useTransition,
-  useActionState,
-} from "react";
+import React, { useEffect, useRef, useState, useTransition } from "react";
 import {
   Modal,
   ModalContent,
@@ -44,7 +38,6 @@ export const CreateProject = ({
   editData,
 }: CreateProjectProps & { editData?: any }) => {
   const router = useRouter();
-
   const isEditMode = !!editData;
 
   const [imagePreview, setImagePreview] = useState<string | null>(null);
@@ -56,13 +49,14 @@ export const CreateProject = ({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isSuccessRef = useRef(false);
+  // ❌ ลบ handledRef ออกไปเลย ไม่ต้องใช้แล้ว
 
   const defaultFormValues = {
     projectName: "",
     customerName: "",
     address: "",
     mapUrl: "",
-    budget: undefined as unknown as number,
+    budget: "" as unknown as number,
     startPlanned: "",
     finishPlanned: "",
     projectDesc: "",
@@ -76,6 +70,9 @@ export const CreateProject = ({
     defaultValues: defaultFormValues,
   });
 
+  const [isPending, startTransition] = useTransition();
+
+  // 📌 1. โหลดข้อมูลเมื่อเปิด Modal (เปลี่ยน dependencies ป้องกัน Infinite Loop)
   useEffect(() => {
     if (isOpen) {
       if (isEditMode && editData) {
@@ -84,7 +81,7 @@ export const CreateProject = ({
           customerName: editData.client || editData.customerName || "",
           address: editData.address || "",
           mapUrl: editData.mapUrl || "",
-          budget: editData.budget || (undefined as unknown as number),
+          budget: editData.budget || ("" as unknown as number),
           startPlanned: editData.startPlanned
             ? new Date(editData.startPlanned).toISOString().split("T")[0]
             : "",
@@ -99,11 +96,18 @@ export const CreateProject = ({
         setImagePreview(editData.image || editData.coverImageUrl || null);
         setCoverImageUrl(editData.image || editData.coverImageUrl || undefined);
       } else {
-        // โหมดสร้างใหม่
         resetFormState();
       }
     }
-  }, [isOpen, isEditMode, editData]);
+    // ใช้ editData?.id เพื่อไม่ให้ React สับสนและรันซ้ำ
+  }, [
+    isOpen,
+    isEditMode,
+    editData?.id,
+    currentUserId,
+    organizationId,
+    formAddProject,
+  ]);
 
   const resetFormState = () => {
     formAddProject.reset(defaultFormValues);
@@ -141,15 +145,7 @@ export const CreateProject = ({
     onOpenChange(false);
   };
 
-  const [state, formAction] = useActionState(createProject, {
-    success: false,
-    error: false,
-    message: "",
-  });
-
-  const [isPending, startTransition] = useTransition();
-
- const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -183,7 +179,7 @@ export const CreateProject = ({
     }
   };
 
-  const onSubmit = async (dataForm: ProjectSchema, onClose: () => void) => {
+  const onSubmit = async (dataForm: ProjectSchema) => {
     if (isUploading) {
       toast.warning("กรุณารออัปโหลดรูปภาพสักครู่...");
       return;
@@ -204,17 +200,41 @@ export const CreateProject = ({
 
       startTransition(async () => {
         if (isEditMode) {
+          // --- โหมดแก้ไข ---
           const res = await updateProject(editData.id, finalData);
           if (res?.success || !res?.error) {
+            const originalImage = editData?.image || editData?.coverImageUrl;
+            if (originalImage && coverImageUrl !== originalImage) {
+              try {
+                const urlObj = new URL(originalImage);
+                let fileKey = urlObj.pathname.substring(1);
+                if (fileKey.startsWith("homex/")) {
+                  fileKey = fileKey.replace("homex/", "");
+                }
+                await deleteFileS3(fileKey);
+              } catch (err) {}
+            }
+
             toast.success("บันทึกการแก้ไขเรียบร้อย!");
             router.refresh();
             isSuccessRef.current = true;
-            handleModalClose();
+            onOpenChange(false);
           } else {
             toast.error(res?.error || "แก้ไขข้อมูลไม่สำเร็จ");
           }
         } else {
-          formAction(finalData);
+
+          const dummyState = { success: false, error: false, message: "" };
+          const res = await createProject(dummyState, finalData);
+
+          if (res?.success) {
+            toast.success("สร้างโครงการเรียบร้อย!");
+            router.refresh();
+            isSuccessRef.current = true;
+            onOpenChange(false);
+          } else {
+            toast.error(res?.message || "บันทึกไม่สำเร็จ");
+          }
         }
       });
     } catch (error) {
@@ -222,24 +242,6 @@ export const CreateProject = ({
     }
   };
 
-  const handledRef = useRef(false);
-
-  useEffect(() => {
-    if (state.success && !handledRef.current && !isEditMode) {
-      handledRef.current = true;
-      toast.success("สร้างโครงการเรียบร้อย!");
-      router.refresh();
-
-      isSuccessRef.current = true;
-      handleModalClose();
-      return;
-    }
-
-    if (state.error && !handledRef.current && !isEditMode) {
-      handledRef.current = true;
-      toast.error(state.message || "บันทึกไม่สำเร็จ");
-    }
-  }, [state.success, state.error, isEditMode]);
 
   const isBusy = isPending || isUploading || isDeleting;
 
@@ -276,7 +278,6 @@ export const CreateProject = ({
               </div>
               <div className="flex flex-col">
                 <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                  {/* 📌 เปลี่ยนหัวข้อตามโหมด */}
                   {isEditMode ? "Edit Project" : "Create Project"}
                 </h2>
                 <p className="text-default-400 text-xs font-normal">
@@ -286,9 +287,7 @@ export const CreateProject = ({
             </ModalHeader>
 
             <form
-              onSubmit={formAddProject.handleSubmit((d) =>
-                onSubmit(d, onClose),
-              )}
+              onSubmit={formAddProject.handleSubmit(onSubmit)}
               className="flex flex-col flex-1 overflow-hidden"
             >
               <ModalBody>
@@ -447,7 +446,7 @@ export const CreateProject = ({
                       : isPending
                         ? "กำลังบันทึก..."
                         : isEditMode
-                          ? "บันทึกการแก้ไข" 
+                          ? "บันทึกการแก้ไข"
                           : "สร้างโครงการ"}
                 </Button>
               </ModalFooter>

@@ -33,23 +33,25 @@ export async function createProject(
       const dateStr = `${year}${month}${day}`;
 
       const prefix = `PJ-${data.organizationId}-${dateStr}-`;
-      const lastProject = await tx.project.findFirst({
+
+      const lastRunning = await tx.projects_running.findFirst({
         where: {
-          projectCode: {
+          organizationId: data.organizationId,
+          runningCode: {
             startsWith: prefix,
           },
         },
         orderBy: {
-          projectCode: "desc",
+          runningCode: "desc",
         },
         select: {
-          projectCode: true,
+          runningCode: true,
         },
       });
 
       let nextSequence = 1;
-      if (lastProject?.projectCode) {
-        const lastSequenceStr = lastProject.projectCode.replace(prefix, "");
+      if (lastRunning?.runningCode) {
+        const lastSequenceStr = lastRunning.runningCode.replace(prefix, "");
         const lastSequence = parseInt(lastSequenceStr, 10);
 
         if (!isNaN(lastSequence)) {
@@ -99,7 +101,7 @@ export async function createProject(
 
     return { success: true, error: false };
   } catch (e: unknown) {
-    console.error(e);
+    console.error("Create Project Error:", e);
     if (e instanceof Error) {
       return {
         success: false,
