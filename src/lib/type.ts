@@ -50,7 +50,7 @@ export interface Subtask {
   taskId: number;
   detailName: string;
   detailDesc?: string | null;
-  status: boolean; 
+  status: boolean;
   weightPercent?: number;
   progressPercent?: number;
   startPlanned?: string | Date | null;
@@ -67,16 +67,16 @@ export interface Task {
   taskName?: string | null;
   taskDesc?: string | null;
   coverImageUrl?: string | null;
-  status: string; 
-  
+  status: string;
+
   progressPercent: number;
   startPlanned?: Date | string | null;
   finishPlanned?: Date | string | null;
   startActual?: Date | string | null;
   finishActual?: Date | string | null;
-  
+
   durationDays?: number | null;
-  subtasks?: Subtask[]; 
+  subtasks?: Subtask[];
 }
 
 export interface ProjectDetailProps {
@@ -92,4 +92,15 @@ export interface CreateMainTaskProps {
   organizationId: number;
   currentUserId: number;
   projectCode: string;
+}
+
+export interface MainTaskCardProps {
+  task: Task;
+  onSelect: (id: number) => void;
+}
+
+export interface DropColumnProps {
+  status: string;
+  tasks: Task[];
+  onTaskClick: (id: number) => void;
 }
