@@ -38,13 +38,14 @@ import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
 import { deleteFileS3 } from "@/lib/actions/actionIndex";
 import {
+  createSubTask,
+  toggleSubtaskStatus,
   updateMainTask,
   updateTaskStatus,
   updateVdoProject,
 } from "@/lib/actions/actionProject";
 import {
   checkVideoStatus,
-  generationImage3D,
   startVideoJob,
 } from "@/lib/ai/geminiAI";
 import MainTaskCard from "./MainTaskCard";
@@ -57,8 +58,7 @@ const ProjectDetail = ({
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  // States
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const [tasks, setTasks] = useState<any[]>([]); 
   const [view, setView] = useState<"card" | "board">("card");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<Tab>("all");
@@ -99,6 +99,9 @@ const ProjectDetail = ({
     durationDays: "",
     weightPercent: "",
   });
+  const [updatingSubtaskId, setUpdatingSubtaskId] = useState<number | null>(
+    null,
+  );
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
@@ -305,7 +308,9 @@ const ProjectDetail = ({
 
       setTasks((prev) =>
         prev.map((t) =>
-          Number(t.id) === Number(editFormData.id) ? { ...t, ...editFormData } : t,
+          Number(t.id) === Number(editFormData.id)
+            ? { ...t, ...editFormData }
+            : t,
         ),
       );
 
@@ -339,11 +344,13 @@ const ProjectDetail = ({
     }
   };
 
+
   const handleSaveSubtask = async () => {
     if (!newSubtask.detailName.trim()) {
       toast.warning("กรุณากรอกชื่อรายการย่อย");
       return;
     }
+    if (!selected || !selected.id) return;
 
     setIsSavingSubtask(true);
     try {
@@ -361,21 +368,22 @@ const ProjectDetail = ({
           : 0,
         organizationId: organizationId,
         projectId: Number(projectInfo.id),
-        taskId: selected?.id,
+        taskId: selected.id,
         status: false,
       };
 
-      // ⚠️ เรียก API Create SubTask ของคุณตรงนี้ เช่น:
-      // await createSubTask(payload);
+      // รอผลจาก Backend
+      const res = await createSubTask(payload);
+      
+      if (!res.success || !res.data) {
+        throw new Error(res.message || "สร้างรายการย่อยไม่สำเร็จ");
+      }
 
-      await new Promise((resolve) => setTimeout(resolve, 800)); // จำลองโหลด
-
-      // จำลองข้อมูลอัปเดตใส่ State ทันที
-      const createdMock = { ...payload, id: Math.random(), status: false };
+      // 📌 อัปเดต state ของ details 
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selected?.id
-            ? { ...t, subtasks: [...(t.subtasks || []), createdMock as any] }
+          t.id === selected.id
+            ? { ...t, details: [...(t.details || []), res.data] }
             : t,
         ),
       );
@@ -389,8 +397,8 @@ const ProjectDetail = ({
         durationDays: "",
         weightPercent: "",
       });
-    } catch (error) {
-      toast.error("บันทึกไม่สำเร็จ");
+    } catch (error: any) {
+      toast.error(error.message || "บันทึกไม่สำเร็จ");
     } finally {
       setIsSavingSubtask(false);
     }
@@ -419,6 +427,37 @@ const ProjectDetail = ({
       toast.error("เกิดข้อผิดพลาดในการเปลี่ยนสถานะ");
     } finally {
       setIsUpdatingStatusMainTask(false);
+    }
+  };
+
+  const handleToggleSubtask = async (subtaskId: number, currentStatus: boolean) => {
+    if (!selected) return;   
+    setUpdatingSubtaskId(subtaskId);
+    try {
+      const newStatus = !currentStatus; 
+      const res = await toggleSubtaskStatus(subtaskId, newStatus);
+      if (!res.success) {
+        throw new Error(res.error || "อัปเดตไม่สำเร็จ");
+      }
+
+      setTasks((prev) => 
+        prev.map(task => {
+          if (task.id === selected.id) {
+            return {
+              ...task,
+              details: (task.details || []).map((sub: any) => 
+                sub.id === subtaskId ? { ...sub, status: newStatus } : sub
+              )
+            };
+          }
+          return task; 
+        })
+      );
+
+    } catch (error: any) {
+      toast.error(error.message || "อัปเดตรายการย่อยไม่สำเร็จ");
+    } finally {
+      setUpdatingSubtaskId(null);
     }
   };
 
@@ -904,20 +943,6 @@ const ProjectDetail = ({
                             }
                           />
                         </div>
-                        {/* <Input
-                          label="ความคืบหน้า (%)"
-                          type="number"
-                          min={0}
-                          max={100}
-                          variant="bordered"
-                          value={editFormData.progressPercent || 0}
-                          onChange={(e) =>
-                            setEditFormData({
-                              ...editFormData,
-                              progressPercent: parseInt(e.target.value) || 0,
-                            })
-                          }
-                        /> */}
                       </div>
                     ) : (
                       <>
@@ -996,13 +1021,34 @@ const ProjectDetail = ({
                       รายการย่อย (Subtasks)
                     </h3>
 
-                    {/* List รายการเดิม */}
-                    {selected.subtasks && selected.subtasks.length > 0 ? (
-                      selected.subtasks.map((s) => (
-                        <div key={s.id} className="flex items-center gap-3">
-                          <Checkbox isSelected={!!s.status}>
-                            {s.detailName}
-                          </Checkbox>
+                    {/* 📌 เปลี่ยนมาเรียกใช้ details เพื่อให้ตรงกับ Backend */}
+                    {(selected.details || selected.subtasks)?.length > 0 ? (
+                      (selected.details || selected.subtasks).map((s: any) => (
+                        <div
+                          key={s.id}
+                          className="flex items-center gap-3 transition-all duration-300"
+                        >
+                          {updatingSubtaskId === s.id ? (
+                            <Spinner
+                              size="sm"
+                              color="primary"
+                              className="w-5 h-5 ml-1"
+                            />
+                          ) : (
+                            <Checkbox
+                              isSelected={!!s.status}
+                              onValueChange={() =>
+                                handleToggleSubtask(s.id, !!s.status)
+                              }
+                              classNames={{
+                                label: !!s.status
+                                  ? "line-through text-default-400"
+                                  : "text-foreground",
+                              }}
+                            >
+                              {s.detailName}
+                            </Checkbox>
+                          )}
                         </div>
                       ))
                     ) : (

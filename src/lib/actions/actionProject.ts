@@ -321,12 +321,16 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
   }
 };
 
-export async function createSubTask(data: SubTaskSchema): Promise<ActionState> {
+
+export async function createSubTask(data: any) {
   try {
     const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
-    const finishPlanned = data.finishPlanned
-      ? new Date(data.finishPlanned)
-      : null;
+    let finishPlanned = data.finishPlanned ? new Date(data.finishPlanned) : null;
+
+    if (startPlanned && data.durationDays && !finishPlanned) {
+      finishPlanned = new Date(startPlanned);
+      finishPlanned.setDate(finishPlanned.getDate() + data.durationDays);
+    }
 
     const newTaskDetail = await prisma.task_detail.create({
       data: {
@@ -337,6 +341,7 @@ export async function createSubTask(data: SubTaskSchema): Promise<ActionState> {
         finishPlanned,
         durationDays: data.durationDays || null,
         sortOrder: data.sortOrder || 0,
+        status: data.status || false, 
         organization: { connect: { id: data.organizationId } },
         project: { connect: { id: data.projectId } },
         task: { connect: { id: data.taskId } },
@@ -355,6 +360,7 @@ export async function createSubTask(data: SubTaskSchema): Promise<ActionState> {
       success: true,
       error: false,
       message: "สร้างรายการย่อยสำเร็จ",
+      data: newTaskDetail, 
     };
   } catch (error: any) {
     console.error("Create Task Detail Error:", error);
@@ -363,5 +369,18 @@ export async function createSubTask(data: SubTaskSchema): Promise<ActionState> {
       error: true,
       message: error.message || "ไม่สามารถสร้างรายการย่อยได้",
     };
+  }
+}
+
+export async function toggleSubtaskStatus(subtaskId: number, newStatus: boolean) {
+  try {
+    await prisma.task_detail.update({
+      where: { id: subtaskId },
+      data: { status: newStatus },
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Toggle Subtask Error:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการอัปเดตสถานะ" };
   }
 }
