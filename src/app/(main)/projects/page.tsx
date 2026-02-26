@@ -12,7 +12,6 @@ const Project = async () => {
   const currentUserId = session?.user?.id ? parseInt(session.user.id) : 0;
   const organizationId = session?.user.organizationId ?? 0;
 
-  // ดึงข้อมูลจริงจาก DB
   const projects = await prisma.project.findMany({
     where: {
       organizationId: organizationId,
@@ -39,7 +38,6 @@ const Project = async () => {
     },
   });
 
-  // แปลงรูปแบบให้ตรงกับ UI เดิม (projects mock)
   const uiProjects = projects.map((p) => ({
     id: p.id,
     name: p.projectName,
