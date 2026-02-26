@@ -290,6 +290,35 @@ export const updateTaskStatus = async (taskId: number, newStatus: string) => {
   }
 };
 
+export const updateMainTask = async (taskId: number, updateData: any) => {
+  try {
+    const dataToUpdate = {
+      taskName: updateData.taskName,
+      taskDesc: updateData.taskDesc || null,
+      startPlanned: updateData.startPlanned
+        ? new Date(updateData.startPlanned)
+        : null,
+      durationDays: updateData.durationDays
+        ? Number(updateData.durationDays)
+        : null,
+      progressPercent: updateData.progressPercent
+        ? Number(updateData.progressPercent)
+        : 0,
+      updatedAt: new Date(),
+    };
+
+    await prisma.task.update({
+      where: { id: taskId },
+      data: dataToUpdate,
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating task status:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล" };
+  }
+};
+
 export async function createSubTask(data: SubTaskSchema): Promise<ActionState> {
   try {
     const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
