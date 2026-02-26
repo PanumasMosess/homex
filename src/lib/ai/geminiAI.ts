@@ -5,7 +5,6 @@ import {
   sendbase64toS3Data,
   sendbase64toS3DataVdo,
 } from "../actions/actionIndex";
-import { error } from "console";
 
 const ai_gemini = new GoogleGenAI({
   apiKey: process.env.GOOGLE_API_KEY,

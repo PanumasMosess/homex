@@ -36,7 +36,7 @@ import { calcProgress, formatDate, getMediaType } from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
-import {} from "@/lib/actions/actionIndex";
+import { deleteFileS3 } from "@/lib/actions/actionIndex";
 import {
   updateTaskStatus,
   updateVdoProject,
@@ -208,6 +208,23 @@ const ProjectDetail = ({
 
       if (finalVideoUrl) {
         console.log("✅ ได้ Video URL สมบูรณ์แล้ว:", finalVideoUrl);
+
+        if (projectInfo.video) {
+          try {
+            const urlObj = new URL(projectInfo.video);
+            let fileKey = urlObj.pathname.substring(1);
+            if (fileKey.startsWith("homex/")) {
+              fileKey = fileKey.replace("homex/", "");
+            }
+            await deleteFileS3(fileKey);
+            console.log("🗑️ ลบวิดีโอเก่าสำเร็จ:", fileKey);
+          } catch (err) {
+            console.error(
+              "⚠️ ลบวิดีโอเก่าไม่สำเร็จ (อาจไม่มีไฟล์อยู่แล้ว):",
+              err,
+            );
+          }
+        }
 
         setProjectInfo((prev) => ({
           ...prev,
@@ -901,7 +918,9 @@ const ProjectDetail = ({
                           <Button
                             color="primary"
                             className="flex-1 md:flex-none md:px-8 h-11 font-medium"
-                            onPress={() => handleUpdateStatusMainTask("PROGRESS")}
+                            onPress={() =>
+                              handleUpdateStatusMainTask("PROGRESS")
+                            }
                             isLoading={isUpdatingStatusMainTask}
                             isDisabled={
                               selected.status === "PROGRESS" ||
