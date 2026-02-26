@@ -32,7 +32,12 @@ import {
 import type { Tab, Task, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
-import { calcProgress, formatDate, getMediaType } from "@/lib/setting_data";
+import {
+  calcProgress,
+  calculateTaskProgress,
+  formatDate,
+  getMediaType,
+} from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
@@ -435,11 +440,17 @@ const ProjectDetail = ({
       setTasks((prev) =>
         prev.map((task) => {
           if (task.id === selected.id) {
+            const updatedDetails = (task.details || []).map((sub: any) =>
+              sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
+            );
+
+            // ใช้ฟังก์ชัน calculateTaskProgress ที่คุณมีใน setting_data
+            const newProgress = calculateTaskProgress(updatedDetails);
+
             return {
               ...task,
-              details: (task.details || []).map((sub: any) =>
-                sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
-              ),
+              details: updatedDetails,
+              progressPercent: newProgress,
             };
           }
           return task;
@@ -871,7 +882,7 @@ const ProjectDetail = ({
                       รายการย่อย (Subtasks)
                     </h3>
 
-                    {/* 🌟 List รายการย่อย พร้อมระบบแก้ไข (อัปเดต Layout ใหม่) 🌟 */}
+                    {/* 🌟 List รายการย่อย พร้อมระบบแก้ไข */}
                     {(selected.details || selected.subtasks)?.length > 0 ? (
                       (selected.details || selected.subtasks).map((s: any) => (
                         <div
@@ -1026,7 +1037,6 @@ const ProjectDetail = ({
                                     {s.detailName}
                                   </span>
 
-                                  {/* 📌 แสดงรายละเอียด (ถ้ามี) */}
                                   {s.detailDesc && (
                                     <span
                                       className={`text-sm mt-1 leading-relaxed ${!!s.status ? "text-default-300" : "text-default-500"}`}
@@ -1035,7 +1045,6 @@ const ProjectDetail = ({
                                     </span>
                                   )}
 
-                                  {/* 📌 แสดงข้อมูลวันที่, ระยะเวลา, น้ำหนัก (Badge เล็กๆ) */}
                                   <div className="flex flex-wrap gap-2 mt-3 text-[11px] font-medium text-default-500">
                                     {s.startPlanned && (
                                       <span className="flex items-center gap-1.5 bg-default-100 dark:bg-zinc-800 px-2.5 py-1 rounded-md">
@@ -1062,7 +1071,7 @@ const ProjectDetail = ({
                                 </div>
                               </div>
 
-                              {/* ปุ่มแก้ไข (ซ่อนอยู่ จะโผล่ตอนเอาเมาส์ชี้) */}
+                              {/* ปุ่มแก้ไข */}
                               <Button
                                 isIconOnly
                                 size="sm"
@@ -1191,6 +1200,70 @@ const ProjectDetail = ({
             <div className="flex h-full items-center justify-center">
               <p>ไม่พบข้อมูลงาน</p>
             </div>
+          )}
+        </ModalContent>
+      </Modal>
+
+      {/* 🌟 MODAL ยืนยันการลบ 🌟 */}
+      <Modal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        size="sm"
+        placement="center"
+      >
+        <ModalContent>
+          {(onClose) => (
+            <ModalBody className="py-6 text-center">
+              <div className="flex justify-center mb-2">
+                <div className="p-3 bg-danger-50 text-danger rounded-full">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  >
+                    <path d="M3 6h18" />
+                    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+                    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    <line x1="10" x2="10" y1="11" y2="17" />
+                    <line x1="14" x2="14" y1="11" y2="17" />
+                  </svg>
+                </div>
+              </div>
+              <h3 className="text-lg font-semibold">ยืนยันการลบงาน</h3>
+              <p className="text-sm text-default-500 mt-1">
+                คุณแน่ใจหรือไม่ที่จะลบงาน <br />
+                <span className="font-semibold text-foreground">
+                  "{selected?.taskName}"
+                </span>{" "}
+                ? <br />
+                <span className="text-xs">การกระทำนี้ไม่สามารถย้อนกลับได้</span>
+              </p>
+
+              <div className="flex gap-3 justify-center mt-5">
+                <Button
+                  variant="flat"
+                  onPress={onClose}
+                  isDisabled={isDeletingTask}
+                  className="px-6 font-medium"
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  color="danger"
+                  onPress={handleDeleteTask}
+                  isLoading={isDeletingTask}
+                  className="px-6 font-medium"
+                >
+                  ใช่, ลบงานเลย
+                </Button>
+              </div>
+            </ModalBody>
           )}
         </ModalContent>
       </Modal>

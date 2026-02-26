@@ -184,7 +184,7 @@ export const getColumnStyleMainTas = (s: string) => {
       };
     case "DONE":
       return {
-        background: "bg-success-50/40 dark:bg-success-900/10", 
+        background: "bg-success-50/40 dark:bg-success-900/10",
         border:
           "border-t-4 border-t-success-500 border-x-success-100 border-b-success-100 dark:border-x-success-900/30 dark:border-b-success-900/30",
         text: "text-success-600 dark:text-success-400",
@@ -204,4 +204,24 @@ export const getColumnStyleMainTas = (s: string) => {
         label: s,
       };
   }
+};
+
+export const calculateTaskProgress = (subtasks: any[]) => {
+  if (!subtasks || subtasks.length === 0) return 0;
+
+  const totalWeight = subtasks.reduce(
+    (sum, sub) => sum + (Number(sub.weightPercent) || 0),
+    0,
+  );
+
+  if (totalWeight === 0) {
+    const completedCount = subtasks.filter((sub) => sub.status).length;
+    return Math.round((completedCount / subtasks.length) * 100);
+  }
+
+  const completedWeight = subtasks
+    .filter((sub) => sub.status)
+    .reduce((sum, sub) => sum + (Number(sub.weightPercent) || 0), 0);
+
+  return Math.round((completedWeight / totalWeight) * 100);
 };
