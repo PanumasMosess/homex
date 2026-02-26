@@ -94,6 +94,54 @@ export interface CreateMainTaskProps {
   projectCode: string;
 }
 
+export interface CreateEmployeeProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  positions?: {
+    id: number;
+    positionName: string;
+  }[];
+}
+
+export interface CreateCustomerProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+export interface MainPageUserProps {
+  users: any[];
+  positions: any[];
+}
+
+export interface ActionState {
+  success: boolean;
+  error: boolean;
+  message?: string;
+}
+
+export interface CreateEmployeeData {
+  username: string;
+  password: string;
+  displayName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  note?: string;
+  positionId: number; // employee เลือกเอง
+  avatarUrl?: string;
+}
+
+export interface CreateCustomerData {
+  username: string;
+  password: string;
+  displayName?: string;
+  phone?: string;
+  email?: string;
+  address?: string;
+  note?: string;
+  avatarUrl?: string;
+}
+
 export interface MainTaskCardProps {
   task: Task;
   onSelect: (id: number) => void;
