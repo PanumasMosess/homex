@@ -101,11 +101,13 @@ export interface CreateEmployeeProps {
     id: number;
     positionName: string;
   }[];
+  editData?: any;
 }
 
 export interface CreateCustomerProps {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  editData?: any;
 }
 
 export interface MainPageUserProps {
@@ -121,7 +123,7 @@ export interface ActionState {
 
 export interface CreateEmployeeData {
   username: string;
-  password: string;
+  password?: string;
   displayName?: string;
   phone?: string;
   email?: string;
@@ -133,7 +135,7 @@ export interface CreateEmployeeData {
 
 export interface CreateCustomerData {
   username: string;
-  password: string;
+  password?: string;
   displayName?: string;
   phone?: string;
   email?: string;
