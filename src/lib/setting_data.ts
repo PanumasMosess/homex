@@ -143,3 +143,65 @@ export const getMediaType = (
 
   return "unknown";
 };
+
+export const getStatusMainTaskColor = (status?: string) => {
+  const s = (status || "").toUpperCase();
+  switch (s) {
+    case "TODO":
+      return "default";
+    case "PROGRESS":
+      return "primary";
+    case "DONE":
+      return "success";
+    default:
+      return "default";
+  }
+};
+
+export const getColumnStyleMainTas = (s: string) => {
+  switch (s.toUpperCase()) {
+    case "TODO":
+      return {
+        background: "bg-default-50/80 dark:bg-zinc-900/40", // พื้นหลังสีเทาลางๆ
+        border:
+          "border-t-4 border-t-default-400 dark:border-t-zinc-600 border-x-default-200 border-b-default-200 dark:border-x-zinc-800 dark:border-b-zinc-800",
+        text: "text-default-700 dark:text-default-300",
+        badge:
+          "bg-default-200 text-default-700 dark:bg-zinc-700 dark:text-default-300",
+        icon: "📋",
+        label: "รอเริ่มงาน",
+      };
+    case "PROGRESS":
+      return {
+        background: "bg-primary-50/40 dark:bg-primary-900/10", // พื้นหลังสีน้ำเงินลางๆ
+        border:
+          "border-t-4 border-t-primary-500 border-x-primary-100 border-b-primary-100 dark:border-x-primary-900/30 dark:border-b-primary-900/30",
+        text: "text-primary-600 dark:text-primary-400",
+        badge:
+          "bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-400",
+        icon: "⏳",
+        label: "กำลังดำเนินการ",
+      };
+    case "DONE":
+      return {
+        background: "bg-success-50/40 dark:bg-success-900/10", 
+        border:
+          "border-t-4 border-t-success-500 border-x-success-100 border-b-success-100 dark:border-x-success-900/30 dark:border-b-success-900/30",
+        text: "text-success-600 dark:text-success-400",
+        badge:
+          "bg-success-100 text-success-700 dark:bg-success-900/50 dark:text-success-400",
+        icon: "✅",
+        label: "เสร็จสมบูรณ์",
+      };
+    default:
+      return {
+        background: "bg-default-50/50 dark:bg-zinc-900/50",
+        border:
+          "border-t-4 border-t-zinc-500 border-x-default-200 border-b-default-200 dark:border-x-zinc-800 dark:border-b-zinc-800",
+        text: "text-zinc-600 dark:text-zinc-400",
+        badge: "bg-zinc-200 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400",
+        icon: "📌",
+        label: s,
+      };
+  }
+};
