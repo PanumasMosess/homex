@@ -36,7 +36,7 @@ import { calcProgress, formatDate, getMediaType } from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
-import {} from "@/lib/actions/actionIndex";
+import { deleteFileS3 } from "@/lib/actions/actionIndex";
 import {
   updateTaskStatus,
   updateVdoProject,
@@ -46,6 +46,7 @@ import {
   generationImage3D,
   startVideoJob,
 } from "@/lib/ai/geminiAI";
+import MainTaskCard from "./MainTaskCard";
 
 const ProjectDetail = ({
   organizationId,
@@ -208,6 +209,23 @@ const ProjectDetail = ({
 
       if (finalVideoUrl) {
         console.log("✅ ได้ Video URL สมบูรณ์แล้ว:", finalVideoUrl);
+
+        if (projectInfo.video) {
+          try {
+            const urlObj = new URL(projectInfo.video);
+            let fileKey = urlObj.pathname.substring(1);
+            if (fileKey.startsWith("homex/")) {
+              fileKey = fileKey.replace("homex/", "");
+            }
+            await deleteFileS3(fileKey);
+            console.log("🗑️ ลบวิดีโอเก่าสำเร็จ:", fileKey);
+          } catch (err) {
+            console.error(
+              "⚠️ ลบวิดีโอเก่าไม่สำเร็จ (อาจไม่มีไฟล์อยู่แล้ว):",
+              err,
+            );
+          }
+        }
 
         setProjectInfo((prev) => ({
           ...prev,
@@ -535,17 +553,44 @@ const ProjectDetail = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex gap-2 flex-wrap">
               {[
-                { key: "ALL", label: "All" },
-                { key: "TODO", label: "Todo" },
-                { key: "PROGRESS", label: "Progress" },
-                { key: "DONE", label: "Done" },
+                {
+                  key: "all",
+                  label: "All",
+                  activeClass:
+                    "bg-zinc-800 text-white border-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:border-zinc-100",
+                  hoverClass:
+                    "hover:border-zinc-800 hover:text-zinc-800 dark:hover:border-zinc-100 dark:hover:text-zinc-100",
+                },
+                {
+                  key: "TODO",
+                  label: "Todo",
+                  activeClass: "bg-default-500 text-white border-default-500",
+                  hoverClass:
+                    "hover:border-default-500 hover:text-default-500 dark:hover:border-default-400 dark:hover:text-default-400",
+                },
+                {
+                  key: "PROGRESS",
+                  label: "Progress",
+                  activeClass: "bg-primary text-white border-primary",
+                  hoverClass: "hover:border-primary hover:text-primary",
+                },
+                {
+                  key: "DONE",
+                  label: "Done",
+                  activeClass: "bg-success text-white border-success",
+                  hoverClass: "hover:border-success hover:text-success",
+                },
               ].map((tab) => {
                 const active = activeTab === tab.key;
                 return (
                   <button
                     key={tab.key}
                     onClick={() => setActiveTab(tab.key as Tab)}
-                    className={`px-4 h-9 rounded-full text-sm transition-all border ${active ? "bg-primary text-white border-primary shadow-sm" : "bg-transparent text-default-900 dark:text-zinc-300 border-default-300 dark:border-zinc-700 hover:border-primary hover:text-primary"}`}
+                    className={`px-4 h-9 rounded-full text-sm font-medium transition-all border ${
+                      active
+                        ? `${tab.activeClass} shadow-md`
+                        : `bg-transparent text-default-600 dark:text-zinc-400 border-default-300 dark:border-zinc-700 ${tab.hoverClass}`
+                    }`}
                   >
                     {tab.label}
                   </button>
@@ -576,33 +621,7 @@ const ProjectDetail = ({
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
               {filteredTasks.map((t) => (
-                <Card
-                  key={t.id}
-                  isPressable
-                  onPress={() => handleSelectTask(t.id)}
-                  className="h-full bg-default-100 dark:bg-zinc-900 border border-default-200 dark:border-zinc-800"
-                >
-                  <CardBody className="space-y-3">
-                    <img
-                      src={t.coverImageUrl || "/placeholder-image.jpg"}
-                      className="h-40 w-full object-cover rounded-lg"
-                      alt={t.taskName || "Task"}
-                      loading="lazy"
-                    />
-                    <div className="flex justify-between">
-                      <p className="truncate font-medium">
-                        {t.taskName || "Untitled Task"}
-                      </p>
-                      <Chip size="sm">{t.status}</Chip>
-                    </div>
-                    <p className="text-xs text-default-500 dark:text-zinc-400">
-                      Checklist{" "}
-                      {t.subtasks?.filter((s) => !!s.status).length || 0}/
-                      {t.subtasks?.length || 0}
-                    </p>
-                    <Progress value={calcProgress(t)} />
-                  </CardBody>
-                </Card>
+                <MainTaskCard key={t.id} task={t} onSelect={handleSelectTask} />
               ))}
 
               <div onClick={onOpen} className="group h-full">
@@ -901,7 +920,9 @@ const ProjectDetail = ({
                           <Button
                             color="primary"
                             className="flex-1 md:flex-none md:px-8 h-11 font-medium"
-                            onPress={() => handleUpdateStatusMainTask("PROGRESS")}
+                            onPress={() =>
+                              handleUpdateStatusMainTask("PROGRESS")
+                            }
                             isLoading={isUpdatingStatusMainTask}
                             isDisabled={
                               selected.status === "PROGRESS" ||
@@ -964,7 +985,6 @@ const ProjectDetail = ({
                   </div>
                 </div>
 
-                {/* 📌 ส่วนแสดงและฟอร์มสร้าง Subtasks */}
                 {!isEditMode && (
                   <div className="space-y-3 md:px-6">
                     <h3 className="font-semibold text-sm">

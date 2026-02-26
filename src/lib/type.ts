@@ -141,3 +141,14 @@ export interface CreateCustomerData {
   note?: string;
   avatarUrl?: string;
 }
+
+export interface MainTaskCardProps {
+  task: Task;
+  onSelect: (id: number) => void;
+}
+
+export interface DropColumnProps {
+  status: string;
+  tasks: Task[];
+  onTaskClick: (id: number) => void;
+}
