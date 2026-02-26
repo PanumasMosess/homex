@@ -31,7 +31,11 @@ const Page = async () => {
       projectId: true,
       organizationId: true,
       createdById: true,
-      details: true,
+      details: {
+        orderBy: {
+          sortOrder: "asc",
+        },
+      },
     },
   });
 

@@ -33,23 +33,25 @@ export async function createProject(
       const dateStr = `${year}${month}${day}`;
 
       const prefix = `PJ-${data.organizationId}-${dateStr}-`;
-      const lastProject = await tx.project.findFirst({
+
+      const lastRunning = await tx.projects_running.findFirst({
         where: {
-          projectCode: {
+          organizationId: data.organizationId,
+          runningCode: {
             startsWith: prefix,
           },
         },
         orderBy: {
-          projectCode: "desc",
+          runningCode: "desc",
         },
         select: {
-          projectCode: true,
+          runningCode: true,
         },
       });
 
       let nextSequence = 1;
-      if (lastProject?.projectCode) {
-        const lastSequenceStr = lastProject.projectCode.replace(prefix, "");
+      if (lastRunning?.runningCode) {
+        const lastSequenceStr = lastRunning.runningCode.replace(prefix, "");
         const lastSequence = parseInt(lastSequenceStr, 10);
 
         if (!isNaN(lastSequence)) {
@@ -99,7 +101,7 @@ export async function createProject(
 
     return { success: true, error: false };
   } catch (e: unknown) {
-    console.error(e);
+    console.error("Create Project Error:", e);
     if (e instanceof Error) {
       return {
         success: false,
@@ -281,6 +283,35 @@ export const updateTaskStatus = async (taskId: number, newStatus: string) => {
     await prisma.task.update({
       where: { id: taskId },
       data: { status: newStatus },
+    });
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("Error updating task status:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล" };
+  }
+};
+
+export const updateMainTask = async (taskId: number, updateData: any) => {
+  try {
+    const dataToUpdate = {
+      taskName: updateData.taskName,
+      taskDesc: updateData.taskDesc || null,
+      startPlanned: updateData.startPlanned
+        ? new Date(updateData.startPlanned)
+        : null,
+      durationDays: updateData.durationDays
+        ? Number(updateData.durationDays)
+        : null,
+      progressPercent: updateData.progressPercent
+        ? Number(updateData.progressPercent)
+        : 0,
+      updatedAt: new Date(),
+    };
+
+    await prisma.task.update({
+      where: { id: taskId },
+      data: dataToUpdate,
     });
 
     return { success: true };

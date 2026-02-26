@@ -1,12 +1,6 @@
 "use client";
 
-import {
-  useRef,
-  useTransition,
-  useActionState,
-  useEffect,
-  useState,
-} from "react";
+import { useTransition, useEffect, useState } from "react";
 import {
   Modal,
   ModalContent,
@@ -25,7 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   Clock,
-  User, // 🌟 เพิ่ม import User icon
+  User,
 } from "lucide-react";
 
 import { useForm } from "react-hook-form";
@@ -46,11 +40,9 @@ const CreateMainTask = ({
   projectCode,
 }: CreateMainTaskProps) => {
   const router = useRouter();
-  const isSuccessRef = useRef(false);
   const [isCreateTask, setIsCreateTask] = useState(false);
   const [isPending, startTransition] = useTransition();
-  
-  // State สำหรับเก็บจำนวนวันที่คาดว่าจะใช้
+
   const [durationDays, setDurationDays] = useState<number | "">("");
 
   const formAddTask = useForm<MainTaskSchema>({
@@ -76,8 +68,10 @@ const CreateMainTask = ({
       const startDate = new Date(startPlannedValue);
       startDate.setDate(startDate.getDate() + Number(durationDays));
       const finishStr = startDate.toISOString().split("T")[0];
-      
-      formAddTask.setValue("finishPlanned", finishStr, { shouldValidate: true });
+
+      formAddTask.setValue("finishPlanned", finishStr, {
+        shouldValidate: true,
+      });
     } else {
       formAddTask.setValue("finishPlanned", "");
     }
@@ -85,40 +79,15 @@ const CreateMainTask = ({
 
   const resetFormState = () => {
     formAddTask.reset();
-    setDurationDays(""); 
-    isSuccessRef.current = false;
+    setDurationDays("");
   };
 
   const handleModalClose = () => {
-    if (isSuccessRef.current) {
-      onOpenChange(false);
-      resetFormState();
-      return;
-    }
     resetFormState();
     onOpenChange(false);
   };
 
-  const [state, formAction] = useActionState(createMainTask, {
-    success: false,
-    error: false,
-  });
-
-  useEffect(() => {
-    const handled = isSuccessRef.current;
-
-    if (state.success && !handled) {
-      toast.success("บันทึกงานใหม่เรียบร้อย!");
-      router.refresh();
-      isSuccessRef.current = true;
-      handleModalClose();
-    } else if (state.error && !handled) {
-      toast.error(state.message || "บันทึกไม่สำเร็จ");
-    }
-  }, [state.success, state.error]);
-
   const onSubmit = async (dataForm: MainTaskSchema) => {
-    // ดักเช็คเผื่อคนกรอกจำนวนวัน แต่ลืมใส่วันเริ่ม
     if (!dataForm.startPlanned || !dataForm.finishPlanned) {
       toast.warning("กรุณาระบุวันเริ่มงานและระยะเวลาให้ครบถ้วน");
       return;
@@ -127,7 +96,7 @@ const CreateMainTask = ({
     setIsCreateTask(true);
     try {
       const url = await generationImage(dataForm.taskName);
-      
+
       const finalData: MainTaskSchema = {
         ...dataForm,
         createdById: Number(currentUserId) || 0,
@@ -137,8 +106,18 @@ const CreateMainTask = ({
         coverImageUrl: url?.answer || "",
       };
 
-      startTransition(() => {
-        formAction(finalData);
+      const dummyState = { success: false, error: false, message: "" };
+
+      startTransition(async () => {
+        const res = await createMainTask(dummyState, finalData);
+
+        if (res?.success) {
+          toast.success("บันทึกงานใหม่เรียบร้อย!");
+          router.refresh(); 
+          handleModalClose(); 
+        } else {
+          toast.error(res?.message || "บันทึกไม่สำเร็จ");
+        }
         setIsCreateTask(false);
       });
     } catch (error) {
@@ -179,7 +158,6 @@ const CreateMainTask = ({
       <ModalContent>
         {(onClose) => (
           <>
-            {/* --- HEADER --- */}
             <ModalHeader className="flex flex-row items-center gap-3">
               <div className="p-2.5 bg-blue-50 dark:bg-blue-900/20 rounded-xl shrink-0 border border-blue-100 dark:border-blue-500/20">
                 <ClipboardList className="text-blue-500" size={24} />
@@ -194,12 +172,8 @@ const CreateMainTask = ({
               </div>
             </ModalHeader>
 
-            {/* --- FORM --- */}
             <form
-              onSubmit={formAddTask.handleSubmit(
-                (data) => onSubmit(data),
-                onError,
-              )}
+              onSubmit={formAddTask.handleSubmit(onSubmit, onError)}
               className="flex flex-col flex-1 overflow-hidden"
             >
               <ModalBody>
@@ -275,7 +249,7 @@ const CreateMainTask = ({
                     }
                     {...formAddTask.register("startPlanned")}
                   />
-                  
+
                   <Input
                     type="number"
                     isRequired
@@ -285,7 +259,9 @@ const CreateMainTask = ({
                     variant="bordered"
                     min={1}
                     value={durationDays.toString()}
-                    onValueChange={(val) => setDurationDays(val ? Number(val) : "")}
+                    onValueChange={(val) =>
+                      setDurationDays(val ? Number(val) : "")
+                    }
                     isInvalid={!!errors.finishPlanned}
                     errorMessage={errors.finishPlanned?.message}
                     startContent={
@@ -302,7 +278,7 @@ const CreateMainTask = ({
                   />
                 </div>
 
-                {/* 🌟 4. Dummy Assignee (ผู้รับผิดชอบ จำลอง) */}
+                {/* 4. Dummy Assignee */}
                 <Select
                   label="ผู้รับผิดชอบ (จำลอง)"
                   placeholder="เลือกผู้รับผิดชอบ"

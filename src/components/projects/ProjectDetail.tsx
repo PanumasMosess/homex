@@ -38,6 +38,7 @@ import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
 import { deleteFileS3 } from "@/lib/actions/actionIndex";
 import {
+  updateMainTask,
   updateTaskStatus,
   updateVdoProject,
 } from "@/lib/actions/actionProject";
@@ -292,23 +293,27 @@ const ProjectDetail = ({
   }, [selected]);
 
   const handleSaveTaskEdit = async () => {
+    if (!editFormData || !editFormData.id) return;
+
     setIsSaving(true);
     try {
-      // ⚠️ เรียก API Update ของคุณตรงนี้ เช่น:
-      // await updateTask(editFormData.id, editFormData);
+      const res = await updateMainTask(editFormData.id, editFormData);
 
-      await new Promise((resolve) => setTimeout(resolve, 800));
+      if (!res.success) {
+        throw new Error(res.error || "บันทึกข้อมูลไม่สำเร็จ");
+      }
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === editFormData.id ? { ...t, ...editFormData } : t,
+          Number(t.id) === Number(editFormData.id) ? { ...t, ...editFormData } : t,
         ),
       );
 
       toast.success("บันทึกข้อมูลเรียบร้อย");
       setIsEditMode(false);
-    } catch (error) {
-      toast.error("บันทึกไม่สำเร็จ");
+    } catch (error: any) {
+      console.error("Save Edit Error:", error);
+      toast.error(error.message || "บันทึกไม่สำเร็จ");
     } finally {
       setIsSaving(false);
     }
