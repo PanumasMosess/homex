@@ -121,7 +121,6 @@ export const sendbase64toS3DataVdo = async (base64Data: string, path: string) =>
 
     return { success: true, url: publicUrl };
   } catch (error) {
-    // 3. ปรับข้อความ Error ให้สื่อว่าเป็นวิดีโอ
     console.error("Error uploading Base64 video:", error); 
     return { success: false, error: "Failed to upload video." };
   }

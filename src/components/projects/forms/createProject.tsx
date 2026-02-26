@@ -149,7 +149,7 @@ export const CreateProject = ({
 
   const [isPending, startTransition] = useTransition();
 
-  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+ const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -157,12 +157,26 @@ export const CreateProject = ({
     setImagePreview(URL.createObjectURL(file));
 
     try {
-      const imageUrl = await handleImageUpload(file, "img_projects");
-      setIsUploading(false);
-      setCoverImageUrl(imageUrl);
+      const newImageUrl = await handleImageUpload(file, "img_projects");
+
+      const originalImage = editData?.image || editData?.coverImageUrl;
+      if (coverImageUrl && coverImageUrl !== originalImage) {
+        try {
+          const urlObj = new URL(coverImageUrl);
+          let fileKey = urlObj.pathname.substring(1);
+          if (fileKey.startsWith("homex/")) {
+            fileKey = fileKey.replace("homex/", "");
+          }
+          await deleteFileS3(fileKey);
+        } catch (err) {
+          console.error("ลบรูประหว่างทางไม่สำเร็จ:", err);
+        }
+      }
+
+      setCoverImageUrl(newImageUrl);
     } catch (error) {
       toast.error("อัปโหลดรูปภาพไม่สำเร็จ");
-      setImagePreview(null);
+      setImagePreview(coverImageUrl || null);
     } finally {
       setIsUploading(false);
       setIsGeneratingVideo(false);
