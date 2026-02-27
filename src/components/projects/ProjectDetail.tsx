@@ -13,7 +13,6 @@ import {
   ModalBody,
   useDisclosure,
   Spinner,
-  Textarea,
 } from "@heroui/react";
 
 import {
@@ -29,11 +28,7 @@ import {
 import type { Tab, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
-import {
-  calculateTaskProgress,
-  formatDate,
-  getMediaType,
-} from "@/lib/setting_data";
+import { calculateTaskProgress, getMediaType } from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
@@ -46,6 +41,7 @@ import {
   updateVdoProject,
   updateSubtask,
   updateProjectProgressDB,
+  deleteSubtask,
 } from "@/lib/actions/actionProject";
 import {
   checkVideoStatus,
@@ -59,6 +55,7 @@ import CreateSubtaskForm from "./forms/createSubtaskForm";
 import UpdateMainTask from "./forms/updateMainTask";
 import DeleteTaskModal from "./DeleteTaskModal";
 import TaskActionButtons from "./TaskActionButtons";
+import DeleteSubtaskModal from "./DeleteSubtaskModal";
 
 const ProjectDetail = ({
   organizationId,
@@ -114,6 +111,11 @@ const ProjectDetail = ({
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
   const [editingSubtaskData, setEditingSubtaskData] = useState<any>({});
   const [isSavingSubtaskEdit, setIsSavingSubtaskEdit] = useState(false);
+
+  const [subtaskIdToDelete, setSubtaskIdToDelete] = useState<number | null>(
+    null,
+  );
+  const [isDeletingSubtask, setIsDeletingSubtask] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
@@ -504,6 +506,43 @@ const ProjectDetail = ({
     }
   };
 
+  const confirmDeleteSubtask = async () => {
+    if (!selected || subtaskIdToDelete === null) return;
+
+    setIsDeletingSubtask(true);
+    try {
+      const res = await deleteSubtask(subtaskIdToDelete);
+      if (!res.success) throw new Error(res.error || "ลบไม่สำเร็จ");
+
+      const updatedDetails = (selected.details || []).filter(
+        (sub: any) => sub.id !== subtaskIdToDelete,
+      );
+
+      const newProgress = calculateTaskProgress(updatedDetails);
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
+      setTasks((prev) =>
+        prev.map((t) => {
+          if (t.id === selected.id) {
+            return {
+              ...t,
+              details: updatedDetails,
+              progressPercent: newProgress,
+            };
+          }
+          return t;
+        }),
+      );
+
+      toast.success("ลบรายการย่อยสำเร็จ");
+      setSubtaskIdToDelete(null);
+    } catch (error: any) {
+      toast.error(error.message || "ลบรายการย่อยไม่สำเร็จ");
+    } finally {
+      setIsDeletingSubtask(false);
+    }
+  };
+
   const handleUpdateStatusMainTask = async (newStatus: string) => {
     if (!selected) return;
     setIsUpdatingStatusMainTask(true);
@@ -842,6 +881,7 @@ const ProjectDetail = ({
                           setEditingSubtaskId={setEditingSubtaskId}
                           handleSaveSubtaskEdit={handleSaveSubtaskEdit}
                           handleToggleSubtask={handleToggleSubtask}
+                          handleDeleteSubtask={(id) => setSubtaskIdToDelete(id)}
                         />
                       ))
                     ) : (
@@ -877,6 +917,15 @@ const ProjectDetail = ({
         taskName={selected?.taskName}
         isDeleting={isDeletingTask}
         onConfirm={handleDeleteTask}
+      />
+
+      <DeleteSubtaskModal
+        isOpen={subtaskIdToDelete !== null}
+        onOpenChange={(isOpen) => {
+          if (!isOpen) setSubtaskIdToDelete(null);
+        }}
+        isDeleting={isDeletingSubtask}
+        onConfirm={confirmDeleteSubtask}
       />
     </div>
   );
