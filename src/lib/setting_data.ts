@@ -92,9 +92,9 @@ export const fmtMoney = (v?: any) => {
 };
 
 export const calcProgress = (t: Task) => {
-  if (!t.subtasks || t.subtasks.length === 0) return t.progressPercent || 0;
-  const done = t.subtasks.filter((s) => s.status === true).length;
-  return Math.round((done / t.subtasks.length) * 100);
+  if (!t.details || t.details.length === 0) return t.progressPercent || 0;
+  const done = t.details.filter((s) => s.status === true).length;
+  return Math.round((done / t.details.length) * 100);
 };
 
 export const formatDate = (date: Date | string | null | undefined) => {
@@ -206,20 +206,20 @@ export const getColumnStyleMainTas = (s: string) => {
   }
 };
 
-export const calculateTaskProgress = (subtasks: any[]) => {
-  if (!subtasks || subtasks.length === 0) return 0;
+export const calculateTaskProgress = (details: any[]) => {
+  if (!details || details.length === 0) return 0;
 
-  const totalWeight = subtasks.reduce(
+  const totalWeight = details.reduce(
     (sum, sub) => sum + (Number(sub.weightPercent) || 0),
     0,
   );
 
   if (totalWeight === 0) {
-    const completedCount = subtasks.filter((sub) => sub.status).length;
-    return Math.round((completedCount / subtasks.length) * 100);
+    const completedCount = details.filter((sub) => sub.status).length;
+    return Math.round((completedCount / details.length) * 100);
   }
 
-  const completedWeight = subtasks
+  const completedWeight = details
     .filter((sub) => sub.status)
     .reduce((sum, sub) => sum + (Number(sub.weightPercent) || 0), 0);
 

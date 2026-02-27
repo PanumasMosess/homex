@@ -109,6 +109,10 @@ export async function createCustomer(
         message: "ไม่พบตำแหน่งลูกค้าในระบบ",
       };
     }
+    
+    if (!data.password) {
+      throw new Error("Password is required"); 
+    }
 
     const hash = await bcrypt.hash(data.password, 10);
 
