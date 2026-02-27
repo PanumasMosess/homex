@@ -9,6 +9,23 @@ import CustomerTable from "./CustomerTable";
 import CreateEmployee from "./forms/createEmployee";
 import CreateCustomer from "./forms/createCustomer";
 import type { MainPageUserProps } from "@/lib/type";
+import { useRouter } from "next/navigation";
+import { toast } from "react-toastify";
+import {
+    Modal,
+    ModalContent,
+    ModalHeader,
+    ModalBody,
+    ModalFooter,
+    Button
+} from "@heroui/react";
+import { AlertTriangle } from "lucide-react";
+import {
+    deleteEmployee,
+    deleteCustomer,
+    restoreEmployee,
+    restoreCustomer
+} from "@/lib/actions/actionUser";
 
 export default function MainPageUser({
     users,
@@ -19,6 +36,21 @@ export default function MainPageUser({
 
     const [employeeOpen, setEmployeeOpen] = useState(false);
     const [customerOpen, setCustomerOpen] = useState(false);
+
+    const [editEmployee, setEditEmployee] = useState<any>(null);
+    const [editCustomer, setEditCustomer] = useState<any>(null);
+
+    const [deleteModal, setDeleteModal] = useState<{
+        isOpen: boolean;
+        type: "employee" | "customer" | null;
+        user: any;
+    }>({
+        isOpen: false,
+        type: null,
+        user: null,
+    });
+
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // 🔥 filter จาก localUsers เท่านั้น
     const filtered = useMemo(() => {
@@ -45,6 +77,56 @@ export default function MainPageUser({
         );
     }, [filtered]);
 
+    const router = useRouter();
+
+    const handleDeleteEmployee = (u: any) => {
+        setDeleteModal({
+            isOpen: true,
+            type: "employee",
+            user: u,
+        });
+    };
+
+    const handleDeleteCustomer = (u: any) => {
+        setDeleteModal({
+            isOpen: true,
+            type: "customer",
+            user: u,
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteModal.user) return;
+
+        setIsDeleting(true);
+
+        const { user, type } = deleteModal;
+
+        const res =
+            type === "employee"
+                ? user.isActive
+                    ? await deleteEmployee(user.id)
+                    : await restoreEmployee(user.id)
+                : user.isActive
+                    ? await deleteCustomer(user.id)
+                    : await restoreCustomer(user.id);
+
+        setIsDeleting(false);
+
+        if (res.success) {
+            toast.success(
+                user.isActive
+                    ? "ปิดการใช้งานเรียบร้อย"
+                    : "เปิดใช้งานเรียบร้อย"
+            );
+
+            setDeleteModal({ isOpen: false, type: null, user: null });
+            router.refresh();
+        } else {
+            toast.error(res.message || "ไม่สำเร็จ");
+        }
+    };
+    const isActiveUser = deleteModal.user?.isActive;
     return (
 
         <div className="max-w-[1600px] mx-auto px-6 py-8 space-y-8">
@@ -81,28 +163,110 @@ export default function MainPageUser({
 
                 <EmployeeTable
                     users={employees}
-                    onAdd={() => setEmployeeOpen(true)}
+                    onAdd={() => {
+                        setEditEmployee(null);
+                        setEmployeeOpen(true);
+                    }}
+                    onEdit={(u) => {
+                        setEditEmployee(u);
+                        setEmployeeOpen(true);
+                    }}
+                    onDelete={handleDeleteEmployee}
                 />
 
                 <CustomerTable
                     users={customers}
-                    onAdd={() => setCustomerOpen(true)}
+                    onAdd={() => {
+                        setEditCustomer(null);        // 🔥 create mode
+                        setCustomerOpen(true);
+                    }}
+                    onEdit={(u) => {
+                        setEditCustomer(u);           // 🔥 edit mode
+                        setCustomerOpen(true);
+                    }}
+                    onDelete={handleDeleteCustomer}
                 />
 
             </div>
 
             {/* MODALS */}
             <CreateEmployee
+                key={`employee-${editEmployee?.id ?? "create"}`}
                 isOpen={employeeOpen}
                 onOpenChange={setEmployeeOpen}
                 positions={positions}
+                editData={editEmployee}
             />
 
             <CreateCustomer
+                key={`customer-${editCustomer?.id ?? "create"}`}
                 isOpen={customerOpen}
                 onOpenChange={setCustomerOpen}
+                editData={editCustomer}
             />
 
+            <Modal
+                isOpen={deleteModal.isOpen}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setDeleteModal({ isOpen: false, type: null, user: null });
+                    }
+                }}
+                backdrop="blur"
+            >
+                <ModalContent>
+                    {(onClose) => (
+                        <>
+                            <ModalHeader className="flex items-center gap-3">
+
+                                <div className="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center">
+                                    <AlertTriangle className="text-danger" size={20} />
+                                </div>
+
+                                <div>
+                                    <div className="font-semibold">
+                                        {isActiveUser
+                                            ? "ยืนยันการปิดการใช้งาน"
+                                            : "ยืนยันการเปิดใช้งาน"}
+                                    </div>
+
+                                    <div className="text-xs text-default-400">
+                                        {isActiveUser
+                                            ? "สามารถเปิดใช้งานใหม่ได้ภายหลัง"
+                                            : "ผู้ใช้นี้จะกลับมาใช้งานได้"}
+                                    </div>
+                                </div>
+
+                            </ModalHeader>
+
+                            <ModalBody>
+                                <p>
+                                    คุณต้องการ
+                                    <b className={isActiveUser ? "text-danger" : "text-primary"}>
+                                        {isActiveUser ? " ปิดการใช้งาน " : " เปิดใช้งาน "}
+                                    </b>
+                                    <b>{deleteModal.user?.displayName}</b>
+                                    ใช่หรือไม่?
+                                </p>
+                            </ModalBody>
+
+                            <ModalFooter>
+                                <Button variant="light" onPress={onClose}>
+                                    ยกเลิก
+                                </Button>
+
+                                <Button
+                                    color={isActiveUser ? "danger" : "primary"}
+                                    onPress={handleConfirmDelete}
+                                    isLoading={isDeleting}
+                                >
+                                    {isActiveUser ? "ปิดการใช้งาน" : "เปิดใช้งาน"}
+                                </Button>
+                            </ModalFooter>
+                        </>
+                    )}
+                </ModalContent>
+            </Modal>
         </div>
     );
 }
