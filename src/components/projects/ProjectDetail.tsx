@@ -332,10 +332,16 @@ const ProjectDetail = ({
       if (!res.success || !res.data)
         throw new Error(res.message || "สร้างรายการย่อยไม่สำเร็จ");
 
+      const updatedDetails = [...(selected.details || []), res.data];
+
+      const newProgress = calculateTaskProgress(updatedDetails);
+
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
       setTasks((prev) =>
         prev.map((t) =>
           t.id === selected.id
-            ? { ...t, details: [...(t.details || []), res.data] }
+            ? { ...t, details: updatedDetails, progressPercent: newProgress }
             : t,
         ),
       );
@@ -384,14 +390,21 @@ const ProjectDetail = ({
       if (!res.success || !res.data)
         throw new Error(res.error || "แก้ไขไม่สำเร็จ");
 
+      const updatedDetails = (selected.details || []).map((sub: any) =>
+        sub.id === editingSubtaskId ? res.data : sub,
+      );
+
+      const newProgress = calculateTaskProgress(updatedDetails);
+
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id === selected.id) {
             return {
               ...t,
-              details: (t.details || []).map((sub: any) =>
-                sub.id === editingSubtaskId ? res.data : sub,
-              ),
+              details: updatedDetails,
+              progressPercent: newProgress,
             };
           }
           return t;
@@ -437,16 +450,17 @@ const ProjectDetail = ({
       const res = await toggleSubtaskStatus(subtaskId, newStatus);
       if (!res.success) throw new Error(res.error || "อัปเดตไม่สำเร็จ");
 
+      const updatedDetails = (selected.details || []).map((sub: any) =>
+        sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
+      );
+
+      const newProgress = calculateTaskProgress(updatedDetails);
+
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
       setTasks((prev) =>
         prev.map((task) => {
           if (task.id === selected.id) {
-            const updatedDetails = (task.details || []).map((sub: any) =>
-              sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
-            );
-
-            // ใช้ฟังก์ชัน calculateTaskProgress ที่คุณมีใน setting_data
-            const newProgress = calculateTaskProgress(updatedDetails);
-
             return {
               ...task,
               details: updatedDetails,
@@ -698,9 +712,81 @@ const ProjectDetail = ({
         <ModalContent className="max-md:h-screen max-md:flex max-md:flex-col max-md:overflow-hidden">
           {selected ? (
             <>
+              {/* 🌟 1. นำ HEADER ของ Mobile กลับมา (ปุ่มย้อนกลับ + ชื่อ) 🌟 */}
+              <div className="md:hidden p-4 flex items-center justify-between border-b border-default-200 dark:border-zinc-800 shrink-0 bg-background z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <button
+                    onClick={() => setSelectedId(null)}
+                    className="p-2 -ml-2 text-default-500"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <p className="font-semibold truncate">
+                    {isEditMode
+                      ? "แก้ไขรายละเอียดงาน"
+                      : selected.taskName || "Untitled Task"}
+                  </p>
+                </div>
+              </div>
+
               <ModalBody className="space-y-5 md:py-8 md:px-2 md:overflow-y-auto md:my-auto scrollbar-hide max-md:flex-1 max-md:overflow-y-auto max-md:pb-20 relative">
                 {/* 📌 เครื่องมือ (มุมขวาบน - Desktop) */}
                 <div className="hidden md:flex absolute top-4 right-16 gap-2 z-10">
+                  {isEditMode ? (
+                    <>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsEditMode(false)}
+                        isDisabled={isSaving}
+                      >
+                        ยกเลิก
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        onPress={handleSaveTaskEdit}
+                        isLoading={isSaving}
+                      >
+                        บันทึก
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onPress={() => setIsEditMode(true)}
+                      >
+                        ✏️ แก้ไข
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsDeleteModalOpen(true)}
+                      >
+                        🗑️ ลบ
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* 🌟 2. นำปุ่มแก้ไข/ลบ ของ Mobile กลับมาแทรกด้านบนสุด 🌟 */}
+                <div className="md:hidden flex justify-end gap-2 pt-2">
                   {isEditMode ? (
                     <>
                       <Button
@@ -748,6 +834,7 @@ const ProjectDetail = ({
                     className="w-full md:w-[320px] h-[220px] md:h-[200px] object-cover rounded-xl shrink-0"
                     alt="Cover"
                   />
+
                   <div className="flex-1 space-y-5">
                     {isEditMode ? (
                       <div className="space-y-4">
@@ -1076,7 +1163,7 @@ const ProjectDetail = ({
                                 isIconOnly
                                 size="sm"
                                 variant="light"
-                                className="opacity-0 group-hover:opacity-100 text-default-400 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                                className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
                                 onPress={() => startEditSubtask(s)}
                               >
                                 <Pencil size={16} />
