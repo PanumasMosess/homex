@@ -169,17 +169,14 @@ export const generationImage = async (userCommand: string) => {
 };
 
 export const generationImage3D = async (img_Url: string, progress: number) => {
-
   let constructionStageDesc = "";
 
   const safeProgress = Math.max(0, Math.min(100, progress));
 
   if (safeProgress <= 25) {
     constructionStageDesc = `Early stage construction (around ${safeProgress}% complete). Groundworks and foundations are visible, heavy machinery like excavators are present, initial structural steel columns or concrete cores are just starting to rise from the ground level. The plot is mostly earth and materials.`;
-
   } else if (safeProgress <= 65) {
     constructionStageDesc = `Mid-stage construction active site (approximately ${safeProgress}% complete). The main structure of the building is prominent and rising. The building is heavily covered in scaffolding and safety netting. Tower cranes are actively moving materials. Concrete floors are visible, some exterior cladding might be starting on lower floors.`;
-
   } else {
     constructionStageDesc = `Late-stage construction nearing completion (around ${safeProgress}% complete). The exterior is mostly finished. Scaffolding is being removed in sections, revealing the final facade, glass windows, and balconies. Tower cranes might still be present but less activity on the structure itself. Focus is on finishing touches and ground level landscaping.`;
   }
