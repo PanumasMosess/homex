@@ -29,8 +29,9 @@ const MainTaskCard = ({ task, onSelect }: MainTaskCardProps) => {
           </Chip>
         </div>
         <p className="text-xs text-default-500 dark:text-zinc-400">
-          Checklist {task.subtasks?.filter((s) => !!s.status).length || 0}/
-          {task.subtasks?.length || 0}
+          Checklist{" "}
+          {(task.details || []).filter((s: any) => !!s.status).length || 0}/
+          {(task.details || []).length || 0}
         </p>
         <Progress
           value={calcProgress(task)}

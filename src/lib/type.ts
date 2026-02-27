@@ -76,7 +76,7 @@ export interface Task {
   finishActual?: Date | string | null;
 
   durationDays?: number | null;
-  subtasks?: Subtask[];
+  details?: Subtask[];
 }
 
 export interface ProjectDetailProps {
@@ -153,4 +153,40 @@ export interface DropColumnProps {
   status: string;
   tasks: Task[];
   onTaskClick: (id: number) => void;
+}
+
+export interface TaskFilterTabsProps {
+  activeTab: Tab;
+  setActiveTab: (tab: Tab) => void;
+}
+
+export interface SubtaskItemProps {
+  subtask: any;
+  updatingSubtaskId: number | null;
+  editingSubtaskId: number | null;
+  editingSubtaskData: any;
+  isSavingSubtaskEdit: boolean;
+  setEditingSubtaskData: (data: any) => void;
+  startEditSubtask: (subtask: any) => void;
+  setEditingSubtaskId: (id: number | null) => void;
+  handleSaveSubtaskEdit: () => void;
+  handleToggleSubtask: (id: number, status: boolean) => void;
+}
+
+export interface CreateSubtaskFormProps {
+  isAddingSubtask: boolean;
+  setIsAddingSubtask: (val: boolean) => void;
+  newSubtask: any;
+  setNewSubtask: (val: any) => void;
+  handleSaveSubtask: () => void;
+  isSavingSubtask: boolean;
+}
+
+export interface UpdateMainTaskProps {
+  isEditMode: boolean;
+  selected: any;
+  editFormData: any;
+  setEditFormData: (data: any) => void;
+  isUpdatingStatusMainTask: boolean;
+  handleUpdateStatusMainTask: (status: string) => void;
 }

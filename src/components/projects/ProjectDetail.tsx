@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Plus, Search, Building2, Clock, Pencil } from "lucide-react";
+import { Search, Building2 } from "lucide-react";
 
 import {
-  Card,
-  CardBody,
   Button,
   Chip,
   Progress,
@@ -14,7 +12,6 @@ import {
   ModalContent,
   ModalBody,
   useDisclosure,
-  Checkbox,
   Spinner,
   Textarea,
 } from "@heroui/react";
@@ -29,11 +26,10 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 
-import type { Tab, Task, ProjectDetailProps } from "@/lib/type";
+import type { Tab, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
 import {
-  calcProgress,
   calculateTaskProgress,
   formatDate,
   getMediaType,
@@ -53,6 +49,10 @@ import {
 } from "@/lib/actions/actionProject";
 import { checkVideoStatus, startVideoJob } from "@/lib/ai/geminiAI";
 import MainTaskCard from "./MainTaskCard";
+import TaskFilterTabs from "./TaskFilterTabs";
+import { SubtaskItem } from "./SubtaskItem";
+import CreateSubtaskForm from "./forms/createSubtaskForm";
+import UpdateMainTask from "./forms/updateMainTask";
 
 const ProjectDetail = ({
   organizationId,
@@ -177,7 +177,10 @@ const ProjectDetail = ({
       if (lastSavedProgress.current !== projectProgress) {
         const projectIdNum = parseInt(projectInfo.id);
         if (!isNaN(projectIdNum)) {
-          const res = await updateProjectProgressDB(projectIdNum, projectProgress);
+          const res = await updateProjectProgressDB(
+            projectIdNum,
+            projectProgress,
+          );
           if (res.success) {
             lastSavedProgress.current = projectProgress;
           }
@@ -187,7 +190,7 @@ const ProjectDetail = ({
 
     const timer = setTimeout(() => {
       saveToDB();
-    }, 1000); 
+    }, 1000);
 
     return () => clearTimeout(timer);
   }, [projectProgress, projectInfo.id, tasks.length]);
@@ -478,7 +481,9 @@ const ProjectDetail = ({
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selected.id ? { ...t, status: newStatus, progressPercent: newProgress } : t,
+          t.id === selected.id
+            ? { ...t, status: newStatus, progressPercent: newProgress }
+            : t,
         ),
       );
       toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
@@ -641,45 +646,7 @@ const ProjectDetail = ({
       {view === "card" && (
         <>
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex gap-2 flex-wrap">
-              {[
-                {
-                  key: "all",
-                  label: "All",
-                  activeClass: "bg-zinc-800 text-white",
-                  hoverClass: "hover:border-zinc-800",
-                },
-                {
-                  key: "TODO",
-                  label: "Todo",
-                  activeClass: "bg-default-500 text-white",
-                  hoverClass: "hover:border-default-500",
-                },
-                {
-                  key: "PROGRESS",
-                  label: "Progress",
-                  activeClass: "bg-primary text-white",
-                  hoverClass: "hover:border-primary",
-                },
-                {
-                  key: "DONE",
-                  label: "Done",
-                  activeClass: "bg-success text-white",
-                  hoverClass: "hover:border-success",
-                },
-              ].map((tab) => {
-                const active = activeTab === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setActiveTab(tab.key as Tab)}
-                    className={`px-4 h-9 rounded-full text-sm font-medium transition-all border ${active ? tab.activeClass : "bg-transparent text-default-600 border-default-300 " + tab.hoverClass}`}
-                  >
-                    {tab.label}
-                  </button>
-                );
-              })}
-            </div>
+            <TaskFilterTabs activeTab={activeTab} setActiveTab={setActiveTab} />
             <Input
               placeholder="ค้นหา..."
               value={q}
@@ -884,130 +851,14 @@ const ProjectDetail = ({
                     alt="Cover"
                   />
                   <div className="flex-1 space-y-5">
-                    {isEditMode ? (
-                      <div className="space-y-4">
-                        <Input
-                          label="ชื่องาน"
-                          variant="bordered"
-                          value={editFormData.taskName || ""}
-                          onChange={(e) =>
-                            setEditFormData({
-                              ...editFormData,
-                              taskName: e.target.value,
-                            })
-                          }
-                        />
-                        <Textarea
-                          label="รายละเอียด"
-                          variant="bordered"
-                          minRows={2}
-                          value={editFormData.taskDesc || ""}
-                          onChange={(e) =>
-                            setEditFormData({
-                              ...editFormData,
-                              taskDesc: e.target.value,
-                            })
-                          }
-                        />
-                        <div className="grid grid-cols-2 gap-3 items-start">
-                          <Input
-                            label="วันที่เริ่ม"
-                            type="date"
-                            labelPlacement="outside"
-                            variant="bordered"
-                            value={
-                              editFormData.startPlanned
-                                ? new Date(editFormData.startPlanned)
-                                    .toISOString()
-                                    .split("T")[0]
-                                : ""
-                            }
-                            onChange={(e) =>
-                              setEditFormData({
-                                ...editFormData,
-                                startPlanned: e.target.value,
-                              })
-                            }
-                          />
-                          <Input
-                            type="number"
-                            label="ระยะเวลา (วัน)"
-                            labelPlacement="outside"
-                            variant="bordered"
-                            min={1}
-                            value={editFormData.durationDays || ""}
-                            onValueChange={(val) =>
-                              setEditFormData({
-                                ...editFormData,
-                                durationDays: val ? Number(val) : null,
-                              })
-                            }
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex gap-3">
-                          <Button
-                            color="primary"
-                            onPress={() =>
-                              handleUpdateStatusMainTask("PROGRESS")
-                            }
-                            isLoading={isUpdatingStatusMainTask}
-                            isDisabled={
-                              selected.status === "PROGRESS" ||
-                              selected.status === "DONE"
-                            }
-                          >
-                            ✓ เริ่มงาน
-                          </Button>
-                          <Button
-                            variant="bordered"
-                            onPress={() => handleUpdateStatusMainTask("DONE")}
-                            isLoading={isUpdatingStatusMainTask}
-                            isDisabled={selected.status === "DONE"}
-                          >
-                            เสร็จสมบูรณ์
-                          </Button>
-                        </div>
-                        {selected.taskDesc && (
-                          <div className="text-sm bg-default-50 p-3 rounded-lg">
-                            {selected.taskDesc}
-                          </div>
-                        )}
-                        <div className="grid grid-cols-2 gap-4 text-sm text-default-500">
-                          <div>
-                            <p>กำหนดเริ่ม:</p>
-                            <p className="text-foreground font-medium">
-                              {selected.startPlanned
-                                ? formatDate(selected.startPlanned)
-                                : "-"}
-                            </p>
-                          </div>
-                          <div>
-                            <p>กำหนดเสร็จ:</p>
-                            <p className="text-foreground font-medium">
-                              {selected.finishPlanned
-                                ? formatDate(selected.finishPlanned)
-                                : "-"}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="space-y-2 max-w-xl">
-                          <div className="flex justify-between text-sm font-medium">
-                            <span>ความคืบหน้า</span>
-                            <span className="text-primary">
-                              {selected.progressPercent || 0}%
-                            </span>
-                          </div>
-                          <Progress
-                            value={selected.progressPercent || 0}
-                            color="primary"
-                            className="h-2"
-                          />
-                        </div>
-                      </>
-                    )}
+                    <UpdateMainTask
+                      isEditMode={isEditMode}
+                      selected={selected}
+                      editFormData={editFormData}
+                      setEditFormData={setEditFormData}
+                      isUpdatingStatusMainTask={isUpdatingStatusMainTask}
+                      handleUpdateStatusMainTask={handleUpdateStatusMainTask}
+                    />
                   </div>
                 </div>
 
@@ -1016,209 +867,21 @@ const ProjectDetail = ({
                     <h3 className="font-semibold text-sm">
                       รายการย่อย (Subtasks)
                     </h3>
-
-                    {/* 🌟 List รายการย่อย พร้อมระบบแก้ไข */}
                     {(selected.details || selected.subtasks)?.length > 0 ? (
                       (selected.details || selected.subtasks).map((s: any) => (
-                        <div
+                        <SubtaskItem
                           key={s.id}
-                          className="border-b border-default-100 dark:border-zinc-800/50 pb-4 mb-3 last:border-0 last:mb-0"
-                        >
-                          {/* ---------------- โหมดแก้ไข (Edit Mode) ---------------- */}
-                          {editingSubtaskId === s.id ? (
-                            <div className="bg-default-50 dark:bg-zinc-800/50 p-4 rounded-xl space-y-4 animate-appearance-in border border-default-200 dark:border-zinc-700 shadow-sm">
-                              <div className="flex justify-between items-center">
-                                <p className="text-sm font-bold text-primary flex items-center gap-2">
-                                  <Pencil size={16} /> แก้ไขรายการย่อย
-                                </p>
-                              </div>
-
-                              <Input
-                                size="sm"
-                                isRequired
-                                label="ชื่อรายการย่อย"
-                                labelPlacement="outside"
-                                placeholder="ระบุชื่องานย่อย..."
-                                variant="bordered"
-                                value={editingSubtaskData.detailName}
-                                onValueChange={(val) =>
-                                  setEditingSubtaskData({
-                                    ...editingSubtaskData,
-                                    detailName: val,
-                                  })
-                                }
-                              />
-
-                              <Textarea
-                                size="sm"
-                                label="รายละเอียดเพิ่มเติม"
-                                labelPlacement="outside"
-                                placeholder="ระบุรายละเอียด..."
-                                variant="bordered"
-                                minRows={2}
-                                value={editingSubtaskData.detailDesc}
-                                onValueChange={(val) =>
-                                  setEditingSubtaskData({
-                                    ...editingSubtaskData,
-                                    detailDesc: val,
-                                  })
-                                }
-                              />
-
-                              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                                <Input
-                                  size="sm"
-                                  type="date"
-                                  label="วันที่เริ่ม"
-                                  labelPlacement="outside"
-                                  variant="bordered"
-                                  value={editingSubtaskData.startPlanned}
-                                  onValueChange={(val) =>
-                                    setEditingSubtaskData({
-                                      ...editingSubtaskData,
-                                      startPlanned: val,
-                                    })
-                                  }
-                                />
-                                <Input
-                                  size="sm"
-                                  type="number"
-                                  label="ระยะเวลา (วัน)"
-                                  labelPlacement="outside"
-                                  placeholder="เช่น 3"
-                                  variant="bordered"
-                                  min={1}
-                                  value={editingSubtaskData.durationDays}
-                                  onValueChange={(val) =>
-                                    setEditingSubtaskData({
-                                      ...editingSubtaskData,
-                                      durationDays: val,
-                                    })
-                                  }
-                                />
-                                <Input
-                                  size="sm"
-                                  type="number"
-                                  label="น้ำหนักงาน (%)"
-                                  labelPlacement="outside"
-                                  placeholder="เช่น 10"
-                                  variant="bordered"
-                                  min={0}
-                                  max={100}
-                                  value={editingSubtaskData.weightPercent}
-                                  onValueChange={(val) =>
-                                    setEditingSubtaskData({
-                                      ...editingSubtaskData,
-                                      weightPercent: val,
-                                    })
-                                  }
-                                />
-                              </div>
-
-                              <div className="flex justify-end gap-3 pt-4 border-t border-default-200 dark:border-zinc-700 mt-2">
-                                <Button
-                                  size="sm"
-                                  variant="light"
-                                  color="danger"
-                                  onPress={() => setEditingSubtaskId(null)}
-                                  isDisabled={isSavingSubtaskEdit}
-                                >
-                                  ยกเลิก
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  color="primary"
-                                  className="font-medium px-6"
-                                  onPress={handleSaveSubtaskEdit}
-                                  isLoading={isSavingSubtaskEdit}
-                                >
-                                  บันทึกการแก้ไข
-                                </Button>
-                              </div>
-                            </div>
-                          ) : (
-                            /* ---------------- โหมดปกติ (Display Mode) ---------------- */
-                            <div className="flex items-start justify-between w-full group transition-all duration-300 hover:bg-default-50 dark:hover:bg-zinc-800/40 p-3 rounded-xl -mx-3 px-3">
-                              <div className="flex items-start gap-3 w-full">
-                                {/* Checkbox / Spinner */}
-                                <div className="mt-0.5 shrink-0">
-                                  {updatingSubtaskId === s.id ? (
-                                    <Spinner
-                                      size="sm"
-                                      color="primary"
-                                      className="w-5 h-5 ml-1"
-                                    />
-                                  ) : (
-                                    <Checkbox
-                                      isSelected={!!s.status}
-                                      onValueChange={() =>
-                                        handleToggleSubtask(s.id, !!s.status)
-                                      }
-                                    />
-                                  )}
-                                </div>
-
-                                {/* ข้อมูลงานย่อย */}
-                                <div
-                                  className="flex flex-col flex-1 pr-2 cursor-pointer"
-                                  onClick={() =>
-                                    !updatingSubtaskId &&
-                                    handleToggleSubtask(s.id, !!s.status)
-                                  }
-                                >
-                                  <span
-                                    className={`text-sm font-semibold ${!!s.status ? "line-through text-default-400" : "text-foreground"}`}
-                                  >
-                                    {s.detailName}
-                                  </span>
-
-                                  {s.detailDesc && (
-                                    <span
-                                      className={`text-sm mt-1 leading-relaxed ${!!s.status ? "text-default-300" : "text-default-500"}`}
-                                    >
-                                      {s.detailDesc}
-                                    </span>
-                                  )}
-
-                                  <div className="flex flex-wrap gap-2 mt-3 text-[11px] font-medium text-default-500">
-                                    {s.startPlanned && (
-                                      <span className="flex items-center gap-1.5 bg-default-100 dark:bg-zinc-800 px-2.5 py-1 rounded-md">
-                                        <Clock size={12} /> เริ่ม:{" "}
-                                        {new Date(
-                                          s.startPlanned,
-                                        ).toLocaleDateString("th-TH", {
-                                          day: "numeric",
-                                          month: "short",
-                                        })}
-                                      </span>
-                                    )}
-                                    {s.durationDays && (
-                                      <span className="bg-default-100 dark:bg-zinc-800 px-2.5 py-1 rounded-md">
-                                        เวลา: {s.durationDays} วัน
-                                      </span>
-                                    )}
-                                    {s.weightPercent > 0 && (
-                                      <span className="bg-primary/10 text-primary px-2.5 py-1 rounded-md">
-                                        น้ำหนัก: {s.weightPercent}%
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* ปุ่มแก้ไข */}
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="light"
-                                className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
-                                onPress={() => startEditSubtask(s)}
-                              >
-                                <Pencil size={16} />
-                              </Button>
-                            </div>
-                          )}
-                        </div>
+                          subtask={s}
+                          updatingSubtaskId={updatingSubtaskId}
+                          editingSubtaskId={editingSubtaskId}
+                          editingSubtaskData={editingSubtaskData}
+                          isSavingSubtaskEdit={isSavingSubtaskEdit}
+                          setEditingSubtaskData={setEditingSubtaskData}
+                          startEditSubtask={startEditSubtask}
+                          setEditingSubtaskId={setEditingSubtaskId}
+                          handleSaveSubtaskEdit={handleSaveSubtaskEdit}
+                          handleToggleSubtask={handleToggleSubtask}
+                        />
                       ))
                     ) : (
                       <div className="text-sm text-default-400 bg-default-50 dark:bg-zinc-800/30 p-6 rounded-xl text-center border border-dashed border-default-200 dark:border-zinc-700">
@@ -1227,103 +890,14 @@ const ProjectDetail = ({
                     )}
 
                     {/* Inline Form สำหรับเพิ่ม Subtask */}
-                    {!isAddingSubtask ? (
-                      <Button
-                        color="primary"
-                        variant="flat"
-                        size="sm"
-                        className="mt-2"
-                        onPress={() => setIsAddingSubtask(true)}
-                      >
-                        + เพิ่มรายการย่อย
-                      </Button>
-                    ) : (
-                      <div className="bg-default-50 dark:bg-zinc-800/50 p-4 rounded-xl space-y-3 mt-3 border border-default-200 dark:border-zinc-700 animate-appearance-in">
-                        <p className="text-sm font-semibold text-primary">
-                          เพิ่มรายการย่อยใหม่
-                        </p>
-                        <Input
-                          size="sm"
-                          isRequired
-                          label="ชื่อรายการย่อย"
-                          variant="bordered"
-                          value={newSubtask.detailName}
-                          onValueChange={(val) =>
-                            setNewSubtask({ ...newSubtask, detailName: val })
-                          }
-                        />
-                        <Textarea
-                          size="sm"
-                          label="รายละเอียด"
-                          variant="bordered"
-                          minRows={1}
-                          value={newSubtask.detailDesc}
-                          onValueChange={(val) =>
-                            setNewSubtask({ ...newSubtask, detailDesc: val })
-                          }
-                        />
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                          <Input
-                            size="sm"
-                            type="date"
-                            label="วันที่เริ่ม"
-                            variant="bordered"
-                            value={newSubtask.startPlanned}
-                            onValueChange={(val) =>
-                              setNewSubtask({
-                                ...newSubtask,
-                                startPlanned: val,
-                              })
-                            }
-                          />
-                          <Input
-                            size="sm"
-                            type="number"
-                            label="ระยะเวลา (วัน)"
-                            variant="bordered"
-                            min={1}
-                            value={newSubtask.durationDays}
-                            onValueChange={(val) =>
-                              setNewSubtask({
-                                ...newSubtask,
-                                durationDays: val,
-                              })
-                            }
-                          />
-                          <Input
-                            size="sm"
-                            type="number"
-                            label="น้ำหนักงาน (%)"
-                            variant="bordered"
-                            min={0}
-                            max={100}
-                            value={newSubtask.weightPercent}
-                            onValueChange={(val) =>
-                              setNewSubtask({ ...newSubtask, weightPercent: val })
-                            }
-                          />
-                        </div>
-                        <div className="flex justify-end gap-2 pt-2">
-                          <Button
-                            size="sm"
-                            variant="light"
-                            color="danger"
-                            onPress={() => setIsAddingSubtask(false)}
-                            isDisabled={isSavingSubtask}
-                          >
-                            ยกเลิก
-                          </Button>
-                          <Button
-                            size="sm"
-                            color="primary"
-                            onPress={handleSaveSubtask}
-                            isLoading={isSavingSubtask}
-                          >
-                            บันทึก
-                          </Button>
-                        </div>
-                      </div>
-                    )}
+                    <CreateSubtaskForm
+                      isAddingSubtask={isAddingSubtask}
+                      setIsAddingSubtask={setIsAddingSubtask}
+                      newSubtask={newSubtask}
+                      setNewSubtask={setNewSubtask}
+                      handleSaveSubtask={handleSaveSubtask}
+                      isSavingSubtask={isSavingSubtask}
+                    />
                   </div>
                 )}
               </ModalBody>
