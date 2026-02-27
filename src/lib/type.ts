@@ -190,3 +190,19 @@ export interface UpdateMainTaskProps {
   isUpdatingStatusMainTask: boolean;
   handleUpdateStatusMainTask: (status: string) => void;
 }
+
+export interface DeleteTaskModalProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  taskName?: string;
+  isDeleting: boolean;
+  onConfirm: () => void;
+}
+
+export interface TaskActionButtonsProps {
+  isEditMode: boolean;
+  setIsEditMode: (val: boolean) => void;
+  isSaving: boolean;
+  handleSaveTaskEdit: () => void;
+  setIsDeleteModalOpen: (val: boolean) => void;
+}
