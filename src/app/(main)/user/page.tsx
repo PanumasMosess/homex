@@ -1,6 +1,11 @@
 import { auth } from "@/auth";
 import MainPageUser from "@/components/user/MainPageUser";
 import { prisma } from "@/lib/prisma";
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "User",
+};
 
 const Page = async () => {
 

@@ -1,6 +1,11 @@
 import { auth } from "@/auth";
 import ProjectDetail from "@/components/projects/ProjectDetail";
+import { Metadata } from "next";
 import prisma from "@/lib/prisma";
+
+export const metadata: Metadata = {
+  title: "Projects Detail",
+};
 
 const Page = async () => {
   const session = await auth();
