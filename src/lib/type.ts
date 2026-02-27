@@ -58,7 +58,7 @@ export interface Subtask {
   startActual?: string | Date | null;
   finishActual?: string | Date | null;
 
-  durationDays?: number;
+  durationDays?: number | null;
   sortOrder?: number;
 }
 
