@@ -33,7 +33,6 @@ import type { Tab, Task, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
 import {
-  calcProgress,
   calculateTaskProgress,
   formatDate,
   getMediaType,
@@ -161,7 +160,10 @@ const ProjectDetail = ({
 
   const projectProgress = useMemo(() => {
     if (tasks.length === 0) return 0;
-    const total = tasks.reduce((a, t) => a + calcProgress(t), 0);
+    const total = tasks.reduce((acc, t) => {
+      if (t.status === "DONE") return acc + 100;
+      return acc + (Number(t.progressPercent) || 0);
+    }, 0);
     return Math.round(total / tasks.length);
   }, [tasks]);
 
@@ -179,7 +181,7 @@ const ProjectDetail = ({
   const handleGenerateVideo = async () => {
     setIsGeneratingVideo(true);
     try {
-      const prompt_vdo = `Locked-off camera...`;
+      const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
       const startRes = await startVideoJob(prompt_vdo, projectInfo.image);
 
       if (!startRes.success || !startRes.operationName) {
@@ -236,18 +238,37 @@ const ProjectDetail = ({
       const taskToUpdate = tasks.find((t) => t.id === taskId);
       if (!taskToUpdate || taskToUpdate.status === newStatus) return;
 
+      const newProgress =
+        newStatus === "DONE" ? 100 : taskToUpdate.progressPercent;
+
       setTasks((prev) =>
-        prev.map((t) => (t.id === taskId ? { ...t, status: newStatus } : t)),
+        prev.map((t) =>
+          t.id === taskId
+            ? { ...t, status: newStatus, progressPercent: newProgress }
+            : t,
+        ),
       );
+
       try {
         const res = await updateTaskStatus(taskId, newStatus);
         if (!res.success) throw new Error(res.error || "บันทึกไม่สำเร็จ");
+
+        if (newStatus === "DONE") {
+          await updateMainTask(taskId, { progressPercent: 100 });
+        }
+
         toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
       } catch (error) {
         toast.error("อัปเดตสถานะไม่สำเร็จ ระบบจะดึงข้อมูลเดิมกลับมา");
         setTasks((prev) =>
           prev.map((t) =>
-            t.id === taskId ? { ...t, status: taskToUpdate.status } : t,
+            t.id === taskId
+              ? {
+                  ...t,
+                  status: taskToUpdate.status,
+                  progressPercent: taskToUpdate.progressPercent,
+                }
+              : t,
           ),
         );
       }
@@ -332,10 +353,14 @@ const ProjectDetail = ({
       if (!res.success || !res.data)
         throw new Error(res.message || "สร้างรายการย่อยไม่สำเร็จ");
 
+      const updatedDetails = [...(selected.details || []), res.data];
+      const newProgress = calculateTaskProgress(updatedDetails);
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
       setTasks((prev) =>
         prev.map((t) =>
           t.id === selected.id
-            ? { ...t, details: [...(t.details || []), res.data] }
+            ? { ...t, details: updatedDetails, progressPercent: newProgress }
             : t,
         ),
       );
@@ -384,14 +409,20 @@ const ProjectDetail = ({
       if (!res.success || !res.data)
         throw new Error(res.error || "แก้ไขไม่สำเร็จ");
 
+      const updatedDetails = (selected.details || []).map((sub: any) =>
+        sub.id === editingSubtaskId ? res.data : sub,
+      );
+
+      const newProgress = calculateTaskProgress(updatedDetails);
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
       setTasks((prev) =>
         prev.map((t) => {
           if (t.id === selected.id) {
             return {
               ...t,
-              details: (t.details || []).map((sub: any) =>
-                sub.id === editingSubtaskId ? res.data : sub,
-              ),
+              details: updatedDetails,
+              progressPercent: newProgress,
             };
           }
           return t;
@@ -407,15 +438,25 @@ const ProjectDetail = ({
     }
   };
 
+  // 🌟 3. อัปเดต % เมื่อกดเปลี่ยนสถานะงานหลัก
   const handleUpdateStatusMainTask = async (newStatus: string) => {
     if (!selected) return;
     setIsUpdatingStatusMainTask(true);
     try {
       const res = await updateTaskStatus(selected.id, newStatus);
       if (!res.success) throw new Error(res.error || "อัปเดตสถานะไม่สำเร็จ");
+
+      let newProgress = selected.progressPercent;
+      if (newStatus === "DONE") {
+        newProgress = 100;
+        await updateMainTask(selected.id, { progressPercent: 100 });
+      }
+
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selected.id ? { ...t, status: newStatus } : t,
+          t.id === selected.id
+            ? { ...t, status: newStatus, progressPercent: newProgress }
+            : t,
         ),
       );
       toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
@@ -437,16 +478,16 @@ const ProjectDetail = ({
       const res = await toggleSubtaskStatus(subtaskId, newStatus);
       if (!res.success) throw new Error(res.error || "อัปเดตไม่สำเร็จ");
 
+      const updatedDetails = (selected.details || []).map((sub: any) =>
+        sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
+      );
+
+      const newProgress = calculateTaskProgress(updatedDetails);
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
       setTasks((prev) =>
         prev.map((task) => {
           if (task.id === selected.id) {
-            const updatedDetails = (task.details || []).map((sub: any) =>
-              sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
-            );
-
-            // ใช้ฟังก์ชัน calculateTaskProgress ที่คุณมีใน setting_data
-            const newProgress = calculateTaskProgress(updatedDetails);
-
             return {
               ...task,
               details: updatedDetails,
@@ -514,7 +555,7 @@ const ProjectDetail = ({
             <Chip color="primary">IN PROGRESS</Chip>
             <Chip variant="flat">{projectProgress}% Complete</Chip>
           </div>
-          <Progress value={projectProgress} />
+          <Progress value={projectProgress} color="primary" />
 
           <div className="pt-2">
             <Button
@@ -698,9 +739,81 @@ const ProjectDetail = ({
         <ModalContent className="max-md:h-screen max-md:flex max-md:flex-col max-md:overflow-hidden">
           {selected ? (
             <>
+              {/* 🌟 HEADER ของ Mobile */}
+              <div className="md:hidden p-4 flex items-center justify-between border-b border-default-200 dark:border-zinc-800 shrink-0 bg-background z-10">
+                <div className="flex items-center gap-3 overflow-hidden">
+                  <button
+                    onClick={() => setSelectedId(null)}
+                    className="p-2 -ml-2 text-default-500"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="24"
+                      height="24"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <path d="m15 18-6-6 6-6" />
+                    </svg>
+                  </button>
+                  <p className="font-semibold truncate">
+                    {isEditMode
+                      ? "แก้ไขรายละเอียดงาน"
+                      : selected.taskName || "Untitled Task"}
+                  </p>
+                </div>
+              </div>
+
               <ModalBody className="space-y-5 md:py-8 md:px-2 md:overflow-y-auto md:my-auto scrollbar-hide max-md:flex-1 max-md:overflow-y-auto max-md:pb-20 relative">
                 {/* 📌 เครื่องมือ (มุมขวาบน - Desktop) */}
                 <div className="hidden md:flex absolute top-4 right-16 gap-2 z-10">
+                  {isEditMode ? (
+                    <>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsEditMode(false)}
+                        isDisabled={isSaving}
+                      >
+                        ยกเลิก
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="primary"
+                        onPress={handleSaveTaskEdit}
+                        isLoading={isSaving}
+                      >
+                        บันทึก
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button
+                        size="sm"
+                        variant="flat"
+                        onPress={() => setIsEditMode(true)}
+                      >
+                        ✏️ แก้ไข
+                      </Button>
+                      <Button
+                        size="sm"
+                        color="danger"
+                        variant="flat"
+                        onPress={() => setIsDeleteModalOpen(true)}
+                      >
+                        🗑️ ลบ
+                      </Button>
+                    </>
+                  )}
+                </div>
+
+                {/* 📌 เครื่องมือ Mobile */}
+                <div className="md:hidden flex justify-end gap-2 pt-2 px-4">
                   {isEditMode ? (
                     <>
                       <Button
@@ -1076,7 +1189,7 @@ const ProjectDetail = ({
                                 isIconOnly
                                 size="sm"
                                 variant="light"
-                                className="opacity-0 group-hover:opacity-100 text-default-400 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
+                                className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
                                 onPress={() => startEditSubtask(s)}
                               >
                                 <Pencil size={16} />
