@@ -206,3 +206,14 @@ export interface TaskActionButtonsProps {
   handleSaveTaskEdit: () => void;
   setIsDeleteModalOpen: (val: boolean) => void;
 }
+
+export interface CreatePositionProps {
+  isOpen: boolean;
+  onOpenChange: (v: boolean) => void;
+  editData?: any;
+}
+
+export interface CreatePositionData {
+  positionName: string;
+  positionDesc?: string;
+}

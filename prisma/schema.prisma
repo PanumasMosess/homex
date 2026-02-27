@@ -94,7 +94,7 @@ model position {
 
   positionName String // ชื่อตำแหน่ง เช่น "CEO", "Engineer", "Customer"
   positionDesc String? // คำอธิบายตำแหน่ง
-
+  isActive     Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
