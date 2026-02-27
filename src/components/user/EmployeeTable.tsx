@@ -24,6 +24,8 @@ import {
   Trash2,
 } from "lucide-react";
 
+import { RotateCcw } from "lucide-react";
+
 export default function EmployeeTable({
   users = [],
   onAdd,
@@ -170,10 +172,15 @@ export default function EmployeeTable({
                       size="sm"
                       radius="full"
                       variant="flat"
-                      color="danger"
+                      color={u.isActive ? "danger" : "primary"}
                       onPress={() => onDelete?.(u)}
                     >
-                      <Trash2 size={16} />
+
+                      {u.isActive
+                        ? <Trash2 size={16} />
+                        : <RotateCcw size={16} />
+                      }
+
                     </Button>
 
                   </div>

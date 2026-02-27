@@ -34,7 +34,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 
-import { createEmployee } from "@/lib/actions/actionUser";
+import { createEmployee, updateEmployee } from "@/lib/actions/actionUser";
 import { deleteFileS3, handleImageUpload } from "@/lib/actions/actionIndex";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -48,9 +48,11 @@ export default function CreateEmployee({
   isOpen,
   onOpenChange,
   positions = [],
+  editData
 }: CreateEmployeeProps) {
 
   const router = useRouter();
+  const isEditMode = !!editData;
 
   const [isPending, startTransition] = useTransition();
 
@@ -71,6 +73,36 @@ export default function CreateEmployee({
       submittingRef.current = false;
     }
   }, [isOpen]);
+
+  useEffect(() => {
+
+    if (isOpen) {
+
+      if (isEditMode && editData) {
+
+        formEmployee.reset({
+          username: editData.username ?? "",
+          displayName: editData.displayName ?? "",
+          phone: editData.phone ?? "",
+          email: editData.email ?? "",
+          address: editData.address ?? "",
+          note: editData.note ?? "",
+          positionId: editData.positionId ?? undefined,
+          password: "",
+        });
+
+        setImagePreview(editData.avatarUrl ?? null);
+        setImageUrl(editData.avatarUrl ?? undefined);
+
+      } else {
+        resetFormState();
+      }
+
+    } else {
+      resetFormState();
+    }
+
+  }, [isOpen, editData]);
 
   const formEmployee = useForm<EmployeeSchema>({
     resolver: zodResolver(EmployeeSchema_),
@@ -95,38 +127,33 @@ export default function CreateEmployee({
     setIsDeleting(false);
   };
 
-  const handleModalClose = async () => {
+const handleModalClose = async (isSuccess = false) => {
 
-    // ✅ ถ้าบันทึกสำเร็จ ห้ามลบไฟล์
-    if (isSuccessRef.current) {
-      onOpenChange(false);
-      resetFormState();
-      return;
-    }
+  const originalImage = editData?.avatarUrl;
 
-    if (imageUrl) {
-      setIsDeleting(true);
+  // 🔥 ถ้า cancel เท่านั้นที่ลบ
+  if (!isSuccess && imageUrl && imageUrl !== originalImage) {
 
-      try {
-        const urlObj = new URL(imageUrl);
-        let fileKey = urlObj.pathname.substring(1);
+    setIsDeleting(true);
 
-        if (fileKey.startsWith("homex/")) {
-          fileKey = fileKey.replace("homex/", "");
-        }
+    try {
+      const urlObj = new URL(imageUrl);
+      let fileKey = urlObj.pathname.substring(1);
 
-        await deleteFileS3(fileKey);
-
-      } catch { }
-
-      finally {
-        setIsDeleting(false);
+      if (fileKey.startsWith("homex/")) {
+        fileKey = fileKey.replace("homex/", "");
       }
-    }
 
-    resetFormState();
-    onOpenChange(false);
-  };
+      await deleteFileS3(fileKey);
+
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  resetFormState();
+  onOpenChange(false);
+};
 
   const handleImageChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -160,16 +187,41 @@ export default function CreateEmployee({
       toast.warning("กรุณารออัปโหลดรูปภาพ...");
       return;
     }
-    if (submittingRef.current) return; // 🔥 กันยิงซ้ำ
 
+    if (submittingRef.current) return;
     submittingRef.current = true;
-    startTransition(() => {
-      formAction({
-        ...data,
-        positionId: Number(data.positionId),
-        avatarUrl: imageUrl,
-      });
+
+    startTransition(async () => {
+
+      if (isEditMode) {
+
+        const res = await updateEmployee(
+          editData.id,
+          {
+            ...data,
+            positionId: Number(data.positionId),
+            avatarUrl: imageUrl,
+          }
+        );
+
+        if (res.success) {
+          toast.success("แก้ไขพนักงานเรียบร้อย!");
+          router.refresh();
+          handleModalClose(true);
+        }
+
+      } else {
+
+        formAction({
+          ...data,
+          positionId: Number(data.positionId),
+          avatarUrl: imageUrl,
+        });
+
+      }
+
     });
+
   };
 
   useEffect(() => {
@@ -183,7 +235,7 @@ export default function CreateEmployee({
       router.refresh();
       submittingRef.current = false;
 
-      handleModalClose();
+      handleModalClose(true);
     }
     if (state.error) {
       submittingRef.current = false;
@@ -198,7 +250,7 @@ export default function CreateEmployee({
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
-        if (!open) handleModalClose();
+        if (!open) handleModalClose(false);
         else onOpenChange(true);
       }}
       scrollBehavior="inside"
@@ -227,10 +279,10 @@ export default function CreateEmployee({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold">
-                เพิ่มพนักงาน
+                {isEditMode ? "แก้ไขพนักงาน" : "เพิ่มพนักงาน"}
               </h2>
               <p className="text-default-400 text-xs">
-                สร้างบัญชีพนักงานใหม่
+                {isEditMode ? "แก้ไขข้อมูลพนักงาน" : "สร้างบัญชีพนักงานใหม่"}
               </p>
             </div>
           </ModalHeader>
@@ -301,10 +353,18 @@ export default function CreateEmployee({
               />
 
               <Input
-                isRequired
+                isRequired={!isEditMode}   // 🔥 create = required, edit = optional
                 type="password"
-                label="Password"
-                placeholder="ระบุ Password"
+                label={
+                  isEditMode
+                    ? "เปลี่ยนรหัสผ่าน (เว้นว่างถ้าไม่ต้องการเปลี่ยน)"
+                    : "Password"
+                }
+                placeholder={
+                  isEditMode
+                    ? "กรอกเฉพาะกรณีต้องการเปลี่ยน"
+                    : "ระบุ Password"
+                }
                 labelPlacement="outside"
                 variant="bordered"
                 startContent={<Lock size={18} />}
@@ -398,7 +458,7 @@ export default function CreateEmployee({
               variant="light"
               color="danger"
               radius="full"
-              onPress={handleModalClose}
+              onPress={() => handleModalClose(false)}
               isDisabled={isBusy}
             >
               ยกเลิก
@@ -416,7 +476,9 @@ export default function CreateEmployee({
                   ? "กำลังลบ..."
                   : isPending
                     ? "กำลังบันทึก..."
-                    : "เพิ่มพนักงาน"}
+                    : isEditMode
+                      ? "บันทึกการแก้ไข"
+                      : "เพิ่มพนักงาน"}
             </Button>
           </ModalFooter>
         </form>

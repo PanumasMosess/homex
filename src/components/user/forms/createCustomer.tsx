@@ -32,7 +32,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 
-import { createCustomer } from "@/lib/actions/actionUser";
+import { createCustomer, updateCustomer } from "@/lib/actions/actionUser";
 import { deleteFileS3, handleImageUpload } from "@/lib/actions/actionIndex";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
@@ -48,9 +48,11 @@ import {
 export default function CreateCustomer({
   isOpen,
   onOpenChange,
+  editData
 }: CreateCustomerProps) {
 
   const router = useRouter();
+  const isEditMode = !!editData;
 
   const [isPending, startTransition] = useTransition();
 
@@ -64,6 +66,38 @@ export default function CreateCustomer({
   // const handledRef = useRef(false);
   // const isSuccessRef = useRef(false);
   const submittingRef = useRef(false);
+
+  useEffect(() => {
+
+    if (isOpen) {
+
+      if (isEditMode && editData) {
+
+        formCustomer.reset({
+          username: editData.username ?? "",
+          displayName: editData.displayName ?? "",
+          phone: editData.phone ?? "",
+          email: editData.email ?? "",
+          address: editData.address ?? "",
+          note: editData.note ?? "",
+          password: ""
+        });
+
+        setImagePreview(editData.avatarUrl ?? null);
+        setImageUrl(editData.avatarUrl ?? undefined);
+
+      } else {
+        resetFormState();
+      }
+
+    } else {
+
+      // 🔥 reset ตอน modal ปิด
+      resetFormState();
+
+    }
+
+  }, [isOpen, editData]);
 
   useEffect(() => {
     if (isOpen) {
@@ -93,38 +127,33 @@ export default function CreateCustomer({
     setIsDeleting(false);
   };
 
-  const handleModalClose = async () => {
+const handleModalClose = async (isSuccess = false) => {
 
-    // ✅ ถ้าบันทึกสำเร็จ ห้ามลบไฟล์
-    if (isSuccessRef.current) {
-      onOpenChange(false);
-      resetFormState();
-      return;
-    }
+  const originalImage = editData?.avatarUrl;
 
-    if (imageUrl) {
-      setIsDeleting(true);
+  // ลบเฉพาะ cancel
+  if (!isSuccess && imageUrl && imageUrl !== originalImage) {
 
-      try {
-        const urlObj = new URL(imageUrl);
-        let fileKey = urlObj.pathname.substring(1);
+    setIsDeleting(true);
 
-        if (fileKey.startsWith("homex/")) {
-          fileKey = fileKey.replace("homex/", "");
-        }
+    try {
+      const urlObj = new URL(imageUrl);
+      let fileKey = urlObj.pathname.substring(1);
 
-        await deleteFileS3(fileKey);
-
-      } catch { }
-
-      finally {
-        setIsDeleting(false);
+      if (fileKey.startsWith("homex/")) {
+        fileKey = fileKey.replace("homex/", "");
       }
-    }
 
-    resetFormState();
-    onOpenChange(false);
-  };
+      await deleteFileS3(fileKey);
+
+    } finally {
+      setIsDeleting(false);
+    }
+  }
+
+  resetFormState();
+  onOpenChange(false);
+};
 
   const handleImageChange = async (
     e: React.ChangeEvent<HTMLInputElement>,
@@ -164,11 +193,33 @@ export default function CreateCustomer({
 
     submittingRef.current = true;
 
-    startTransition(() => {
-      formAction({
-        ...data,
-        avatarUrl: imageUrl,
-      });
+    startTransition(async () => {
+
+      if (isEditMode) {
+
+        const res = await updateCustomer(
+          editData.id,
+          {
+            ...data,
+            avatarUrl: imageUrl
+          }
+        );
+
+        if (res.success) {
+          toast.success("แก้ไขลูกค้าเรียบร้อย!");
+          router.refresh();
+          handleModalClose(true);
+        }
+
+      } else {
+
+        formAction({
+          ...data,
+          avatarUrl: imageUrl
+        });
+
+      }
+
     });
   };
 
@@ -182,7 +233,7 @@ export default function CreateCustomer({
       router.refresh();
       submittingRef.current = false;
 
-      handleModalClose();
+      handleModalClose(true);
     }
 
     if (state.error) {
@@ -198,7 +249,7 @@ export default function CreateCustomer({
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
-        if (!open) handleModalClose();
+        if (!open) handleModalClose(false);
         else onOpenChange(true);
       }}
       scrollBehavior="inside"
@@ -227,10 +278,10 @@ export default function CreateCustomer({
             </div>
             <div>
               <h2 className="text-lg sm:text-xl font-bold">
-                เพิ่มลูกค้า
+                {isEditMode ? "แก้ไขลูกค้า" : "เพิ่มลูกค้า"}
               </h2>
               <p className="text-default-400 text-xs">
-                สร้างบัญชีลูกค้าใหม่
+                {isEditMode ? "แก้ไขข้อมูลลูกค้า" : "สร้างบัญชีลูกค้าใหม่"}
               </p>
             </div>
           </ModalHeader>
@@ -301,10 +352,18 @@ export default function CreateCustomer({
               />
 
               <Input
-                isRequired
+                isRequired={!isEditMode}   // 🔥 create = required, edit = optional
                 type="password"
-                label="Password"
-                placeholder="ระบุ Password"
+                label={
+                  isEditMode
+                    ? "เปลี่ยนรหัสผ่าน (เว้นว่างถ้าไม่ต้องการเปลี่ยน)"
+                    : "Password"
+                }
+                placeholder={
+                  isEditMode
+                    ? "กรอกเฉพาะกรณีต้องการเปลี่ยน"
+                    : "ระบุ Password"
+                }
                 labelPlacement="outside"
                 variant="bordered"
                 startContent={<Lock size={18} />}
@@ -366,7 +425,7 @@ export default function CreateCustomer({
               variant="light"
               color="danger"
               radius="full"
-              onPress={handleModalClose}
+              onPress={() => handleModalClose(false)}
               isDisabled={isBusy}
             >
               ยกเลิก
@@ -384,7 +443,9 @@ export default function CreateCustomer({
                   ? "กำลังลบ..."
                   : isPending
                     ? "กำลังบันทึก..."
-                    : "เพิ่มลูกค้า"}
+                    : isEditMode
+                      ? "บันทึกการแก้ไข"
+                      : "เพิ่มลูกค้า"}
             </Button>
           </ModalFooter>
         </form>

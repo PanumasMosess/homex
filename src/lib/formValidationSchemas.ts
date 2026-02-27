@@ -98,7 +98,18 @@ export type SubTaskSchema = z.infer<typeof SubTaskSchema_>;
 export const EmployeeSchema_ = z.object({
   id: z.number().optional(),
   username: z.string().min(1, { message: "กรุณากรอก Username" }).max(50),
-  password: z.string().min(1, { message: "กรุณากรอกรหัสผ่าน" }),
+  password: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val || val === "") return true; // ว่าง = ผ่าน (edit mode)
+        return val.length >= 4; // ถ้าใส่ต้อง >= 4
+      },
+      {
+        message: "รหัสผ่านต้องอย่างน้อย 4 ตัวอักษร",
+      },
+    ),
   displayName: z.string().optional(),
   phone: z.string().optional(),
   email: z
@@ -120,7 +131,18 @@ export type EmployeeSchema = z.infer<typeof EmployeeSchema_>;
 export const CustomerSchema_ = z.object({
   id: z.number().optional(),
   username: z.string().min(1, { message: "กรุณากรอก Username" }).max(50),
-  password: z.string().min(1, { message: "กรุณากรอกรหัสผ่าน" }),
+  password: z
+    .string()
+    .optional()
+    .refine(
+      (val) => {
+        if (!val || val === "") return true; // ว่าง = ผ่าน (edit mode)
+        return val.length >= 4; // ถ้าใส่ต้อง >= 4
+      },
+      {
+        message: "รหัสผ่านต้องอย่างน้อย 4 ตัวอักษร",
+      },
+    ),
   displayName: z.string().optional(),
   phone: z.string().optional(),
   email: z
