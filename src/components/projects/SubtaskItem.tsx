@@ -1,8 +1,6 @@
-
 import { SubtaskItemProps } from "@/lib/type";
 import { Button, Checkbox, Input, Spinner, Textarea } from "@heroui/react";
 import { Clock, Pencil, Trash2 } from "lucide-react";
-
 
 export const SubtaskItem = ({
   subtask: s,
@@ -15,6 +13,7 @@ export const SubtaskItem = ({
   setEditingSubtaskId,
   handleSaveSubtaskEdit,
   handleToggleSubtask,
+  handleDeleteSubtask,
 }: SubtaskItemProps) => {
   return (
     <div className="border-b border-default-100 dark:border-zinc-800/50 pb-4 mb-3 last:border-0 last:mb-0">
@@ -61,7 +60,10 @@ export const SubtaskItem = ({
               variant="bordered"
               value={editingSubtaskData.startPlanned}
               onValueChange={(val) =>
-                setEditingSubtaskData({ ...editingSubtaskData, startPlanned: val })
+                setEditingSubtaskData({
+                  ...editingSubtaskData,
+                  startPlanned: val,
+                })
               }
             />
             <Input
@@ -74,7 +76,10 @@ export const SubtaskItem = ({
               min={1}
               value={editingSubtaskData.durationDays}
               onValueChange={(val) =>
-                setEditingSubtaskData({ ...editingSubtaskData, durationDays: val })
+                setEditingSubtaskData({
+                  ...editingSubtaskData,
+                  durationDays: val,
+                })
               }
             />
             <Input
@@ -88,7 +93,10 @@ export const SubtaskItem = ({
               max={100}
               value={editingSubtaskData.weightPercent}
               onValueChange={(val) =>
-                setEditingSubtaskData({ ...editingSubtaskData, weightPercent: val })
+                setEditingSubtaskData({
+                  ...editingSubtaskData,
+                  weightPercent: val,
+                })
               }
             />
           </div>
@@ -175,16 +183,27 @@ export const SubtaskItem = ({
             </div>
           </div>
 
-          {/* ปุ่มแก้ไข */}
-          <Button
-            isIconOnly
-            size="sm"
-            variant="light"
-            className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all shrink-0"
-            onPress={() => startEditSubtask(s)}
-          >
-            <Pencil size={16} />
-          </Button>
+          <div className="flex items-center gap-1 shrink-0">
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all"
+              onPress={() => startEditSubtask(s)}
+            >
+              <Pencil size={16} />
+            </Button>
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              color="danger"
+              className="text-default-400 hover:text-danger hover:bg-danger/10 transition-all"
+              onPress={() => handleDeleteSubtask(s.id)}
+            >
+              <Trash2 size={16} />
+            </Button>
+          </div>
         </div>
       )}
     </div>

@@ -171,6 +171,7 @@ export interface SubtaskItemProps {
   setEditingSubtaskId: (id: number | null) => void;
   handleSaveSubtaskEdit: () => void;
   handleToggleSubtask: (id: number, status: boolean) => void;
+  handleDeleteSubtask: (id: number) => void;
 }
 
 export interface CreateSubtaskFormProps {
@@ -216,4 +217,11 @@ export interface CreatePositionProps {
 export interface CreatePositionData {
   positionName: string;
   positionDesc?: string;
+}
+
+export interface DeleteSubtaskModalProps {
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  isDeleting: boolean;
+  onConfirm: () => void;
 }

@@ -445,3 +445,15 @@ export async function updateProjectProgressDB(
     };
   }
 }
+
+export async function deleteSubtask(subtaskId: number) {
+  try {
+    await prisma.task_detail.delete({
+      where: { id: subtaskId },
+    });
+    return { success: true };
+  } catch (error: any) {
+    console.error("Delete Subtask Error:", error);
+    return { success: false, error: "เกิดข้อผิดพลาดในการลบรายการย่อย" };
+  }
+}
