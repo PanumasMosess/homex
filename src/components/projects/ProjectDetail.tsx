@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Plus, Search, Building2, Clock, Pencil } from "lucide-react";
 
 import {
@@ -33,6 +33,7 @@ import type { Tab, Task, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
 import {
+  calcProgress,
   calculateTaskProgress,
   formatDate,
   getMediaType,
@@ -48,6 +49,7 @@ import {
   updateTaskStatus,
   updateVdoProject,
   updateSubtask,
+  updateProjectProgressDB,
 } from "@/lib/actions/actionProject";
 import { checkVideoStatus, startVideoJob } from "@/lib/ai/geminiAI";
 import MainTaskCard from "./MainTaskCard";
@@ -103,7 +105,6 @@ const ProjectDetail = ({
     null,
   );
 
-  // States สำหรับโหมดแก้ไข Subtask
   const [editingSubtaskId, setEditingSubtaskId] = useState<number | null>(null);
   const [editingSubtaskData, setEditingSubtaskData] = useState<any>({});
   const [isSavingSubtaskEdit, setIsSavingSubtaskEdit] = useState(false);
@@ -166,6 +167,30 @@ const ProjectDetail = ({
     }, 0);
     return Math.round(total / tasks.length);
   }, [tasks]);
+
+  const lastSavedProgress = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!projectInfo.id || tasks.length === 0) return;
+
+    const saveToDB = async () => {
+      if (lastSavedProgress.current !== projectProgress) {
+        const projectIdNum = parseInt(projectInfo.id);
+        if (!isNaN(projectIdNum)) {
+          const res = await updateProjectProgressDB(projectIdNum, projectProgress);
+          if (res.success) {
+            lastSavedProgress.current = projectProgress;
+          }
+        }
+      }
+    };
+
+    const timer = setTimeout(() => {
+      saveToDB();
+    }, 1000); 
+
+    return () => clearTimeout(timer);
+  }, [projectProgress, projectInfo.id, tasks.length]);
 
   const handleSelectTask = useCallback((id: number) => {
     setSelectedId(id);
@@ -438,7 +463,6 @@ const ProjectDetail = ({
     }
   };
 
-  // 🌟 3. อัปเดต % เมื่อกดเปลี่ยนสถานะงานหลัก
   const handleUpdateStatusMainTask = async (newStatus: string) => {
     if (!selected) return;
     setIsUpdatingStatusMainTask(true);
@@ -454,9 +478,7 @@ const ProjectDetail = ({
 
       setTasks((prev) =>
         prev.map((t) =>
-          t.id === selected.id
-            ? { ...t, status: newStatus, progressPercent: newProgress }
-            : t,
+          t.id === selected.id ? { ...t, status: newStatus, progressPercent: newProgress } : t,
         ),
       );
       toast.success(`เปลี่ยนสถานะงานเป็น ${newStatus} แล้ว`);
@@ -1277,10 +1299,7 @@ const ProjectDetail = ({
                             max={100}
                             value={newSubtask.weightPercent}
                             onValueChange={(val) =>
-                              setNewSubtask({
-                                ...newSubtask,
-                                weightPercent: val,
-                              })
+                              setNewSubtask({ ...newSubtask, weightPercent: val })
                             }
                           />
                         </div>
