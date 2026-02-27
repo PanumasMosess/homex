@@ -47,7 +47,11 @@ import {
   updateSubtask,
   updateProjectProgressDB,
 } from "@/lib/actions/actionProject";
-import { checkVideoStatus, startVideoJob } from "@/lib/ai/geminiAI";
+import {
+  checkVideoStatus,
+  generationImage3D,
+  startVideoJob,
+} from "@/lib/ai/geminiAI";
 import MainTaskCard from "./MainTaskCard";
 import TaskFilterTabs from "./TaskFilterTabs";
 import { SubtaskItem } from "./SubtaskItem";
@@ -248,6 +252,35 @@ const ProjectDetail = ({
         }
         setProjectInfo((prev) => ({ ...prev, video: finalVideoUrl }));
         await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl);
+        toast.success("สร้างและบันทึกสำเร็จ!");
+      }
+    } catch (error) {
+      toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
+    } finally {
+      setIsGeneratingVideo(false);
+    }
+  };
+
+  //สร้างไว้เผื่อใช้
+  const handelGenerate3D = async () => {
+    setIsGeneratingVideo(true);
+    try {
+      let finalVideoUrl = await generationImage3D(projectInfo.image, 0);
+      if (finalVideoUrl?.answer) {
+        if (projectInfo.video) {
+          try {
+            const urlObj = new URL(projectInfo.video);
+            let fileKey = urlObj.pathname.substring(1);
+            if (fileKey.startsWith("homex/"))
+              fileKey = fileKey.replace("homex/", "");
+            await deleteFileS3(fileKey);
+          } catch (err) {}
+        }
+        setProjectInfo((prev) => ({
+          ...prev,
+          video: finalVideoUrl?.answer || "",
+        }));
+        await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl?.answer);
         toast.success("สร้างและบันทึกสำเร็จ!");
       }
     } catch (error) {
