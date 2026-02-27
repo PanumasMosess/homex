@@ -265,7 +265,10 @@ const ProjectDetail = ({
   const handelGenerate3D = async () => {
     setIsGeneratingVideo(true);
     try {
-      let finalVideoUrl = await generationImage3D(projectInfo.image, 0);
+      let finalVideoUrl = await generationImage3D(
+        projectInfo.image,
+        projectProgress,
+      );
       if (finalVideoUrl?.answer) {
         if (projectInfo.video) {
           try {
