@@ -1,0 +1,2 @@
+-- AlterTable
+ALTER TABLE `position` ADD COLUMN `isActive` BOOLEAN NOT NULL DEFAULT true;

@@ -57,11 +57,30 @@ export default function MainPageUser({
 
         if (!q) return users;
 
-        return users.filter(u =>
-            (u.displayName ?? "")
-                .toLowerCase()
-                .includes(q.toLowerCase())
-        );
+        const keyword = q.toLowerCase().trim();
+        const isExactActive = keyword === "active";
+        const isExactInactive = keyword === "inactive";
+        
+        return users.filter(u => {
+
+            const isActive = Number(u.isActive) === 1;
+            const statusText = isActive ? "active" : "inactive";
+
+            // ✅ ถ้าพิมพ์ครบคำ → กรองเฉพาะสถานะนั้น
+            if (isExactActive) return isActive;
+            if (isExactInactive) return !isActive;
+
+            // ✅ ค้นหาปกติ (รวม status ด้วย)
+            return (
+                (u.displayName ?? "").toLowerCase().includes(keyword) ||
+                (u.username ?? "").toLowerCase().includes(keyword) ||
+                (u.phone ?? "").toLowerCase().includes(keyword) ||
+                (u.email ?? "").toLowerCase().includes(keyword) ||
+                (u.position?.positionName ?? "").toLowerCase().includes(keyword) ||
+                statusText.includes(keyword)
+            );
+
+        });
 
     }, [users, q]);
 

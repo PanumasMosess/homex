@@ -1,0 +1,22 @@
+import { auth } from "@/auth";
+import { prisma } from "@/lib/prisma";
+import MainPageSetting from "@/components/settings/MainPageSetting";
+
+export const dynamic = "force-dynamic";
+
+const Page = async () => {
+
+  const session = await auth();
+  const organizationId = Number(session?.user.organizationId);
+
+  const positions = await prisma.position.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+  });
+
+  return (
+    <MainPageSetting positions={positions} />
+  );
+};
+
+export default Page;

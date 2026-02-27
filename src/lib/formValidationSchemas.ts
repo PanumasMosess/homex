@@ -157,3 +157,19 @@ export const CustomerSchema_ = z.object({
 });
 
 export type CustomerSchema = z.infer<typeof CustomerSchema_>;
+
+export const PositionSchema_ = z.object({
+  id: z.number().optional(),
+
+  positionName: z
+    .string()
+    .min(1, { message: "กรุณากรอกชื่อตำแหน่ง" })
+    .max(100, { message: "ชื่อตำแหน่งยาวเกินไป" }),
+
+  positionDesc: z
+    .string()
+    .max(255, { message: "รายละเอียดต้องไม่เกิน 255 ตัวอักษร" })
+    .optional(),
+});
+
+export type PositionSchema = z.infer<typeof PositionSchema_>;
