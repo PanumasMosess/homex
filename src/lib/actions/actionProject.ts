@@ -422,3 +422,26 @@ export async function updateSubtask(subtaskId: number, data: any) {
   }
 }
 
+export async function updateProjectProgressDB(
+  projectId: number,
+  progressPercent: number,
+) {
+  try {
+    await prisma.project.update({
+      where: { id: projectId },
+      data: { progressPercent: Number(progressPercent), updatedAt: new Date() },
+    });
+    return {
+      success: true,
+      error: false,
+      message: "เกิดข้อผิดพลาด: ไม่สามารถสร้างรายการย่อยได้",
+    };
+  } catch (error) {
+    console.error("Update Project Progress Error:", error);
+    return {
+      success: false,
+      error: false,
+      message: "ไม่สามารถบันทึกเปอร์เซ็นต์โปรเจกต์ได้",
+    };
+  }
+}
