@@ -103,13 +103,15 @@ export async function checkVideoStatus(operationName: string) {
       throw new Error("ไม่สามารถดาวน์โหลดไฟล์วิดีโอจาก Google API ได้");
 
     const videoArrayBuffer = await videoFetchRes.arrayBuffer();
-    const videoBase64 = Buffer.from(videoArrayBuffer).toString("base64");
+    
+    const blob = new Blob([videoArrayBuffer], { type: "video/mp4" });
+    const formData = new FormData();
+    formData.append("file", blob, "ai_generated_video.mp4");
 
-    const base64WithPrefix = `data:video/mp4;base64,${videoBase64}`;
-
-    console.log("แปลงไฟล์สำเร็จ! กำลังอัปโหลดขึ้น S3...");
+    console.log("ดาวน์โหลดไฟล์สำเร็จ! กำลังอัปโหลดขึ้น S3...");
+    
     const s3Response = await sendbase64toS3DataVdo(
-      base64WithPrefix,
+      formData,
       "vdo_projects",
     );
 
