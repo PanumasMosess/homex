@@ -32,7 +32,7 @@ import { calculateTaskProgress, getMediaType } from "@/lib/setting_data";
 import { EmptyStateCard } from "./EmptyStateCard";
 import { DropColumn } from "./DropColumn";
 import { toast } from "react-toastify";
-import { deleteFileS3 } from "@/lib/actions/actionIndex";
+import { deleteFileS3, sendbase64toS3DataVdo } from "@/lib/actions/actionIndex";
 import {
   createSubTask,
   toggleSubtaskStatus,
@@ -50,7 +50,7 @@ import {
 } from "@/lib/ai/geminiAI";
 import MainTaskCard from "./MainTaskCard";
 import TaskFilterTabs from "./TaskFilterTabs";
-import { SubtaskItem } from "./SubtaskItem";
+import SubtaskItem from "./SubtaskItem";
 import CreateSubtaskForm from "./forms/createSubtaskForm";
 import UpdateMainTask from "./forms/updateMainTask";
 import DeleteTaskModal from "./DeleteTaskModal";
@@ -117,10 +117,18 @@ const ProjectDetail = ({
   );
   const [isDeletingSubtask, setIsDeletingSubtask] = useState(false);
 
+  const [visibleCount, setVisibleCount] = useState(10);
+  const observerTarget = useRef<HTMLDivElement | null>(null);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
     return () => clearTimeout(timer);
   }, [q]);
+
+  useEffect(() => {
+    setVisibleCount(10);
+  }, [activeTab, debouncedQ, view]);
 
   useEffect(() => {
     const id = localStorage.getItem("currentProjectId");
@@ -166,6 +174,29 @@ const ProjectDetail = ({
       return matchTab && matchQ;
     });
   }, [tasks, activeTab, debouncedQ]);
+
+  const displayedTasks = useMemo(() => {
+    return filteredTasks.slice(0, visibleCount);
+  }, [filteredTasks, visibleCount]);
+
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setVisibleCount((prev) => prev + 10);
+        }
+      },
+      { threshold: 0.1 },
+    );
+
+    if (observerTarget.current) {
+      observer.observe(observerTarget.current);
+    }
+
+    return () => {
+      if (observerTarget.current) observer.unobserve(observerTarget.current);
+    };
+  }, [observerTarget, displayedTasks.length]);
 
   const projectProgress = useMemo(() => {
     if (tasks.length === 0) return 0;
@@ -214,6 +245,7 @@ const ProjectDetail = ({
     }),
   );
 
+  // สร้างไว้ให้ gen by AI
   const handleGenerateVideo = async () => {
     setIsGeneratingVideo(true);
     try {
@@ -294,6 +326,49 @@ const ProjectDetail = ({
       toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
     } finally {
       setIsGeneratingVideo(false);
+    }
+  };
+
+  const handleUploadVideo = async (file: File) => {
+    if (!projectInfo.id) {
+      toast.error("ไม่พบข้อมูลโปรเจกต์");
+      return;
+    }
+    setIsUploadingVideo(true);
+
+    try {
+      if (projectInfo.video) {
+        try {
+          const urlObj = new URL(projectInfo.video);
+          let fileKey = urlObj.pathname.substring(1);
+          if (fileKey.startsWith("homex/")) {
+            fileKey = fileKey.replace("homex/", "");
+          }
+          await deleteFileS3(fileKey);
+        } catch (err) {
+          console.warn("Failed to delete old video or invalid URL", err);
+        }
+      }
+
+      const formData = new FormData();
+      formData.append("file", file);
+      const uploadRes = await sendbase64toS3DataVdo(formData, "vdo_projects");
+
+      if (!uploadRes.success || !uploadRes.url) {
+        throw new Error(uploadRes.error || "อัปโหลดขึ้นระบบไม่สำเร็จ");
+      }
+
+      await updateVdoProject(parseInt(projectInfo.id), uploadRes.url);
+
+      setProjectInfo((prev) => ({
+        ...prev,
+        video: uploadRes.url || "",
+      }));
+    } catch (error: any) {
+      toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
+    } finally {
+      toast.success("สร้างและบันทึกสำเร็จ!");
+      setIsUploadingVideo(false);
     }
   };
 
@@ -616,11 +691,13 @@ const ProjectDetail = ({
       {/* --- HERO SECTION --- */}
       <div className="bg-default-100 dark:bg-zinc-900 rounded-3xl p-6 lg:p-8 grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[560px_1fr] gap-6 items-center overflow-hidden">
         <div className="relative w-full h-[200px] sm:h-[240px] md:h-[220px] lg:h-[320px] rounded-2xl overflow-hidden bg-zinc-800">
-          {isGeneratingVideo && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
+          {(isGeneratingVideo || isUploadingVideo) && (
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300">
               <Spinner color="primary" size="lg" />
               <p className="text-white text-sm mt-3 font-medium animate-pulse">
-                AI กำลังทำงาน... อาจใช้เวลา 1-5 นาทีโปรดรอซักครู่นะครับ
+                {isGeneratingVideo
+                  ? "AI กำลังทำงาน... อาจใช้เวลา 1-5 นาทีโปรดรอซักครู่นะครับ"
+                  : "กำลังอัปโหลดวิดีโอ... โปรดรอสักครู่"}
               </p>
             </div>
           )}
@@ -633,6 +710,7 @@ const ProjectDetail = ({
               playsInline
               className="w-full h-full object-cover"
               src={mediaUrl}
+              key={mediaUrl} 
             />
           ) : mediaType === "image" ? (
             <img
@@ -662,7 +740,8 @@ const ProjectDetail = ({
           <Progress value={projectProgress} color="primary" />
 
           <div className="pt-2">
-            <Button
+            {/* --- Comment ปุ่ม AI เดิมไว้ --- */}
+            {/* <Button
               color="secondary"
               variant="shadow"
               isLoading={isGeneratingVideo}
@@ -672,7 +751,53 @@ const ProjectDetail = ({
               {isGeneratingVideo
                 ? "กำลังสร้างวิดีโอ..."
                 : "✨ สร้าง Video Timelapse ด้วย AI"}
-            </Button>
+            </Button> 
+            */}
+
+            <div className="relative inline-block">
+              <input
+                type="file"
+                accept=".mp4,.mov,video/mp4,video/quicktime"
+                className={`absolute inset-0 w-full h-full opacity-0 z-10 ${
+                  isUploadingVideo ? "cursor-not-allowed" : "cursor-pointer"
+                }`}
+                disabled={isUploadingVideo}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    if (file.size > 10 * 1024 * 1024) {
+                      toast.error(
+                        "ขนาดไฟล์ใหญ่เกินไป กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 10MB ครับ",
+                      );
+                      e.target.value = "";
+                      return;
+                    }
+                    const isValid =
+                      file.type === "video/mp4" ||
+                      file.type === "video/quicktime" ||
+                      file.name.toLowerCase().endsWith(".mp4") ||
+                      file.name.toLowerCase().endsWith(".mov");
+
+                    if (isValid) {
+                      await handleUploadVideo(file);
+                    } else {
+                      toast.error(
+                        "รองรับเฉพาะไฟล์นามสกุล .mp4 และ .mov เท่านั้นครับ",
+                      );
+                    }
+                  }
+                  e.target.value = "";
+                }}
+              />
+              <Button
+                color="primary"
+                variant="shadow"
+                className="font-medium"
+                isLoading={isUploadingVideo}
+              >
+                {isUploadingVideo ? "กำลังอัปโหลด..." : "📤 อัปโหลดวิดีโอ"}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -739,10 +864,27 @@ const ProjectDetail = ({
           {filteredTasks.length === 0 ? (
             <EmptyStateCard onOpen={onOpen} />
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-              {filteredTasks.map((t) => (
-                <MainTaskCard key={t.id} task={t} onSelect={handleSelectTask} />
-              ))}
+            <div className="flex flex-col gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
+                {/* 🌟 แสดงผล tasks ตามจำนวน visibleCount 🌟 */}
+                {displayedTasks.map((t) => (
+                  <MainTaskCard
+                    key={t.id}
+                    task={t}
+                    onSelect={handleSelectTask}
+                  />
+                ))}
+              </div>
+
+              {/* 🌟 จุดตรวจจับ (Target) สำหรับ Intersection Observer 🌟 */}
+              {visibleCount < filteredTasks.length && (
+                <div
+                  ref={observerTarget}
+                  className="flex items-center justify-center w-full py-8"
+                >
+                  <Spinner size="md" color="primary" />
+                </div>
+              )}
             </div>
           )}
         </>
@@ -794,6 +936,7 @@ const ProjectDetail = ({
             setIsEditMode(false);
             setIsAddingSubtask(false);
             setEditingSubtaskId(null);
+            setSubtaskIdToDelete(null);
           }
         }}
         size="3xl"
@@ -835,7 +978,6 @@ const ProjectDetail = ({
               </div>
 
               <ModalBody className="space-y-5 md:py-8 md:px-2 md:overflow-y-auto md:my-auto scrollbar-hide max-md:flex-1 max-md:overflow-y-auto max-md:pb-20 relative">
-                {/* 🌟 เรียกใช้ Component ปุ่มเครื่องมือ 🌟 */}
                 <TaskActionButtons
                   isEditMode={isEditMode}
                   setIsEditMode={setIsEditMode}
@@ -890,7 +1032,6 @@ const ProjectDetail = ({
                       </div>
                     )}
 
-                    {/* Inline Form สำหรับเพิ่ม Subtask */}
                     <CreateSubtaskForm
                       isAddingSubtask={isAddingSubtask}
                       setIsAddingSubtask={setIsAddingSubtask}

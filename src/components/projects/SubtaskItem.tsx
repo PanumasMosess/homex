@@ -2,7 +2,7 @@ import { SubtaskItemProps } from "@/lib/type";
 import { Button, Checkbox, Input, Spinner, Textarea } from "@heroui/react";
 import { Clock, Pencil, Trash2 } from "lucide-react";
 
-export const SubtaskItem = ({
+ const SubtaskItem = ({
   subtask: s,
   updatingSubtaskId,
   editingSubtaskId,
@@ -209,3 +209,5 @@ export const SubtaskItem = ({
     </div>
   );
 };
+
+export default SubtaskItem;
