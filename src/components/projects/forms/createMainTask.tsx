@@ -16,7 +16,7 @@ import {
 import {
   ClipboardList,
   CalendarDays,
-  CheckCircle2,
+  Banknote,
   AlertCircle,
   Clock,
   User,
@@ -51,7 +51,7 @@ const CreateMainTask = ({
       taskName: "",
       taskDesc: "",
       status: "TODO",
-      progressPercent: 0,
+      budget: "" as unknown as number,
       startPlanned: "",
       finishPlanned: "",
       coverImageUrl: "",
@@ -87,7 +87,8 @@ const CreateMainTask = ({
     onOpenChange(false);
   };
 
-  const onSubmit = async (dataForm: MainTaskSchema) => {
+  const onSubmit = async (dataForm: any) => {
+    // ใช้ any ชั่วคราวรับ budget
     if (!dataForm.startPlanned || !dataForm.finishPlanned) {
       toast.warning("กรุณาระบุวันเริ่มงานและระยะเวลาให้ครบถ้วน");
       return;
@@ -97,12 +98,13 @@ const CreateMainTask = ({
     try {
       const url = await generationImage(dataForm.taskName);
 
-      const finalData: MainTaskSchema = {
+      const finalData: any = {
         ...dataForm,
         createdById: Number(currentUserId) || 0,
         organizationId: Number(organizationId) || 0,
         projectId: Number(projectId) || 0,
-        progressPercent: Number(dataForm.progressPercent) || 0,
+        progressPercent: 0, 
+        budget: Number(dataForm.budget) || 0, 
         coverImageUrl: url?.answer || "",
       };
 
@@ -113,8 +115,8 @@ const CreateMainTask = ({
 
         if (res?.success) {
           toast.success("บันทึกงานใหม่เรียบร้อย!");
-          router.refresh(); 
-          handleModalClose(); 
+          router.refresh();
+          handleModalClose();
         } else {
           toast.error(res?.message || "บันทึกไม่สำเร็จ");
         }
@@ -192,7 +194,6 @@ const CreateMainTask = ({
                   {...formAddTask.register("taskName")}
                 />
 
-                {/* 2. Status & Progress (Row) */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <Select
                     label="สถานะงาน"
@@ -206,29 +207,24 @@ const CreateMainTask = ({
                     {...formAddTask.register("status")}
                   >
                     <SelectItem key="TODO">To Do (รอเริ่ม)</SelectItem>
-                    <SelectItem key="PROGRESS">
-                      In Progress (กำลังทำ)
-                    </SelectItem>
-                    <SelectItem key="DONE">Done (เสร็จสิ้น)</SelectItem>
                   </Select>
 
                   <Input
                     type="number"
-                    label="ความคืบหน้า (%)"
+                    label="งบประมาณ"
                     placeholder="0"
                     labelPlacement="outside"
                     variant="bordered"
                     min={0}
-                    max={100}
                     endContent={
-                      <span className="text-default-400 text-xs">%</span>
+                      <span className="text-default-400 text-xs">บาท</span>
                     }
-                    isInvalid={!!errors.progressPercent}
-                    errorMessage={errors.progressPercent?.message}
+                    isInvalid={!!errors.budget}
+                    errorMessage={errors.budget?.message}
                     startContent={
-                      <CheckCircle2 className="text-default-400" size={18} />
+                      <Banknote className="text-default-400" size={18} />
                     }
-                    {...formAddTask.register("progressPercent", {
+                    {...formAddTask.register("budget" as any, {
                       valueAsNumber: true,
                     })}
                   />

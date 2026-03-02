@@ -44,6 +44,7 @@ export const MainTaskSchema_ = z.object({
     .max(100, "ความคืบหน้าต้องไม่เกิน 100%")
     .default(0)
     .optional(),
+  budget: z.coerce.number().default(0).optional(),
   startPlanned: z.string().optional(),
   finishPlanned: z.string().optional(),
   startActual: z.string().optional(),

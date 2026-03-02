@@ -76,6 +76,7 @@ export interface Task {
   finishActual?: Date | string | null;
 
   durationDays?: number | null;
+  budget: number | null;
   details?: Subtask[];
 }
 

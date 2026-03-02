@@ -132,7 +132,7 @@ export async function createMainTask(
         taskName: data.taskName,
         taskDesc: data.taskDesc ?? null,
         status: data.status ?? "todo",
-        progressPercent: Number(data.progressPercent) || 0,
+        budget: Number(data.budget) || 0,
         coverImageUrl: data.coverImageUrl ?? null,
 
         startPlanned: startPlanned,
@@ -303,9 +303,7 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
       durationDays: updateData.durationDays
         ? Number(updateData.durationDays)
         : null,
-      progressPercent: updateData.progressPercent
-        ? Number(updateData.progressPercent)
-        : 0,
+      budget:updateData.budget,
       updatedAt: new Date(),
     };
 
