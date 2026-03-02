@@ -36,7 +36,7 @@ const UpdateMainTask = ({
             })
           }
         />
-        <div className="grid grid-cols-2 gap-3 items-start">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
           <Input
             label="วันที่เริ่ม"
             type="date"
@@ -67,6 +67,20 @@ const UpdateMainTask = ({
               setEditFormData({
                 ...editFormData,
                 durationDays: val ? Number(val) : null,
+              })
+            }
+          />
+          <Input
+            type="number"
+            label="งบประมาณ (บาท)"
+            labelPlacement="outside"
+            variant="bordered"
+            min={0}
+            value={editFormData.budget || ""}
+            onValueChange={(val) =>
+              setEditFormData({
+                ...editFormData,
+                budget: val ? Number(val) : 0,
               })
             }
           />
@@ -104,7 +118,7 @@ const UpdateMainTask = ({
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-4 text-sm text-default-500">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm text-default-500">
         <div>
           <p>กำหนดเริ่ม:</p>
           <p className="text-foreground font-medium">
@@ -115,6 +129,12 @@ const UpdateMainTask = ({
           <p>กำหนดเสร็จ:</p>
           <p className="text-foreground font-medium">
             {selected.finishPlanned ? formatDate(selected.finishPlanned) : "-"}
+          </p>
+        </div>
+        <div>
+          <p>งบประมาณ:</p>
+          <p className="text-primary font-medium">
+            {(selected.budget || 0).toLocaleString()} 
           </p>
         </div>
       </div>

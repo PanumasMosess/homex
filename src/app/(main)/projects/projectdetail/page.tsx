@@ -29,6 +29,7 @@ const Page = async () => {
       startPlanned: true,
       finishPlanned: true,
       durationDays: true,
+      budget: true,
       startActual: true,
       finishActual: true,
       createdAt: true,
@@ -44,11 +45,16 @@ const Page = async () => {
     },
   });
 
+  const formattedTasks = mainTasks.map((task) => ({
+    ...task,
+    budget: task.budget ? Number(task.budget) : null,
+  }));
+
   return (
     <ProjectDetail
       organizationId={organizationId}
       currentUserId={currentUserId}
-      dataDetail={mainTasks}
+      dataDetail={formattedTasks}
     />
   );
 };
