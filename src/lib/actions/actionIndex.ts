@@ -96,33 +96,37 @@ export const sendbase64toS3Data = async (base64Data: string, path: string) => {
   }
 };
 
-export const sendbase64toS3DataVdo = async (base64Data: string, path: string) => {
+export const sendbase64toS3DataVdo = async (
+  formData: FormData,
+  path: string,
+) => {
   try {
-    const base64Clean = base64Data.replace(/^data:(.*);base64,/, "");
-    const buffer = Buffer.from(base64Clean, "base64");
+    const file = formData.get("file") as File;
+    if (!file) throw new Error("ไม่พบไฟล์ที่ส่งมา");
 
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const extension = file.name.split(".").pop();
     const randomBytes = crypto.randomBytes(16);
-    const key = `${path}/${randomBytes.toString("hex")}.mp4`;
+    const key = `${path}/${randomBytes.toString("hex")}.${extension}`;
 
     const command = new PutObjectCommand({
       Bucket: process.env.S3_BUCKET!,
       Key: key,
       Body: buffer,
-      ContentType: "video/mp4", 
+      ContentType: file.type,
       ACL: "public-read",
     });
 
-    const data = await s3Client.send(command);
+    await s3Client.send(command);
 
-    let publicUrl;
-    if (data) {
-      publicUrl = `https://sgp1.digitaloceanspaces.com/${process.env.S3_BUCKET}/${key}`;
-    }
+    const publicUrl = `https://sgp1.digitaloceanspaces.com/${process.env.S3_BUCKET}/${key}`;
 
     return { success: true, url: publicUrl };
   } catch (error) {
-    console.error("Error uploading Base64 video:", error); 
-    return { success: false, error: "Failed to upload video." };
+    console.error("Error uploading video via FormData:", error);
+    return { success: false, error: "อัปโหลดวิดีโอไม่สำเร็จ" };
   }
 };
 
@@ -147,4 +151,3 @@ export const handleImageUpload = async (
 
   return result.url.split("?")[0];
 };
-
