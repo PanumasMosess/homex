@@ -1,4 +1,4 @@
-import { Tab, TaskFilterTabsProps } from "@/lib/type";
+import { TabTask, TaskFilterTabsProps } from "@/lib/type";
 
 const TaskFilterTabs = ({ activeTab, setActiveTab }: TaskFilterTabsProps) => {
   const tabs = [
@@ -36,7 +36,7 @@ const TaskFilterTabs = ({ activeTab, setActiveTab }: TaskFilterTabsProps) => {
         return (
           <button
             key={tab.key}
-            onClick={() => setActiveTab(tab.key as Tab)}
+            onClick={() => setActiveTab(tab.key as TabTask)}
             className={`px-4 h-9 rounded-full text-sm font-medium transition-all border ${
               active
                 ? `${tab.activeClass} shadow-md`
