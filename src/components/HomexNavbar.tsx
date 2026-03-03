@@ -21,7 +21,6 @@ import {
   ModalHeader,
   useDisclosure,
 } from "@heroui/react";
-import { on } from "events";
 
 export const HomexNavbar = ({
   onMenuClick,
@@ -32,6 +31,9 @@ export const HomexNavbar = ({
   const session = useSession();
   const img_user = session.data?.user.avatarUrl?.toString();
   const user = session.data?.user.displayName?.toString();
+
+  console.log(session.data);
+  
 
   const onLogoutConfirm = () => {
     handleSignOut();

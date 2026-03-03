@@ -48,9 +48,8 @@ export default function CreateEmployee({
   isOpen,
   onOpenChange,
   positions = [],
-  editData
+  editData,
 }: CreateEmployeeProps) {
-
   const router = useRouter();
   const isEditMode = !!editData;
 
@@ -62,10 +61,6 @@ export default function CreateEmployee({
   const [isDeleting, setIsDeleting] = useState(false);
 
   const isSuccessRef = useRef(false);
-
-  // const handledRef = useRef(false);
-  // const isSuccessRef = useRef(false);
-
   const submittingRef = useRef(false);
 
   useEffect(() => {
@@ -73,36 +68,6 @@ export default function CreateEmployee({
       submittingRef.current = false;
     }
   }, [isOpen]);
-
-  useEffect(() => {
-
-    if (isOpen) {
-
-      if (isEditMode && editData) {
-
-        formEmployee.reset({
-          username: editData.username ?? "",
-          displayName: editData.displayName ?? "",
-          phone: editData.phone ?? "",
-          email: editData.email ?? "",
-          address: editData.address ?? "",
-          note: editData.note ?? "",
-          positionId: editData.positionId ?? undefined,
-          password: "",
-        });
-
-        setImagePreview(editData.avatarUrl ?? null);
-        setImageUrl(editData.avatarUrl ?? undefined);
-
-      } else {
-        resetFormState();
-      }
-
-    } else {
-      resetFormState();
-    }
-
-  }, [isOpen, editData]);
 
   const formEmployee = useForm<EmployeeSchema>({
     resolver: zodResolver(EmployeeSchema_),
@@ -119,6 +84,32 @@ export default function CreateEmployee({
     },
   });
 
+  const { errors } = formEmployee.formState;
+
+  useEffect(() => {
+    if (isOpen) {
+      if (isEditMode && editData) {
+        formEmployee.reset({
+          username: editData.username ?? "",
+          displayName: editData.displayName ?? "",
+          phone: editData.phone ?? "",
+          email: editData.email ?? "",
+          address: editData.address ?? "",
+          note: editData.note ?? "",
+          positionId: editData.positionId ?? undefined,
+          password: "", 
+        });
+
+        setImagePreview(editData.avatarUrl ?? null);
+        setImageUrl(editData.avatarUrl ?? undefined);
+      } else {
+        resetFormState();
+      }
+    } else {
+      resetFormState();
+    }
+  }, [isOpen, editData]);
+
   const resetFormState = () => {
     formEmployee.reset();
     setImagePreview(null);
@@ -127,37 +118,31 @@ export default function CreateEmployee({
     setIsDeleting(false);
   };
 
-const handleModalClose = async (isSuccess = false) => {
+  const handleModalClose = async (isSuccess = false) => {
+    const originalImage = editData?.avatarUrl;
 
-  const originalImage = editData?.avatarUrl;
+    // 🔥 ถ้า cancel เท่านั้นที่ลบ
+    if (!isSuccess && imageUrl && imageUrl !== originalImage) {
+      setIsDeleting(true);
+      try {
+        const urlObj = new URL(imageUrl);
+        let fileKey = urlObj.pathname.substring(1);
 
-  // 🔥 ถ้า cancel เท่านั้นที่ลบ
-  if (!isSuccess && imageUrl && imageUrl !== originalImage) {
+        if (fileKey.startsWith("homex/")) {
+          fileKey = fileKey.replace("homex/", "");
+        }
 
-    setIsDeleting(true);
-
-    try {
-      const urlObj = new URL(imageUrl);
-      let fileKey = urlObj.pathname.substring(1);
-
-      if (fileKey.startsWith("homex/")) {
-        fileKey = fileKey.replace("homex/", "");
+        await deleteFileS3(fileKey);
+      } finally {
+        setIsDeleting(false);
       }
-
-      await deleteFileS3(fileKey);
-
-    } finally {
-      setIsDeleting(false);
     }
-  }
 
-  resetFormState();
-  onOpenChange(false);
-};
+    resetFormState();
+    onOpenChange(false);
+  };
 
-  const handleImageChange = async (
-    e: React.ChangeEvent<HTMLInputElement>,
-  ) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -182,7 +167,6 @@ const handleModalClose = async (isSuccess = false) => {
   });
 
   const onSubmit = (data: EmployeeSchema) => {
-
     if (isUploading) {
       toast.warning("กรุณารออัปโหลดรูปภาพ...");
       return;
@@ -192,44 +176,46 @@ const handleModalClose = async (isSuccess = false) => {
     submittingRef.current = true;
 
     startTransition(async () => {
-
       if (isEditMode) {
-
-        const res = await updateEmployee(
-          editData.id,
-          {
+        try {
+          const res = await updateEmployee(editData.id, {
             ...data,
             positionId: Number(data.positionId),
             avatarUrl: imageUrl,
+          });
+
+          if (res.success) {
+            toast.success("แก้ไขพนักงานเรียบร้อย!");
+            router.refresh();
+            handleModalClose(true);
+          } else {
+            toast.error(res.error || "แก้ไขไม่สำเร็จ");
+            submittingRef.current = false; 
           }
-        );
-
-        if (res.success) {
-          toast.success("แก้ไขพนักงานเรียบร้อย!");
-          router.refresh();
-          handleModalClose(true);
+        } catch (error) {
+          toast.error("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์");
+          submittingRef.current = false;
         }
-
       } else {
-
         formAction({
           ...data,
           positionId: Number(data.positionId),
           avatarUrl: imageUrl,
         });
-
       }
-
     });
+  };
 
+  const onError = (errors: any) => {
+    console.error("Form Validation Errors:", errors);
+    toast.warning("กรุณาตรวจสอบข้อมูลให้ครบถ้วนและถูกต้อง");
   };
 
   useEffect(() => {
     if (!state) return;
 
     if (state.success) {
-
-      isSuccessRef.current = true;   // ✅ สำคัญ
+      isSuccessRef.current = true; 
 
       toast.success("สร้างพนักงานเรียบร้อย!");
       router.refresh();
@@ -241,8 +227,7 @@ const handleModalClose = async (isSuccess = false) => {
       submittingRef.current = false;
       toast.error(state.message || "บันทึกไม่สำเร็จ");
     }
-
-  }, [state]); // 🔥 ฟังทั้ง object
+  }, [state]); 
 
   const isBusy = isPending || isUploading || isDeleting;
 
@@ -261,8 +246,7 @@ const handleModalClose = async (isSuccess = false) => {
       hideCloseButton={isBusy}
       classNames={{
         wrapper: "z-[9999]",
-        base:
-          "mx-4 w-full max-w-3xl max-h-[90dvh] rounded-2xl bg-white dark:bg-[#18181b] shadow-2xl",
+        base: "mx-4 w-full max-w-3xl max-h-[90dvh] rounded-2xl bg-white dark:bg-[#18181b] shadow-2xl",
         header: "border-b border-default-100 p-4 sm:p-6",
         body: "p-4 sm:p-6 gap-6",
         footer: "border-t border-default-100 p-4 sm:p-6",
@@ -270,7 +254,7 @@ const handleModalClose = async (isSuccess = false) => {
     >
       <ModalContent>
         <form
-          onSubmit={formEmployee.handleSubmit(onSubmit)}
+          onSubmit={formEmployee.handleSubmit(onSubmit, onError)}
           className="flex flex-col flex-1 overflow-hidden"
         >
           <ModalHeader className="flex flex-row items-center gap-3">
@@ -288,7 +272,6 @@ const handleModalClose = async (isSuccess = false) => {
           </ModalHeader>
 
           <ModalBody>
-
             {/* Upload */}
             <div className="relative group w-full h-48 sm:h-56 rounded-2xl border-2 border-dashed border-default-200 hover:border-primary transition-all bg-default-50/50 dark:bg-default-100/10 overflow-hidden cursor-pointer shrink-0">
               <input
@@ -329,9 +312,7 @@ const handleModalClose = async (isSuccess = false) => {
                     <UploadCloud size={32} className="text-primary" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-medium">
-                      อัปโหลดรูปโปรไฟล์{" "}
-                    </p>
+                    <p className="text-sm font-medium">อัปโหลดรูปโปรไฟล์ </p>
                     <p className="text-xs text-default-400">
                       JPG, PNG ไม่เกิน 10MB
                     </p>
@@ -341,7 +322,6 @@ const handleModalClose = async (isSuccess = false) => {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-
               <Input
                 isRequired
                 label="Username"
@@ -349,11 +329,14 @@ const handleModalClose = async (isSuccess = false) => {
                 labelPlacement="outside"
                 variant="bordered"
                 startContent={<User size={18} />}
+                // 🌟 โชว์ Error สีแดงใต้กล่อง
+                isInvalid={!!errors.username}
+                errorMessage={errors.username?.message}
                 {...formEmployee.register("username")}
               />
 
               <Input
-                isRequired={!isEditMode}   // 🔥 create = required, edit = optional
+                isRequired={!isEditMode}
                 type="password"
                 label={
                   isEditMode
@@ -361,13 +344,13 @@ const handleModalClose = async (isSuccess = false) => {
                     : "Password"
                 }
                 placeholder={
-                  isEditMode
-                    ? "กรอกเฉพาะกรณีต้องการเปลี่ยน"
-                    : "ระบุ Password"
+                  isEditMode ? "กรอกเฉพาะกรณีต้องการเปลี่ยน" : "ระบุ Password"
                 }
                 labelPlacement="outside"
                 variant="bordered"
                 startContent={<Lock size={18} />}
+                isInvalid={!!errors.password}
+                errorMessage={errors.password?.message}
                 {...formEmployee.register("password")}
               />
 
@@ -378,6 +361,8 @@ const handleModalClose = async (isSuccess = false) => {
                 labelPlacement="outside"
                 variant="bordered"
                 startContent={<User size={18} />}
+                isInvalid={!!errors.displayName}
+                errorMessage={errors.displayName?.message}
                 {...formEmployee.register("displayName")}
               />
 
@@ -423,21 +408,15 @@ const handleModalClose = async (isSuccess = false) => {
                 }
                 onSelectionChange={(keys: any) => {
                   const val = Array.from(keys)[0];
-                  formEmployee.setValue(
-                    "positionId",
-                    Number(val),
-                  );
+                  formEmployee.setValue("positionId", Number(val));
                 }}
+                isInvalid={!!errors.positionId}
+                errorMessage={errors.positionId?.message}
               >
                 {positions
-                  .filter(
-                    (p) =>
-                      p.positionName.toLowerCase() !== "ลูกค้า",
-                  )
+                  .filter((p) => p.positionName.toLowerCase() !== "ลูกค้า")
                   .map((p) => (
-                    <SelectItem key={String(p.id)}>
-                      {p.positionName}
-                    </SelectItem>
+                    <SelectItem key={String(p.id)}>{p.positionName}</SelectItem>
                   ))}
               </Select>
             </div>
