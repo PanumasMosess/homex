@@ -43,7 +43,7 @@ export interface MainPageProjectProps {
 
 export type Status = "todo" | "progress" | "done";
 
-export type Tab = "all" | "progress" | "done" | "todo";
+export type TabTask = "all" | "progress" | "done" | "todo";
 
 export interface Subtask {
   id: number;
@@ -157,8 +157,8 @@ export interface DropColumnProps {
 }
 
 export interface TaskFilterTabsProps {
-  activeTab: Tab;
-  setActiveTab: (tab: Tab) => void;
+  activeTab: TabTask;
+  setActiveTab: (tab: TabTask) => void;
 }
 
 export interface SubtaskItemProps {
