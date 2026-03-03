@@ -1,7 +1,12 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Search, Building2 } from "lucide-react";
+import {
+  Search,
+  Building2,
+  FileText,
+  ShoppingCart,
+} from "lucide-react";
 
 import {
   Button,
@@ -13,6 +18,8 @@ import {
   ModalBody,
   useDisclosure,
   Spinner,
+  Tab,
+  Tabs,
 } from "@heroui/react";
 
 import {
@@ -25,7 +32,7 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 
-import type { Tab, ProjectDetailProps } from "@/lib/type";
+import type { TabTask, ProjectDetailProps } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
 import { calculateTaskProgress, getMediaType } from "@/lib/setting_data";
@@ -68,7 +75,7 @@ const ProjectDetail = ({
   const [tasks, setTasks] = useState<any[]>([]);
   const [view, setView] = useState<"card" | "board">("card");
   const [selectedId, setSelectedId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<Tab>("all");
+  const [activeTab, setActiveTab] = useState<TabTask>("all");
   const [priority, setPriority] = useState<"urgent" | "high" | "normal" | null>(
     null,
   );
@@ -688,7 +695,7 @@ const ProjectDetail = ({
 
   return (
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen space-y-6">
-      {/* --- HERO SECTION --- */}
+      {/* --- 🌟 1. HERO SECTION (ให้อยู่นอก Tab เพื่อโชว์เป็น Header เสมอ) --- */}
       <div className="bg-default-100 dark:bg-zinc-900 rounded-3xl p-6 lg:p-8 grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[560px_1fr] gap-6 items-center overflow-hidden">
         <div className="relative w-full h-[200px] sm:h-[240px] md:h-[220px] lg:h-[320px] rounded-2xl overflow-hidden bg-zinc-800">
           {(isGeneratingVideo || isUploadingVideo) && (
@@ -710,7 +717,7 @@ const ProjectDetail = ({
               playsInline
               className="w-full h-full object-cover"
               src={mediaUrl}
-              key={mediaUrl} 
+              key={mediaUrl}
             />
           ) : mediaType === "image" ? (
             <img
@@ -740,20 +747,6 @@ const ProjectDetail = ({
           <Progress value={projectProgress} color="primary" />
 
           <div className="pt-2">
-            {/* --- Comment ปุ่ม AI เดิมไว้ --- */}
-            {/* <Button
-              color="secondary"
-              variant="shadow"
-              isLoading={isGeneratingVideo}
-              onPress={handleGenerateVideo}
-              className="font-medium"
-            >
-              {isGeneratingVideo
-                ? "กำลังสร้างวิดีโอ..."
-                : "✨ สร้าง Video Timelapse ด้วย AI"}
-            </Button> 
-            */}
-
             <div className="relative inline-block">
               <input
                 type="file"
@@ -802,132 +795,196 @@ const ProjectDetail = ({
         </div>
       </div>
 
-      {/* --- TOOLBAR --- */}
-      <div className="flex items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2">
-            <Building2 className="text-orange-500 w-6 h-6" /> Tasks
-          </h1>
-          <p className="text-default-500 dark:text-zinc-400 text-sm">
-            ติดตามและจัดการรายการงาน ({filteredTasks.length})
-          </p>
-        </div>
-        <Button
-          onPress={onOpen}
-          radius="full"
-          className="ml-auto bg-black text-white dark:bg-white dark:text-black px-5 h-10"
+      {/* --- 🌟 2. TABS SECTION (Mobile Support) --- */}
+      <div className="flex w-full flex-col">
+        <Tabs
+          aria-label="Project Sections"
+          variant="underlined"
+          color="primary"
+          classNames={{
+            base: "w-full",
+            tabList:
+              "w-full overflow-x-auto scrollbar-hide border-b border-default-200 gap-6",
+            tab: "h-12 px-0",
+            panel: "pt-6 pb-2",
+          }}
         >
-          + สร้าง Tasks เอง
-        </Button>
-        <CreateMainTask
-          isOpen={isOpen}
-          onOpenChange={onOpenChange}
-          projectId={projectInfo.id ? Number(projectInfo.id) : 0}
-          organizationId={organizationId}
-          currentUserId={currentUserId}
-          projectCode={projectInfo.code}
-        />
-      </div>
-
-      <div className="flex gap-3">
-        <Button
-          variant={view === "card" ? "solid" : "flat"}
-          onPress={() => setView("card")}
-        >
-          Card
-        </Button>
-        <Button
-          variant={view === "board" ? "solid" : "flat"}
-          onPress={() => setView("board")}
-        >
-          Board
-        </Button>
-      </div>
-
-      {/* --- VIEW: CARD --- */}
-      {view === "card" && (
-        <>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <TaskFilterTabs activeTab={activeTab} setActiveTab={setActiveTab} />
-            <Input
-              placeholder="ค้นหา..."
-              value={q}
-              onValueChange={setQ}
-              isClearable
-              onClear={() => setQ("")}
-              size="sm"
-              startContent={<Search size={16} />}
-              classNames={{ base: "w-full sm:w-64" }}
-            />
-          </div>
-
-          {filteredTasks.length === 0 ? (
-            <EmptyStateCard onOpen={onOpen} />
-          ) : (
-            <div className="flex flex-col gap-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-                {/* 🌟 แสดงผล tasks ตามจำนวน visibleCount 🌟 */}
-                {displayedTasks.map((t) => (
-                  <MainTaskCard
-                    key={t.id}
-                    task={t}
-                    onSelect={handleSelectTask}
-                  />
-                ))}
+          {/* ----- TAB 1: รายการงาน (Tasks) ----- */}
+          <Tab
+            key="tasks"
+            title={
+              <div className="flex items-center gap-2 px-2">
+                <Building2 size={18} />
+                <span className="font-medium">รายการงาน</span>
+                <Chip size="sm" variant="faded" className="ml-1">
+                  {filteredTasks.length}
+                </Chip>
               </div>
-
-              {/* 🌟 จุดตรวจจับ (Target) สำหรับ Intersection Observer 🌟 */}
-              {visibleCount < filteredTasks.length && (
-                <div
-                  ref={observerTarget}
-                  className="flex items-center justify-center w-full py-8"
-                >
-                  <Spinner size="md" color="primary" />
+            }
+          >
+            {/* --- TOOLBAR ของ Task --- */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
+                  Tasks
+                </h2>
+                <p className="text-default-500 dark:text-zinc-400 text-sm mt-1">
+                  ติดตามและจัดการรายการงาน
+                </p>
+              </div>
+              <div className="w-full sm:w-auto flex flex-wrap items-center gap-3">
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant={view === "card" ? "solid" : "flat"}
+                    onPress={() => setView("card")}
+                  >
+                    Card
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={view === "board" ? "solid" : "flat"}
+                    onPress={() => setView("board")}
+                  >
+                    Board
+                  </Button>
                 </div>
-              )}
+                <Button
+                  onPress={onOpen}
+                  radius="full"
+                  className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black px-5"
+                >
+                  + สร้าง Tasks เอง
+                </Button>
+              </div>
             </div>
-          )}
-        </>
-      )}
 
-      {/* --- VIEW: BOARD --- */}
-      {view === "board" && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragEnd={handleDragEnd}
-        >
-          {filteredTasks.length === 0 ? (
-            <EmptyStateCard onOpen={onOpen} />
-          ) : (
-            <div className="flex md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2">
-              <DropColumn
-                status="TODO"
-                tasks={filteredTasks.filter(
-                  (t) => (t.status || "").toUpperCase() === "TODO",
+            <CreateMainTask
+              isOpen={isOpen}
+              onOpenChange={onOpenChange}
+              projectId={projectInfo.id ? Number(projectInfo.id) : 0}
+              organizationId={organizationId}
+              currentUserId={currentUserId}
+              projectCode={projectInfo.code}
+            />
+
+            {view === "card" && (
+              <div className="space-y-6">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <TaskFilterTabs
+                    activeTab={activeTab}
+                    setActiveTab={setActiveTab}
+                  />
+                  <Input
+                    placeholder="ค้นหา..."
+                    value={q}
+                    onValueChange={setQ}
+                    isClearable
+                    onClear={() => setQ("")}
+                    size="sm"
+                    startContent={<Search size={16} />}
+                    classNames={{ base: "w-full sm:w-64" }}
+                  />
+                </div>
+
+                {filteredTasks.length === 0 ? (
+                  <EmptyStateCard onOpen={onOpen} />
+                ) : (
+                  <div className="flex flex-col gap-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
+                      {displayedTasks.map((t) => (
+                        <MainTaskCard
+                          key={t.id}
+                          task={t}
+                          onSelect={handleSelectTask}
+                        />
+                      ))}
+                    </div>
+                    {visibleCount < filteredTasks.length && (
+                      <div
+                        ref={observerTarget}
+                        className="flex items-center justify-center w-full py-8"
+                      >
+                        <Spinner size="md" color="primary" />
+                      </div>
+                    )}
+                  </div>
                 )}
-                onTaskClick={handleSelectTask}
-              />
-              <DropColumn
-                status="PROGRESS"
-                tasks={filteredTasks.filter(
-                  (t) => (t.status || "").toUpperCase() === "PROGRESS",
+              </div>
+            )}
+
+            {/* --- VIEW: BOARD --- */}
+            {view === "board" && (
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCorners}
+                onDragEnd={handleDragEnd}
+              >
+                {filteredTasks.length === 0 ? (
+                  <EmptyStateCard onOpen={onOpen} />
+                ) : (
+                  <div className="flex md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2">
+                    <DropColumn
+                      status="TODO"
+                      tasks={filteredTasks.filter(
+                        (t) => (t.status || "").toUpperCase() === "TODO",
+                      )}
+                      onTaskClick={handleSelectTask}
+                    />
+                    <DropColumn
+                      status="PROGRESS"
+                      tasks={filteredTasks.filter(
+                        (t) => (t.status || "").toUpperCase() === "PROGRESS",
+                      )}
+                      onTaskClick={handleSelectTask}
+                    />
+                    <DropColumn
+                      status="DONE"
+                      tasks={filteredTasks.filter(
+                        (t) => (t.status || "").toUpperCase() === "DONE",
+                      )}
+                      onTaskClick={handleSelectTask}
+                    />
+                  </div>
                 )}
-                onTaskClick={handleSelectTask}
-              />
-              <DropColumn
-                status="DONE"
-                tasks={filteredTasks.filter(
-                  (t) => (t.status || "").toUpperCase() === "DONE",
-                )}
-                onTaskClick={handleSelectTask}
-              />
+              </DndContext>
+            )}
+          </Tab>
+
+          <Tab
+            key="purchasing"
+            title={
+              <div className="flex items-center gap-2 px-2">
+                <ShoppingCart size={18} />
+                <span className="font-medium">การจัดซื้อ</span>
+              </div>
+            }
+          >
+            <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
+              <p className="text-default-500">
+                ส่วนจัดการการสั่งซื้อวัสดุ อุปกรณ์ และ Supplier จะมาในเร็วๆ นี้
+              </p>
             </div>
-          )}
-        </DndContext>
-      )}
+          </Tab>
 
-      {/* --- MODAL TASK DETAILS & EDIT --- */}
+          <Tab
+            key="documents"
+            title={
+              <div className="flex items-center gap-2 px-2">
+                <FileText size={18} />
+                <span className="font-medium">เอกสาร</span>
+              </div>
+            }
+          >
+            <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
+              <p className="text-default-500">
+                ส่วนจัดการเอกสารและไฟล์ต่างๆ จะมาในเร็วๆ นี้
+              </p>
+            </div>
+          </Tab>
+        </Tabs>
+      </div>
+
       <Modal
         isOpen={!!selected}
         onOpenChange={(isOpen) => {
@@ -948,7 +1005,7 @@ const ProjectDetail = ({
         <ModalContent className="max-md:h-screen max-md:flex max-md:flex-col max-md:overflow-hidden">
           {selected ? (
             <>
-              {/* 🌟 HEADER ของ Mobile */}
+              {/* HEADER ของ Mobile */}
               <div className="md:hidden p-4 flex items-center justify-between border-b border-default-200 dark:border-zinc-800 shrink-0 bg-background z-10">
                 <div className="flex items-center gap-3 overflow-hidden">
                   <button
