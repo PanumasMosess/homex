@@ -174,3 +174,24 @@ export const PositionSchema_ = z.object({
 });
 
 export type PositionSchema = z.infer<typeof PositionSchema_>;
+
+export const PermissionSchema_ = z.object({
+  id: z.number().optional(),
+
+  permissionKey: z
+    .string()
+    .min(1, { message: "กรุณากรอก Permission Key" })
+    .max(100, { message: "Permission Key ยาวเกินไป" }),
+
+  permissionName: z
+    .string()
+    .min(1, { message: "กรุณากรอกชื่อ Permission" })
+    .max(100, { message: "ชื่อ Permission ยาวเกินไป" }),
+
+  permissionDesc: z
+    .string()
+    .max(255, { message: "รายละเอียดต้องไม่เกิน 255 ตัวอักษร" })
+    .optional(),
+});
+
+export type PermissionSchema = z.infer<typeof PermissionSchema_>;

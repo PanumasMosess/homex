@@ -35,6 +35,22 @@ export async function createPosition(
       };
     }
 
+    /* 🔎 CHECK DUPLICATE */
+    const exists = await prisma.position.findFirst({
+      where: {
+        organizationId,
+        positionName,
+      },
+    });
+
+    if (exists) {
+      return {
+        success: false,
+        error: true,
+        message: "ชื่อตำแหน่งนี้ถูกใช้แล้ว",
+      };
+    }
+
     await prisma.position.create({
       data: {
         positionName,
@@ -50,15 +66,7 @@ export async function createPosition(
       success: true,
       error: false,
     };
-  } catch (e: any) {
-    if (e.code === "P2002") {
-      return {
-        success: false,
-        error: true,
-        message: "ชื่อตำแหน่งนี้ถูกใช้แล้ว",
-      };
-    }
-
+  } catch {
     return {
       success: false,
       error: true,
@@ -98,6 +106,7 @@ export async function updatePosition(
       };
     }
 
+    /* 🔎 CHECK EXIST */
     const exists = await prisma.position.findFirst({
       where: {
         id,
@@ -113,10 +122,27 @@ export async function updatePosition(
       };
     }
 
-    await prisma.position.update({
+    /* 🔎 CHECK DUPLICATE */
+    const duplicate = await prisma.position.findFirst({
       where: {
-        id,
+        organizationId,
+        positionName,
+        NOT: {
+          id,
+        },
       },
+    });
+
+    if (duplicate) {
+      return {
+        success: false,
+        error: true,
+        message: "ชื่อตำแหน่งนี้ถูกใช้แล้ว",
+      };
+    }
+
+    await prisma.position.update({
+      where: { id },
       data: {
         positionName,
         positionDesc: positionDesc || null,
@@ -129,15 +155,7 @@ export async function updatePosition(
       success: true,
       error: false,
     };
-  } catch (e: any) {
-    if (e.code === "P2002") {
-      return {
-        success: false,
-        error: true,
-        message: "ชื่อตำแหน่งนี้ถูกใช้แล้ว",
-      };
-    }
-
+  } catch {
     return {
       success: false,
       error: true,
@@ -178,7 +196,7 @@ export async function deletePosition(id: number): Promise<ActionState> {
       };
     }
 
-    // 🔥 ป้องกันปิดตำแหน่งที่มี user active ใช้อยู่
+    /* 🔥 ป้องกันปิดตำแหน่งที่มี user ใช้อยู่ */
     const activeUserCount = await prisma.user.count({
       where: {
         positionId: id,

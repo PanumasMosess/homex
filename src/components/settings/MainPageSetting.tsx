@@ -1,8 +1,7 @@
 "use client";
 
-import { Input } from "@heroui/react";
-import { Settings, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Settings, AlertTriangle } from "lucide-react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import {
@@ -13,74 +12,75 @@ import {
   ModalFooter,
   Button,
 } from "@heroui/react";
-import { AlertTriangle } from "lucide-react";
 
 import PositionTable from "./position/PositionTable";
+import PermissionTable from "./permission/PermissionTable";
+
 import CreatePosition from "./position/forms/createPosition";
+import CreatePermission from "./permission/forms/createPermission";
 
 import {
   deletePosition,
   restorePosition,
 } from "@/lib/actions/actionPosition";
 
+import {
+  deletePermission,
+  restorePermission,
+} from "@/lib/actions/actionPermission";
+
 export default function MainPageSetting({
   positions,
+  permissions,
 }: {
   positions: any[];
+  permissions: any[];
 }) {
 
   const router = useRouter();
-
   const [positionOpen, setPositionOpen] = useState(false);
-  const [editData, setEditData] = useState<any>(null);
-
-  const [deleteModal, setDeleteModal] = useState<{
-    isOpen: boolean;
-    position: any;
-  }>({
-    isOpen: false,
-    position: null,
-  });
-
+  const [editPosition, setEditPosition] = useState<any>(null);
+  const [permissionOpen, setPermissionOpen] = useState(false);
+  const [editPermission, setEditPermission] = useState<any>(null);
+  const [deleteModal, setDeleteModal] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
-
-  const handleToggle = (p: any) => {
+  const handleToggle = (type: "position" | "permission", data: any) => {
     setDeleteModal({
-      isOpen: true,
-      position: p,
+      type,
+      data,
     });
   };
 
-  const handleConfirmToggle = async () => {
-    if (!deleteModal.position) return;
-
+  const confirmToggle = async () => {
+    if (!deleteModal) return;
     setIsDeleting(true);
-
-    const p = deleteModal.position;
-
-    const res = p.isActive
-      ? await deletePosition(p.id)
-      : await restorePosition(p.id);
-
+    const { type, data } = deleteModal;
+    const res =
+      type === "position"
+        ? data.isActive
+          ? await deletePosition(data.id)
+          : await restorePosition(data.id)
+        : data.isActive
+          ? await deletePermission(data.id)
+          : await restorePermission(data.id);
     setIsDeleting(false);
-
     if (res.success) {
       toast.success(
-        p.isActive
+        data.isActive
           ? "ปิดการใช้งานเรียบร้อย"
           : "เปิดใช้งานเรียบร้อย"
       );
-
-      setDeleteModal({ isOpen: false, position: null });
       router.refresh();
+      setDeleteModal(null);
     } else {
       toast.error(res.message || "ไม่สำเร็จ");
     }
   };
 
-  const isActive = deleteModal.position?.isActive;
+  const isActive = deleteModal?.data?.isActive;
 
   return (
+
     <div className="max-w-[1600px] mx-auto px-6 py-8 space-y-8">
 
       {/* HEADER */}
@@ -88,52 +88,68 @@ export default function MainPageSetting({
         <div className="p-3 rounded-2xl bg-orange-500/10">
           <Settings className="text-orange-500" />
         </div>
-
         <div>
           <h1 className="text-2xl font-bold">
-            Position Management
+            System Setting
           </h1>
           <p className="text-default-400 text-sm">
-            จัดการตำแหน่งในองค์กร
+            จัดการตำแหน่งและสิทธิ
           </p>
         </div>
       </div>
 
-      {/* 🔥 GRID แบบหน้า USER */}
+      {/* TABLE GRID */}
       <div className="grid xl:grid-cols-2 gap-8">
 
-        {/* ใส่แค่ฝั่งซ้าย */}
         <PositionTable
           positions={positions}
           onAdd={() => {
-            setEditData(null);
+            setEditPosition(null);
             setPositionOpen(true);
           }}
           onEdit={(p) => {
-            setEditData(p);
+            setEditPosition(p);
             setPositionOpen(true);
           }}
-          onToggle={handleToggle}
+          onToggle={(p) => handleToggle("position", p)}
         />
 
-        {/* ฝั่งขวาปล่อยว่างไว้ให้ layout เท่ากัน */}
-        <div className="hidden xl:block" />
+        <PermissionTable
+          permissions={permissions}
+          onAdd={() => {
+            setEditPermission(null);
+            setPermissionOpen(true);
+          }}
+          onEdit={(p) => {
+            setEditPermission(p);
+            setPermissionOpen(true);
+          }}
+          onToggle={(p) => handleToggle("permission", p)}
+        />
 
       </div>
 
+      {/* POSITION FORM */}
       <CreatePosition
-        key={`position-${editData?.id ?? "create"}`}
+        key={`position-${editPosition?.id ?? "create"}`}
         isOpen={positionOpen}
         onOpenChange={setPositionOpen}
-        editData={editData}
+        editData={editPosition}
       />
 
+      {/* PERMISSION FORM */}
+      <CreatePermission
+        key={`permission-${editPermission?.id ?? "create"}`}
+        isOpen={permissionOpen}
+        onOpenChange={setPermissionOpen}
+        editData={editPermission}
+      />
+      
       {/* CONFIRM MODAL */}
       <Modal
-        isOpen={deleteModal.isOpen}
+        isOpen={!!deleteModal}
         onOpenChange={(open) => {
-          if (!open)
-            setDeleteModal({ isOpen: false, position: null });
+          if (!open) setDeleteModal(null);
         }}
         backdrop="blur"
       >
@@ -142,12 +158,8 @@ export default function MainPageSetting({
             <>
               <ModalHeader className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-danger/10 flex items-center justify-center">
-                  <AlertTriangle
-                    className="text-danger"
-                    size={20}
-                  />
+                  <AlertTriangle className="text-danger" size={20} />
                 </div>
-
                 <div>
                   <div className="font-semibold">
                     {isActive
@@ -157,11 +169,10 @@ export default function MainPageSetting({
                   <div className="text-xs text-default-400">
                     {isActive
                       ? "สามารถเปิดใช้งานใหม่ได้ภายหลัง"
-                      : "ตำแหน่งนี้จะกลับมาใช้งานได้"}
+                      : "รายการนี้จะกลับมาใช้งานได้"}
                   </div>
                 </div>
               </ModalHeader>
-
               <ModalBody>
                 <p>
                   คุณต้องการ
@@ -177,12 +188,12 @@ export default function MainPageSetting({
                       : " เปิดใช้งาน "}
                   </b>
                   <b>
-                    {deleteModal.position?.positionName}
+                    {deleteModal?.data?.permissionName ??
+                      deleteModal?.data?.positionName}
                   </b>
                   ใช่หรือไม่?
                 </p>
               </ModalBody>
-
               <ModalFooter>
                 <Button
                   variant="light"
@@ -190,12 +201,11 @@ export default function MainPageSetting({
                 >
                   ยกเลิก
                 </Button>
-
                 <Button
                   color={
                     isActive ? "danger" : "primary"
                   }
-                  onPress={handleConfirmToggle}
+                  onPress={confirmToggle}
                   isLoading={isDeleting}
                 >
                   {isActive

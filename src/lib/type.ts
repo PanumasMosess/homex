@@ -226,3 +226,15 @@ export interface DeleteSubtaskModalProps {
   isDeleting: boolean;
   onConfirm: () => void;
 }
+
+export type CreatePermissionProps = {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  editData?: any;
+};
+
+export interface CreatePermissionData {
+  permissionKey: string;
+  permissionName: string;
+  permissionDesc?: string;
+}
