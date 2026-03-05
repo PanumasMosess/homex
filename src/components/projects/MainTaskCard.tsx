@@ -1,6 +1,7 @@
 import { calcProgress, getStatusMainTaskColor } from "@/lib/setting_data";
 import { MainTaskCardProps } from "@/lib/type";
 import { Card, CardBody, Chip, Progress } from "@heroui/react";
+import { Banknote } from "lucide-react";
 
 const MainTaskCard = ({ task, onSelect }: MainTaskCardProps) => {
   return (
@@ -28,11 +29,20 @@ const MainTaskCard = ({ task, onSelect }: MainTaskCardProps) => {
             {task.status || "TODO"}
           </Chip>
         </div>
-        <p className="text-xs text-default-500 dark:text-zinc-400">
-          Checklist{" "}
-          {(task.details || []).filter((s: any) => !!s.status).length || 0}/
-          {(task.details || []).length || 0}
-        </p>
+        
+        <div className="flex justify-between items-center text-xs text-default-500 dark:text-zinc-400">
+          <p>
+            Checklist{" "}
+            {(task.details || []).filter((s: any) => !!s.status).length || 0}/
+            {(task.details || []).length || 0}
+          </p>
+          
+          <div className="flex items-center gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-0.5 rounded-md">
+            <Banknote size={14} />
+            <span>{(task.budget || 0).toLocaleString()}</span>
+          </div>
+        </div>
+
         <Progress
           value={calcProgress(task)}
           color={

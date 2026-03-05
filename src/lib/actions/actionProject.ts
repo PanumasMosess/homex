@@ -300,10 +300,14 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
       startPlanned: updateData.startPlanned
         ? new Date(updateData.startPlanned)
         : null,
+      finishPlanned: updateData.finishPlanned
+        ? new Date(updateData.finishPlanned)
+        : null,
       durationDays: updateData.durationDays
         ? Number(updateData.durationDays)
         : null,
-      budget:updateData.budget,
+      status: updateData.status,
+      budget: updateData.budget,
       updatedAt: new Date(),
     };
 
@@ -423,11 +427,16 @@ export async function updateSubtask(subtaskId: number, data: any) {
 export async function updateProjectProgressDB(
   projectId: number,
   progressPercent: number,
+  status: string,
 ) {
   try {
     await prisma.project.update({
       where: { id: projectId },
-      data: { progressPercent: Number(progressPercent), updatedAt: new Date() },
+      data: {
+        progressPercent: Number(progressPercent),
+        status: status,
+        updatedAt: new Date(),
+      },
     });
     return {
       success: true,
