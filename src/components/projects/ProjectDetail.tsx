@@ -1,12 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import {
-  Search,
-  Building2,
-  FileText,
-  ShoppingCart,
-} from "lucide-react";
+import { Search, Building2, FileText, ShoppingCart, Cctv } from "lucide-react";
 
 import {
   Button,
@@ -222,11 +217,21 @@ const ProjectDetail = ({
     const saveToDB = async () => {
       if (lastSavedProgress.current !== projectProgress) {
         const projectIdNum = parseInt(projectInfo.id);
+
         if (!isNaN(projectIdNum)) {
+          let newProjectStatus = "PLANNING";
+          if (projectProgress === 100) {
+            newProjectStatus = "DONE";
+          } else if (projectProgress > 0) {
+            newProjectStatus = "IN_PROGRESS";
+          }
+
           const res = await updateProjectProgressDB(
             projectIdNum,
             projectProgress,
+            newProjectStatus, 
           );
+
           if (res.success) {
             lastSavedProgress.current = projectProgress;
           }
@@ -437,13 +442,20 @@ const ProjectDetail = ({
     if (!editFormData || !editFormData.id) return;
     setIsSaving(true);
     try {
-      const res = await updateMainTask(editFormData.id, editFormData);
+      let dataToSave = { ...editFormData, status: "PROGRESS" };
+      if (dataToSave.startPlanned && dataToSave.durationDays) {
+        const startDate = new Date(dataToSave.startPlanned);
+        startDate.setDate(
+          startDate.getDate() + Number(dataToSave.durationDays),
+        );
+        dataToSave.finishPlanned = startDate;
+      }
+
+      const res = await updateMainTask(editFormData.id, dataToSave);
       if (!res.success) throw new Error(res.error || "บันทึกข้อมูลไม่สำเร็จ");
       setTasks((prev) =>
         prev.map((t) =>
-          Number(t.id) === Number(editFormData.id)
-            ? { ...t, ...editFormData }
-            : t,
+          Number(t.id) === Number(dataToSave.id) ? { ...t, ...dataToSave } : t,
         ),
       );
       toast.success("บันทึกข้อมูลเรียบร้อย");
@@ -669,8 +681,18 @@ const ProjectDetail = ({
       );
 
       const newProgress = calculateTaskProgress(updatedDetails);
-      await updateMainTask(selected.id, { progressPercent: newProgress });
+      let updatePayload: any = { progressPercent: newProgress };
+      let updatedMainTaskStatus = selected.status;
 
+      if (newProgress !== 100) {
+        updatedMainTaskStatus = "PROGRESS";
+        updatePayload.status = "PROGRESS";
+      } else {
+        updatedMainTaskStatus = "DONE";
+        updatePayload.status = "DONE";
+      }
+
+      await updateMainTask(selected.id, updatePayload);
       setTasks((prev) =>
         prev.map((task) => {
           if (task.id === selected.id) {
@@ -678,6 +700,7 @@ const ProjectDetail = ({
               ...task,
               details: updatedDetails,
               progressPercent: newProgress,
+              status: updatedMainTaskStatus,
             };
           }
           return task;
@@ -979,6 +1002,23 @@ const ProjectDetail = ({
             <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
               <p className="text-default-500">
                 ส่วนจัดการเอกสารและไฟล์ต่างๆ จะมาในเร็วๆ นี้
+              </p>
+            </div>
+          </Tab>
+
+          <Tab
+            key="site-camera"
+            title={
+              <div className="flex items-center gap-2 px-2">
+                <Cctv size={18} />
+                <span className="font-medium">กล้องหน้างาน</span>
+              </div>
+            }
+          >
+            <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
+              <p className="text-default-500">
+                ระบบเชื่อมต่อภาพและวิดีโอจากกล้อง CCTV หน้างานแบบเรียลไทม์
+                จะมาในเร็วๆ นี้
               </p>
             </div>
           </Tab>
