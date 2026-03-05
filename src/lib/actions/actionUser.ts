@@ -2,7 +2,6 @@
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
 import bcrypt from "bcryptjs";
 
 import {
@@ -50,8 +49,6 @@ export async function createEmployee(
         positionId: data.positionId,
       },
     });
-
-    revalidatePath("/user");
 
     return { success: true, error: false };
   } catch (e: any) {
@@ -142,8 +139,6 @@ export async function createCustomer(
         positionId: customerPosition.id,
       },
     });
-
-    revalidatePath("/user");
 
     return { success: true, error: false };
   } catch (e: any) {
