@@ -17,29 +17,29 @@ import {
   Textarea,
 } from "@heroui/react";
 
-import { Briefcase } from "lucide-react";
+import { Shield } from "lucide-react";
 
 import {
-  createPosition,
-  updatePosition,
-} from "@/lib/actions/actionPosition";
+  createPermission,
+  updatePermission,
+} from "@/lib/actions/actionPermission";
 
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { CreatePositionProps } from "@/lib/type";
+import { CreatePermissionProps } from "@/lib/type";
 
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import {
-  PositionSchema,
-  PositionSchema_,
+  PermissionSchema,
+  PermissionSchema_,
 } from "@/lib/formValidationSchemas";
 
-export default function CreatePosition({
+export default function CreatePermission({
   isOpen,
   onOpenChange,
   editData,
-}: CreatePositionProps) {
+}: CreatePermissionProps) {
 
   const router = useRouter();
   const isEditMode = !!editData;
@@ -47,91 +47,70 @@ export default function CreatePosition({
   const [isPending, startTransition] = useTransition();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<PositionSchema>({
-    resolver: zodResolver(PositionSchema_),
+  const form = useForm<PermissionSchema>({
+    resolver: zodResolver(PermissionSchema_),
     defaultValues: {
-      positionName: "",
-      positionDesc: "",
+      permissionKey: "",
+      permissionName: "",
+      permissionDesc: "",
     },
   });
-
-  /* ========================= */
-  /* Reset & Edit Mode */
-  /* ========================= */
 
   useEffect(() => {
 
     if (isOpen) {
-
       if (isEditMode && editData) {
         form.reset({
-          positionName: editData.positionName ?? "",
-          positionDesc: editData.positionDesc ?? "",
+          permissionKey: editData.permissionKey ?? "",
+          permissionName: editData.permissionName ?? "",
+          permissionDesc: editData.permissionDesc ?? "",
         });
       } else {
         form.reset();
       }
-
     } else {
       form.reset();
     }
 
   }, [isOpen, editData]);
 
-  /* ========================= */
-  /* Close */
-  /* ========================= */
-
   const handleModalClose = () => {
+
     form.reset();
     onOpenChange(false);
+
   };
 
-  /* ========================= */
-  /* Submit */
-  /* ========================= */
-
-  const onSubmit = (data: PositionSchema) => {
+  const onSubmit = (data: PermissionSchema) => {
 
     if (isSubmitting) return;
-
     setIsSubmitting(true);
-
     startTransition(async () => {
-
       const res = isEditMode
-        ? await updatePosition(editData.id, data)
-        : await createPosition(data);
+        ? await updatePermission(editData.id, data)
+        : await createPermission(data);
 
       if (res.success) {
-
         toast.success(
           isEditMode
-            ? "แก้ไขตำแหน่งเรียบร้อย"
-            : "เพิ่มตำแหน่งเรียบร้อย"
+            ? "แก้ไข Permission เรียบร้อย"
+            : "เพิ่ม Permission เรียบร้อย"
         );
-
-        setIsSubmitting(false); // ✅ เพิ่มบรรทัดนี้
-
+        setIsSubmitting(false);   // ✅ เพิ่มบรรทัดนี้
         router.refresh();
         handleModalClose();
 
       } else {
-
         toast.error(res.message || "บันทึกไม่สำเร็จ");
         setIsSubmitting(false);
-
       }
     });
   };
 
   const isBusy = isPending || isSubmitting;
 
-  /* ========================= */
-  /* UI */
-  /* ========================= */
-
   return (
+
     <Modal
       isOpen={isOpen}
       onOpenChange={(open) => {
@@ -142,7 +121,6 @@ export default function CreatePosition({
       backdrop="blur"
       isDismissable={false}
       isKeyboardDismissDisabled={true}
-      hideCloseButton={false}
       classNames={{
         wrapper: "z-[9999]",
         base:
@@ -152,67 +130,70 @@ export default function CreatePosition({
         footer: "border-t border-default-100 p-6",
       }}
     >
+
       <ModalContent>
+
         <form
           onSubmit={form.handleSubmit(onSubmit)}
           className="flex flex-col"
         >
-          {/* HEADER */}
           <ModalHeader className="flex items-center gap-3">
-
             <div className="p-2.5 bg-orange-50 rounded-xl border border-orange-100">
-              <Briefcase className="text-orange-500" size={24} />
+              <Shield className="text-orange-500" size={24} />
             </div>
-
             <div>
               <h2 className="text-lg font-bold">
                 {isEditMode
-                  ? "แก้ไขตำแหน่ง"
-                  : "เพิ่มตำแหน่ง"}
+                  ? "แก้ไขสิทธิ์"
+                  : "เพิ่มสิทธิ์"}
               </h2>
               <p className="text-default-400 text-xs">
-                {isEditMode
-                  ? "แก้ไขข้อมูลตำแหน่งในองค์กร"
-                  : "สร้างตำแหน่งใหม่ในองค์กร"}
+                จัดการสิทธิ์การใช้งานระบบ
               </p>
             </div>
-
           </ModalHeader>
-
-          {/* BODY */}
           <ModalBody className="space-y-1">
-
             <Input
               isRequired
-              label="ชื่อตำแหน่ง"
-              placeholder="เช่น Manager, Admin"
+              label="Permission Key"
+              placeholder="เช่น Page_Setting"
               labelPlacement="outside"
               variant="bordered"
-              {...form.register("positionName")}
-              isInvalid={!!form.formState.errors.positionName}
+              {...form.register("permissionKey")}
+              isInvalid={!!form.formState.errors.permissionKey}
               errorMessage={
-                form.formState.errors.positionName?.message
+                form.formState.errors.permissionKey?.message
+              }
+            />
+            <Input
+              isRequired
+              label="Permission Name"
+              placeholder="เช่น หน้าตั้งค่า"
+              labelPlacement="outside"
+              variant="bordered"
+              {...form.register("permissionName")}
+              isInvalid={!!form.formState.errors.permissionName}
+              errorMessage={
+                form.formState.errors.permissionName?.message
               }
             />
 
             <Textarea
               label="รายละเอียด"
-              placeholder="รายละเอียดเพิ่มเติมของตำแหน่ง"
+              placeholder="รายละเอียดสิทธิ์"
               labelPlacement="outside"
               variant="bordered"
               minRows={3}
-              {...form.register("positionDesc")}
-              isInvalid={!!form.formState.errors.positionDesc}
+              {...form.register("permissionDesc")}
+              isInvalid={!!form.formState.errors.permissionDesc}
               errorMessage={
-                form.formState.errors.positionDesc?.message
+                form.formState.errors.permissionDesc?.message
               }
             />
 
           </ModalBody>
 
-          {/* FOOTER */}
           <ModalFooter className="flex flex-col-reverse sm:flex-row gap-3">
-
             <Button
               variant="light"
               color="danger"
@@ -233,7 +214,7 @@ export default function CreatePosition({
                 ? "กำลังบันทึก..."
                 : isEditMode
                   ? "บันทึกการแก้ไข"
-                  : "เพิ่มตำแหน่ง"}
+                  : "เพิ่มสิทธิ์"}
             </Button>
           </ModalFooter>
         </form>

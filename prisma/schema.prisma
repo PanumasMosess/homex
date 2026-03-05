@@ -116,6 +116,7 @@ model permission {
   permissionKey  String // รหัสสิทธิ์ เช่น "PROJECT_VIEW"
   permissionName String // ชื่อแสดงผล เช่น "ดูโปรเจค"
   permissionDesc String? // รายละเอียดเพิ่มเติม
+  isActive Boolean @default(true)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())

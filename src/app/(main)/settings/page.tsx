@@ -14,8 +14,16 @@ const Page = async () => {
     orderBy: { createdAt: "desc" },
   });
 
+  const permissions = await prisma.permission.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
-    <MainPageSetting positions={positions} />
+    <MainPageSetting
+      positions={positions}
+      permissions={permissions}
+    />
   );
 };
 

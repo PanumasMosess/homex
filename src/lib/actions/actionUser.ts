@@ -93,8 +93,8 @@ export async function createCustomer(
       return { success: false, error: true, message: "ไม่พบ organization" };
     }
 
-    // 🔥 หา position "ลูกค้า" ในองค์กร
-    const customerPosition = await prisma.position.findFirst({
+    /* หา position ลูกค้า */
+    let customerPosition = await prisma.position.findFirst({
       where: {
         positionName: "ลูกค้า",
         organizationId,
@@ -102,20 +102,29 @@ export async function createCustomer(
       select: { id: true },
     });
 
+    /* ถ้าไม่มี → สร้างใหม่ */
     if (!customerPosition) {
-      return {
-        success: false,
-        error: true,
-        message: "ไม่พบตำแหน่งลูกค้าในระบบ",
-      };
+      const newPosition = await prisma.position.create({
+        data: {
+          positionName: "ลูกค้า",
+          positionDesc: "ตำแหน่งลูกค้า",
+          organizationId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      customerPosition = newPosition;
     }
-    
+
+    /* ตรวจ password */
     if (!data.password) {
-      throw new Error("Password is required"); 
+      throw new Error("Password is required");
     }
 
     const hash = await bcrypt.hash(data.password, 10);
 
+    /* CREATE USER */
     await prisma.user.create({
       data: {
         username: data.username,
@@ -141,7 +150,7 @@ export async function createCustomer(
     console.log("ERROR CODE:", e.code);
     console.log("ERROR META:", e.meta);
 
-    // 🔥 ดักเฉพาะ username ซ้ำ
+    /* username ซ้ำ */
     if (
       e.code === "P2002" &&
       (e.meta?.target?.includes("username") ||
@@ -153,7 +162,7 @@ export async function createCustomer(
         message: "Username นี้ถูกใช้แล้ว",
       };
     }
-
+    
     // error อื่น
     return {
       success: false,
