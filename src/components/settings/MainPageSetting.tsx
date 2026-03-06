@@ -20,6 +20,13 @@ import CreatePosition from "./position/forms/createPosition";
 import CreatePermission from "./permission/forms/createPermission";
 import UpdatePositionPermission from "./position/forms/updatePositionPermission";
 
+import SupplierTable from "./supplier/SupplierTable";
+import CreateSupplier from "./supplier/forms/createSupplier";
+import {
+  deleteSupplier,
+  restoreSupplier
+} from "@/lib/actions/actionSupplier";
+
 import {
   deletePosition,
   restorePosition,
@@ -33,9 +40,11 @@ import {
 export default function MainPageSetting({
   positions,
   permissions,
+  suppliers
 }: {
   positions: any[];
   permissions: any[];
+  suppliers: any[];
 }) {
 
   const router = useRouter();
@@ -49,6 +58,9 @@ export default function MainPageSetting({
   const [permissionOpen, setPermissionOpen] = useState(false);
   const [editPermission, setEditPermission] = useState<any>(null);
 
+  const [supplierOpen, setSupplierOpen] = useState(false);
+  const [editSupplier, setEditSupplier] = useState<any>(null);
+
   /* 🔐 POSITION PERMISSION */
   const [permissionSettingOpen, setPermissionSettingOpen] = useState(false);
   const [permissionPosition, setPermissionPosition] = useState<any>(null);
@@ -59,7 +71,7 @@ export default function MainPageSetting({
   /* ========================= */
   /* TOGGLE ACTIVE */
   /* ========================= */
-  const handleToggle = (type: "position" | "permission", data: any) => {
+  const handleToggle = (type: "position" | "permission" | "supplier", data: any) => {
     setDeleteModal({
       type,
       data,
@@ -70,16 +82,23 @@ export default function MainPageSetting({
     if (!deleteModal) return;
     setIsDeleting(true);
     const { type, data } = deleteModal;
-    const res =
-      type === "position"
-        ? data.isActive
-          ? await deletePosition(data.id)
-          : await restorePosition(data.id)
-        : data.isActive
-          ? await deletePermission(data.id)
-          : await restorePermission(data.id);
+    let res;
+    if (type === "position") {
+      res = data.isActive
+        ? await deletePosition(data.id)
+        : await restorePosition(data.id);
+    } else if (type === "permission") {
+      res = data.isActive
+        ? await deletePermission(data.id)
+        : await restorePermission(data.id);
+    } else if (type === "supplier") {
+      res = data.isActive
+        ? await deleteSupplier(data.id)
+        : await restoreSupplier(data.id);
+
+    }
     setIsDeleting(false);
-    if (res.success) {
+    if (res?.success) {
       toast.success(
         data.isActive
           ? "ปิดการใช้งานเรียบร้อย"
@@ -88,10 +107,9 @@ export default function MainPageSetting({
       router.refresh();
       setDeleteModal(null);
     } else {
-      toast.error(res.message || "ไม่สำเร็จ");
+      toast.error(res?.message || "ไม่สำเร็จ");
     }
   };
-
   const isActive = deleteModal?.data?.isActive;
 
   return (
@@ -150,6 +168,19 @@ export default function MainPageSetting({
           onToggle={(p) => handleToggle("permission", p)}
         />
 
+        <SupplierTable
+          suppliers={suppliers}
+          onAdd={() => {
+            setEditSupplier(null);
+            setSupplierOpen(true);
+          }}
+          onEdit={(s) => {
+            setEditSupplier(s);
+            setSupplierOpen(true);
+          }}
+          onToggle={(s) => handleToggle("supplier", s)}
+        />
+
       </div>
 
       {/* POSITION FORM */}
@@ -166,6 +197,13 @@ export default function MainPageSetting({
         isOpen={permissionOpen}
         onOpenChange={setPermissionOpen}
         editData={editPermission}
+      />
+
+      <CreateSupplier
+        key={`supplier-${editSupplier?.id ?? "create"}`}
+        isOpen={supplierOpen}
+        onOpenChange={setSupplierOpen}
+        editData={editSupplier}
       />
 
       {/* 🔐 POSITION PERMISSION MODAL */}
@@ -199,7 +237,7 @@ export default function MainPageSetting({
                   </div>
                   <div className="text-xs text-default-400">
                     {isActive
-                                           ? "สามารถเปิดใช้งานใหม่ได้ภายหลัง"
+                      ? "สามารถเปิดใช้งานใหม่ได้ภายหลัง"
                       : "รายการนี้จะกลับมาใช้งานได้"}
                   </div>
                 </div>
