@@ -13,8 +13,6 @@ import {
   ModalBody,
   useDisclosure,
   Spinner,
-  Tab,
-  Tabs,
 } from "@heroui/react";
 
 import {
@@ -27,7 +25,7 @@ import {
   DragEndEvent,
 } from "@dnd-kit/core";
 
-import type { TabTask, ProjectDetailProps } from "@/lib/type";
+import type { TabTask, ProjectDetailProps, SectionType } from "@/lib/type";
 import { useRouter } from "next/navigation";
 import CreateMainTask from "./forms/createMainTask";
 import { calculateTaskProgress, getMediaType } from "@/lib/setting_data";
@@ -69,6 +67,7 @@ const ProjectDetail = ({
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [view, setView] = useState<"card" | "board">("card");
+  const [activeSection, setActiveSection] = useState<SectionType>("tasks");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabTask>("all");
   const [priority, setPriority] = useState<"urgent" | "high" | "normal" | null>(
@@ -229,7 +228,7 @@ const ProjectDetail = ({
           const res = await updateProjectProgressDB(
             projectIdNum,
             projectProgress,
-            newProjectStatus, 
+            newProjectStatus,
           );
 
           if (res.success) {
@@ -717,21 +716,18 @@ const ProjectDetail = ({
   const mediaType = getMediaType(mediaUrl);
 
   return (
-    <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen space-y-6">
-      {/* --- 🌟 1. HERO SECTION (ให้อยู่นอก Tab เพื่อโชว์เป็น Header เสมอ) --- */}
-      <div className="bg-default-100 dark:bg-zinc-900 rounded-3xl p-6 lg:p-8 grid grid-cols-1 md:grid-cols-[380px_1fr] lg:grid-cols-[560px_1fr] gap-6 items-center overflow-hidden">
-        <div className="relative w-full h-[200px] sm:h-[240px] md:h-[220px] lg:h-[320px] rounded-2xl overflow-hidden bg-zinc-800">
+    <div className="w-full max-w-[1600px] mx-auto min-h-screen p-3 sm:p-4 md:p-6 lg:p-8 space-y-6 overflow-x-hidden box-border">
+      {/* --- HERO SECTION --- */}
+      <div className="bg-default-100 dark:bg-zinc-900 rounded-2xl sm:rounded-3xl p-4 sm:p-6 lg:p-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[400px_1fr] xl:grid-cols-[560px_1fr] gap-6 items-center w-full max-w-full">
+        <div className="relative w-full max-w-full h-[200px] sm:h-[240px] lg:h-[320px] rounded-xl sm:rounded-2xl overflow-hidden bg-zinc-800 shrink-0">
           {(isGeneratingVideo || isUploadingVideo) && (
-            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm transition-all duration-300">
+            <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm">
               <Spinner color="primary" size="lg" />
-              <p className="text-white text-sm mt-3 font-medium animate-pulse">
-                {isGeneratingVideo
-                  ? "AI กำลังทำงาน... อาจใช้เวลา 1-5 นาทีโปรดรอซักครู่นะครับ"
-                  : "กำลังอัปโหลดวิดีโอ... โปรดรอสักครู่"}
+              <p className="text-white text-xs sm:text-sm mt-3 animate-pulse">
+                โปรดรอสักครู่...
               </p>
             </div>
           )}
-
           {mediaType === "video" ? (
             <video
               autoPlay
@@ -755,60 +751,46 @@ const ProjectDetail = ({
           )}
         </div>
 
-        {/* ข้อมูลโปรเจกต์ */}
-        <div className="space-y-4 min-w-0 flex flex-col justify-center h-full">
-          <h1 className="text-xl md:text-2xl lg:text-3xl font-bold">
+        <div className="space-y-3 sm:space-y-4 w-full min-w-0 flex flex-col justify-center h-full">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight break-words line-clamp-2">
             {projectInfo.name || "Project Name"}
           </h1>
-          <p className="text-default-500 dark:text-zinc-400 text-sm">
+          <p className="text-default-500 dark:text-zinc-400 text-xs sm:text-sm truncate">
             ลูกค้า: {projectInfo.customer || "-"}
           </p>
-          <div className="flex gap-3 flex-wrap">
-            <Chip color="primary">IN PROGRESS</Chip>
-            <Chip variant="flat">{projectProgress}% Complete</Chip>
+          <div className="flex gap-2 sm:gap-3 flex-wrap">
+            <Chip color="primary" size="sm">
+              IN PROGRESS
+            </Chip>
+            <Chip variant="flat" size="sm">
+              {projectProgress}% Complete
+            </Chip>
           </div>
-          <Progress value={projectProgress} color="primary" />
-
-          <div className="pt-2">
-            <div className="relative inline-block">
+          <Progress
+            value={projectProgress}
+            color="primary"
+            className="py-1 w-full"
+          />
+          <div className="pt-2 w-full max-w-full">
+            <div className="relative w-full sm:w-auto block">
               <input
                 type="file"
-                accept=".mp4,.mov,video/mp4,video/quicktime"
-                className={`absolute inset-0 w-full h-full opacity-0 z-10 ${
-                  isUploadingVideo ? "cursor-not-allowed" : "cursor-pointer"
-                }`}
+                accept=".mp4,.mov"
+                className={`absolute inset-0 w-full h-full opacity-0 z-10 ${isUploadingVideo ? "cursor-not-allowed" : "cursor-pointer"}`}
                 disabled={isUploadingVideo}
                 onChange={async (e) => {
                   const file = e.target.files?.[0];
-                  if (file) {
-                    if (file.size > 10 * 1024 * 1024) {
-                      toast.error(
-                        "ขนาดไฟล์ใหญ่เกินไป กรุณาอัปโหลดไฟล์ขนาดไม่เกิน 10MB ครับ",
-                      );
-                      e.target.value = "";
-                      return;
-                    }
-                    const isValid =
-                      file.type === "video/mp4" ||
-                      file.type === "video/quicktime" ||
-                      file.name.toLowerCase().endsWith(".mp4") ||
-                      file.name.toLowerCase().endsWith(".mov");
-
-                    if (isValid) {
-                      await handleUploadVideo(file);
-                    } else {
-                      toast.error(
-                        "รองรับเฉพาะไฟล์นามสกุล .mp4 และ .mov เท่านั้นครับ",
-                      );
-                    }
-                  }
+                  if (file && file.size <= 10 * 1024 * 1024)
+                    await handleUploadVideo(file);
+                  else if (file)
+                    toast.error("ขนาดไฟล์ใหญ่เกินไป (ไม่เกิน 10MB)");
                   e.target.value = "";
                 }}
               />
               <Button
                 color="primary"
                 variant="shadow"
-                className="font-medium"
+                className="font-medium w-full sm:w-auto"
                 isLoading={isUploadingVideo}
               >
                 {isUploadingVideo ? "กำลังอัปโหลด..." : "📤 อัปโหลดวิดีโอ"}
@@ -818,55 +800,57 @@ const ProjectDetail = ({
         </div>
       </div>
 
-      {/* --- 🌟 2. TABS SECTION (Mobile Support) --- */}
-      <div className="flex w-full flex-col">
-        <Tabs
-          aria-label="Project Sections"
-          variant="underlined"
-          color="primary"
-          classNames={{
-            base: "w-full",
-            tabList:
-              "w-full overflow-x-auto scrollbar-hide border-b border-default-200 gap-6",
-            tab: "h-12 px-0",
-            panel: "pt-6 pb-2",
-          }}
-        >
-          {/* ----- TAB 1: รายการงาน (Tasks) ----- */}
-          <Tab
-            key="tasks"
-            title={
-              <div className="flex items-center gap-2 px-2">
-                <Building2 size={18} />
-                <span className="font-medium">รายการงาน</span>
-                <Chip size="sm" variant="faded" className="ml-1">
-                  {filteredTasks.length}
-                </Chip>
-              </div>
-            }
-          >
-            {/* --- TOOLBAR ของ Task --- */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
-              <div>
-                <h2 className="text-xl sm:text-2xl font-bold flex items-center gap-2">
-                  Tasks
-                </h2>
-                <p className="text-default-500 dark:text-zinc-400 text-sm mt-1">
-                  ติดตามและจัดการรายการงาน
+      {/* --- 🌟 SECTION SELECTOR (Grid 2x2 สำหรับ iPhone 14) --- */}
+      <div className="w-full">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
+          {[
+            { id: "tasks", label: "งาน", icon: <Building2 size={18} /> },
+            {
+              id: "purchasing",
+              label: "จัดซื้อ",
+              icon: <ShoppingCart size={18} />,
+            },
+            { id: "documents", label: "เอกสาร", icon: <FileText size={18} /> },
+            { id: "camera", label: "กล้อง", icon: <Cctv size={18} /> },
+          ].map((item) => (
+            <Button
+              key={item.id}
+              onPress={() => setActiveSection(item.id)}
+              variant={activeSection === item.id ? "solid" : "light"}
+              color={activeSection === item.id ? "primary" : "default"}
+              size="md"
+              radius="lg"
+              className={`w-full font-bold h-11 ${activeSection === item.id ? "shadow-md bg-white dark:bg-zinc-700" : "text-default-500"}`}
+              startContent={item.icon}
+            >
+              <span className="text-xs sm:text-sm">{item.label}</span>
+            </Button>
+          ))}
+        </div>
+      </div>
+
+      <div className="w-full min-h-[400px] overflow-hidden">
+        {activeSection === "tasks" && (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div className="w-full min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold">Tasks</h2>
+                <p className="text-default-500 text-xs sm:text-sm">
+                  ติดตามรายการงาน
                 </p>
               </div>
-              <div className="w-full sm:w-auto flex flex-wrap items-center gap-3">
-                <div className="flex gap-2">
+              <div className="w-full md:w-auto flex items-center gap-2">
+                <div className="flex bg-default-100 p-1 rounded-xl shrink-0">
                   <Button
                     size="sm"
-                    variant={view === "card" ? "solid" : "flat"}
+                    variant={view === "card" ? "solid" : "light"}
                     onPress={() => setView("card")}
                   >
                     Card
                   </Button>
                   <Button
                     size="sm"
-                    variant={view === "board" ? "solid" : "flat"}
+                    variant={view === "board" ? "solid" : "light"}
                     onPress={() => setView("board")}
                   >
                     Board
@@ -874,10 +858,11 @@ const ProjectDetail = ({
                 </div>
                 <Button
                   onPress={onOpen}
+                  color="primary"
                   radius="full"
-                  className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black px-5"
+                  className="font-bold shrink-0"
                 >
-                  + สร้าง Tasks เอง
+                  + สร้าง Task เอง
                 </Button>
               </div>
             </div>
@@ -885,36 +870,38 @@ const ProjectDetail = ({
             <CreateMainTask
               isOpen={isOpen}
               onOpenChange={onOpenChange}
-              projectId={projectInfo.id ? Number(projectInfo.id) : 0}
+              projectId={Number(projectInfo.id)}
               organizationId={organizationId}
               currentUserId={currentUserId}
               projectCode={projectInfo.code}
             />
 
-            {view === "card" && (
-              <div className="space-y-6">
-                <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <div className="overflow-x-auto scrollbar-hide shrink-0">
                   <TaskFilterTabs
                     activeTab={activeTab}
                     setActiveTab={setActiveTab}
                   />
-                  <Input
-                    placeholder="ค้นหา..."
-                    value={q}
-                    onValueChange={setQ}
-                    isClearable
-                    onClear={() => setQ("")}
-                    size="sm"
-                    startContent={<Search size={16} />}
-                    classNames={{ base: "w-full sm:w-64" }}
-                  />
                 </div>
+                <Input
+                  placeholder="ค้นหา..."
+                  value={q}
+                  onValueChange={setQ}
+                  isClearable
+                  size="sm"
+                  startContent={<Search size={16} />}
+                  className="w-full"
+                />
+              </div>
 
-                {filteredTasks.length === 0 ? (
-                  <EmptyStateCard onOpen={onOpen} />
-                ) : (
-                  <div className="flex flex-col gap-6">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
+              {/* 🌟 คืนค่าการเช็ค Empty State */}
+              {filteredTasks.length === 0 ? (
+                <EmptyStateCard onOpen={onOpen} />
+              ) : (
+                <>
+                  {view === "card" ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
                       {displayedTasks.map((t) => (
                         <MainTaskCard
                           key={t.id}
@@ -923,191 +910,107 @@ const ProjectDetail = ({
                         />
                       ))}
                     </div>
-                    {visibleCount < filteredTasks.length && (
-                      <div
-                        ref={observerTarget}
-                        className="flex items-center justify-center w-full py-8"
+                  ) : (
+                    <div className="w-full overflow-x-auto">
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCorners}
+                        onDragEnd={handleDragEnd}
                       >
-                        <Spinner size="md" color="primary" />
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* --- VIEW: BOARD --- */}
-            {view === "board" && (
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCorners}
-                onDragEnd={handleDragEnd}
-              >
-                {filteredTasks.length === 0 ? (
-                  <EmptyStateCard onOpen={onOpen} />
-                ) : (
-                  <div className="flex md:grid md:grid-cols-3 gap-4 md:gap-6 pb-2">
-                    <DropColumn
-                      status="TODO"
-                      tasks={filteredTasks.filter(
-                        (t) => (t.status || "").toUpperCase() === "TODO",
-                      )}
-                      onTaskClick={handleSelectTask}
-                    />
-                    <DropColumn
-                      status="PROGRESS"
-                      tasks={filteredTasks.filter(
-                        (t) => (t.status || "").toUpperCase() === "PROGRESS",
-                      )}
-                      onTaskClick={handleSelectTask}
-                    />
-                    <DropColumn
-                      status="DONE"
-                      tasks={filteredTasks.filter(
-                        (t) => (t.status || "").toUpperCase() === "DONE",
-                      )}
-                      onTaskClick={handleSelectTask}
-                    />
-                  </div>
-                )}
-              </DndContext>
-            )}
-          </Tab>
-
-          <Tab
-            key="purchasing"
-            title={
-              <div className="flex items-center gap-2 px-2">
-                <ShoppingCart size={18} />
-                <span className="font-medium">การจัดซื้อ</span>
-              </div>
-            }
-          >
-            <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
-              <p className="text-default-500">
-                ส่วนจัดการการสั่งซื้อวัสดุ อุปกรณ์ และ Supplier จะมาในเร็วๆ นี้
-              </p>
+                        <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6 w-full min-w-0">
+                          <DropColumn
+                            status="TODO"
+                            tasks={filteredTasks.filter(
+                              (t) => t.status === "TODO",
+                            )}
+                            onTaskClick={handleSelectTask}
+                          />
+                          <DropColumn
+                            status="PROGRESS"
+                            tasks={filteredTasks.filter(
+                              (t) => t.status === "PROGRESS",
+                            )}
+                            onTaskClick={handleSelectTask}
+                          />
+                          <DropColumn
+                            status="DONE"
+                            tasks={filteredTasks.filter(
+                              (t) => t.status === "DONE",
+                            )}
+                            onTaskClick={handleSelectTask}
+                          />
+                        </div>
+                      </DndContext>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
-          </Tab>
+            {visibleCount < filteredTasks.length &&
+              filteredTasks.length > 0 && (
+                <div ref={observerTarget} className="flex justify-center py-10">
+                  <Spinner color="primary" />
+                </div>
+              )}
+          </div>
+        )}
 
-          <Tab
-            key="documents"
-            title={
-              <div className="flex items-center gap-2 px-2">
-                <FileText size={18} />
-                <span className="font-medium">เอกสาร</span>
-              </div>
-            }
-          >
-            <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
-              <p className="text-default-500">
-                ส่วนจัดการเอกสารและไฟล์ต่างๆ จะมาในเร็วๆ นี้
-              </p>
-            </div>
-          </Tab>
-
-          <Tab
-            key="site-camera"
-            title={
-              <div className="flex items-center gap-2 px-2">
-                <Cctv size={18} />
-                <span className="font-medium">กล้องหน้างาน</span>
-              </div>
-            }
-          >
-            <div className="p-10 text-center bg-default-50 dark:bg-zinc-900/50 rounded-2xl border border-dashed border-default-200">
-              <p className="text-default-500">
-                ระบบเชื่อมต่อภาพและวิดีโอจากกล้อง CCTV หน้างานแบบเรียลไทม์
-                จะมาในเร็วๆ นี้
-              </p>
-            </div>
-          </Tab>
-        </Tabs>
+        {/* Section อื่นๆ */}
+        {activeSection !== "tasks" && (
+          <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
+            <p className="text-default-400 font-bold uppercase tracking-widest">
+              Coming Soon
+            </p>
+          </div>
+        )}
       </div>
 
+      {/* --- MODAL (จัดกึ่งกลางเป๊ะสำหรับ iPhone 14) --- */}
       <Modal
         isOpen={!!selected}
         onOpenChange={(isOpen) => {
-          if (!isOpen) {
-            setSelectedId(null);
-            setIsEditMode(false);
-            setIsAddingSubtask(false);
-            setEditingSubtaskId(null);
-            setSubtaskIdToDelete(null);
-          }
+          if (!isOpen) setSelectedId(null);
         }}
         size="3xl"
+        placement="center"
         classNames={{
-          base: `md:rounded-xl md:max-w-4xl md:my-10 md:max-h-[90vh] max-md:rounded-none max-md:m-0 max-md:h-screen max-md:max-w-full`,
-          closeButton: "top-4 right-4 bg-default-100 hover:bg-default-200 z-50",
+          base: "max-h-[90vh] md:max-h-[85vh] rounded-2xl mx-4 sm:mx-auto overflow-hidden",
+          closeButton: "top-3 right-3 bg-default-100 hover:bg-default-200 z-50",
         }}
       >
-        <ModalContent className="max-md:h-screen max-md:flex max-md:flex-col max-md:overflow-hidden">
-          {selected ? (
-            <>
-              {/* HEADER ของ Mobile */}
-              <div className="md:hidden p-4 flex items-center justify-between border-b border-default-200 dark:border-zinc-800 shrink-0 bg-background z-10">
-                <div className="flex items-center gap-3 overflow-hidden">
-                  <button
-                    onClick={() => setSelectedId(null)}
-                    className="p-2 -ml-2 text-default-500"
-                  >
-                    <svg
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="24"
-                      height="24"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    >
-                      <path d="m15 18-6-6 6-6" />
-                    </svg>
-                  </button>
-                  <p className="font-semibold truncate">
-                    {isEditMode
-                      ? "แก้ไขรายละเอียดงาน"
-                      : selected.taskName || "Untitled Task"}
-                  </p>
+        <ModalContent className="flex flex-col overflow-hidden">
+          {selected && (
+            <ModalBody className="space-y-5 md:py-8 overflow-y-auto scrollbar-hide flex-1 p-4">
+              <TaskActionButtons
+                isEditMode={isEditMode}
+                setIsEditMode={setIsEditMode}
+                isSaving={isSaving}
+                handleSaveTaskEdit={handleSaveTaskEdit}
+                setIsDeleteModalOpen={setIsDeleteModalOpen}
+              />
+              <div className="flex flex-col md:flex-row gap-6">
+                <img
+                  src={selected.coverImageUrl || "/placeholder-image.jpg"}
+                  className="w-full md:w-80 h-48 object-cover rounded-2xl"
+                  alt="Cover"
+                />
+                <div className="flex-1 min-w-0">
+                  <UpdateMainTask
+                    isEditMode={isEditMode}
+                    selected={selected}
+                    editFormData={editFormData}
+                    setEditFormData={setEditFormData}
+                    isUpdatingStatusMainTask={isUpdatingStatusMainTask}
+                    handleUpdateStatusMainTask={handleUpdateStatusMainTask}
+                  />
                 </div>
               </div>
-
-              <ModalBody className="space-y-5 md:py-8 md:px-2 md:overflow-y-auto md:my-auto scrollbar-hide max-md:flex-1 max-md:overflow-y-auto max-md:pb-20 relative">
-                <TaskActionButtons
-                  isEditMode={isEditMode}
-                  setIsEditMode={setIsEditMode}
-                  isSaving={isSaving}
-                  handleSaveTaskEdit={handleSaveTaskEdit}
-                  setIsDeleteModalOpen={setIsDeleteModalOpen}
-                />
-
-                <div className="flex flex-col md:flex-row gap-8 md:px-6 mt-2">
-                  <img
-                    src={selected.coverImageUrl || "/placeholder-image.jpg"}
-                    className="w-full md:w-[320px] h-[220px] md:h-[200px] object-cover rounded-xl shrink-0"
-                    alt="Cover"
-                  />
-                  <div className="flex-1 space-y-5">
-                    <UpdateMainTask
-                      isEditMode={isEditMode}
-                      selected={selected}
-                      editFormData={editFormData}
-                      setEditFormData={setEditFormData}
-                      isUpdatingStatusMainTask={isUpdatingStatusMainTask}
-                      handleUpdateStatusMainTask={handleUpdateStatusMainTask}
-                    />
-                  </div>
-                </div>
-
-                {!isEditMode && (
-                  <div className="space-y-3 md:px-6">
-                    <h3 className="font-semibold text-sm">
-                      รายการย่อย (Subtasks)
-                    </h3>
-                    {(selected.details || selected.subtasks)?.length > 0 ? (
-                      (selected.details || selected.subtasks).map((s: any) => (
+              {!isEditMode && (
+                <div className="space-y-4">
+                  <h3 className="font-bold text-lg">รายการย่อย (Subtasks)</h3>
+                  <div className="overflow-y-auto max-h-80 space-y-2">
+                    {(selected.details || []).length > 0 ? (
+                      selected.details.map((s: any) => (
                         <SubtaskItem
                           key={s.id}
                           subtask={s}
@@ -1120,31 +1023,26 @@ const ProjectDetail = ({
                           setEditingSubtaskId={setEditingSubtaskId}
                           handleSaveSubtaskEdit={handleSaveSubtaskEdit}
                           handleToggleSubtask={handleToggleSubtask}
-                          handleDeleteSubtask={(id) => setSubtaskIdToDelete(id)}
+                          handleDeleteSubtask={setSubtaskIdToDelete}
                         />
                       ))
                     ) : (
-                      <div className="text-sm text-default-400 bg-default-50 dark:bg-zinc-800/30 p-6 rounded-xl text-center border border-dashed border-default-200 dark:border-zinc-700">
-                        ยังไม่มีรายการย่อยในงานนี้
+                      <div className="p-6 text-center text-default-400 bg-default-50 rounded-xl border border-dashed">
+                        ไม่มีรายการย่อย
                       </div>
                     )}
-
-                    <CreateSubtaskForm
-                      isAddingSubtask={isAddingSubtask}
-                      setIsAddingSubtask={setIsAddingSubtask}
-                      newSubtask={newSubtask}
-                      setNewSubtask={setNewSubtask}
-                      handleSaveSubtask={handleSaveSubtask}
-                      isSavingSubtask={isSavingSubtask}
-                    />
                   </div>
-                )}
-              </ModalBody>
-            </>
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <p>ไม่พบข้อมูลงาน</p>
-            </div>
+                  <CreateSubtaskForm
+                    isAddingSubtask={isAddingSubtask}
+                    setIsAddingSubtask={setIsAddingSubtask}
+                    newSubtask={newSubtask}
+                    setNewSubtask={setNewSubtask}
+                    handleSaveSubtask={handleSaveSubtask}
+                    isSavingSubtask={isSavingSubtask}
+                  />
+                </div>
+              )}
+            </ModalBody>
           )}
         </ModalContent>
       </Modal>
@@ -1156,7 +1054,6 @@ const ProjectDetail = ({
         isDeleting={isDeletingTask}
         onConfirm={handleDeleteTask}
       />
-
       <DeleteSubtaskModal
         isOpen={subtaskIdToDelete !== null}
         onOpenChange={(isOpen) => {

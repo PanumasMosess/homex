@@ -32,8 +32,7 @@ export const HomexNavbar = ({
   const img_user = session.data?.user.avatarUrl?.toString();
   const user = session.data?.user.displayName?.toString();
 
-  console.log(session.data);
-  
+  // console.log(session);
 
   const onLogoutConfirm = () => {
     handleSignOut();
@@ -43,17 +42,19 @@ export const HomexNavbar = ({
     <Navbar
       isBordered
       maxWidth="full"
+      // 🌟 1. ลบคำสั่ง max-w-[100vw] ออก ให้ Navbar กาง 100% ตามธรรมชาติ
       className="bg-background/70 backdrop-blur-xl border-b-small border-default-100 sticky top-0 z-30"
       classNames={{
-        wrapper: "px-4 sm:px-6 h-16",
+        // 🌟 2. บังคับ w-full และ !max-w-full เพื่อเจาะทะลุขีดจำกัดความกว้างของ HeroUI
+        wrapper: "w-full !max-w-full px-4 sm:px-6 h-16",
       }}
     >
-      <NavbarContent justify="start" className="gap-2">
+      <NavbarContent justify="start" className="gap-2 flex-1 min-w-0">
         <Button
           isIconOnly
           variant="light"
           radius="full"
-          className="md:hidden text-default-500"
+          className="md:hidden text-default-500 shrink-0"
           onPress={onMenuClick}
         >
           <Menu size={24} />
@@ -63,28 +64,29 @@ export const HomexNavbar = ({
           isIconOnly
           variant="light"
           radius="full"
-          className="hidden md:flex text-default-500 hover:text-foreground"
+          className="hidden md:flex text-default-500 hover:text-foreground shrink-0"
           onPress={onToggleCollapse}
         >
           {isCollapsed ? <ChevronRight size={22} /> : <ChevronLeft size={22} />}
         </Button>
+
         <Input
           id="search-bar"
           classNames={{
-            base: "max-w-full sm:max-w-[12rem] h-10 ml-2 hidden sm:flex",
-            mainWrapper: "h-full",
-            input: "text-small",
+            base: "max-w-full sm:max-w-[12rem] h-10 ml-2 hidden sm:flex flex-1 min-w-0",
+            mainWrapper: "h-full w-full",
+            input: "text-small w-full",
             inputWrapper:
               "h-full font-normal text-default-500 bg-default-400/20 dark:bg-default-500/20 rounded-full",
           }}
           placeholder="Type to search..."
           size="sm"
-          startContent={<Search size={18} />}
+          startContent={<Search size={18} className="shrink-0" />}
           type="search"
         />
       </NavbarContent>
 
-      <NavbarContent justify="end" className="gap-3">
+      <NavbarContent justify="end" className="gap-3 shrink-0">
         <NavbarItem className="hidden sm:flex">
           <Button
             isIconOnly
@@ -119,7 +121,7 @@ export const HomexNavbar = ({
                 className="h-14 gap-2 opacity-100 cursor-default data-[hover=true]:bg-transparent"
               >
                 <p className="font-semibold">เข้าสู่ระบบโดย</p>
-                <p className="font-semibold">{user}</p>
+                <p className="font-semibold truncate max-w-[200px]">{user}</p>
               </DropdownItem>
               <DropdownItem key="settings">การตั้งค่า</DropdownItem>
               <DropdownItem key="help_and_feedback">ความช่วยเหลือ</DropdownItem>
@@ -133,11 +135,13 @@ export const HomexNavbar = ({
               </DropdownItem>
             </DropdownMenu>
           </Dropdown>
+
           <Modal
             isOpen={isOpen}
             onOpenChange={onOpenChange}
             isDismissable={false}
             backdrop="blur"
+            className="mx-4 sm:mx-0"
           >
             <ModalContent>
               {(onClose) => (
