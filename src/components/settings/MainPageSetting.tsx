@@ -18,6 +18,7 @@ import PermissionTable from "./permission/PermissionTable";
 
 import CreatePosition from "./position/forms/createPosition";
 import CreatePermission from "./permission/forms/createPermission";
+import UpdatePositionPermission from "./position/forms/updatePositionPermission";
 
 import {
   deletePosition,
@@ -38,12 +39,26 @@ export default function MainPageSetting({
 }) {
 
   const router = useRouter();
+
+  /* ========================= */
+  /* STATE */
+  /* ========================= */
   const [positionOpen, setPositionOpen] = useState(false);
   const [editPosition, setEditPosition] = useState<any>(null);
+
   const [permissionOpen, setPermissionOpen] = useState(false);
   const [editPermission, setEditPermission] = useState<any>(null);
+
+  /* 🔐 POSITION PERMISSION */
+  const [permissionSettingOpen, setPermissionSettingOpen] = useState(false);
+  const [permissionPosition, setPermissionPosition] = useState<any>(null);
+
   const [deleteModal, setDeleteModal] = useState<any>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  /* ========================= */
+  /* TOGGLE ACTIVE */
+  /* ========================= */
   const handleToggle = (type: "position" | "permission", data: any) => {
     setDeleteModal({
       type,
@@ -101,6 +116,7 @@ export default function MainPageSetting({
       {/* TABLE GRID */}
       <div className="grid xl:grid-cols-2 gap-8">
 
+        {/* POSITION TABLE */}
         <PositionTable
           positions={positions}
           onAdd={() => {
@@ -112,8 +128,15 @@ export default function MainPageSetting({
             setPositionOpen(true);
           }}
           onToggle={(p) => handleToggle("position", p)}
+
+          /* 🔐 OPEN PERMISSION SETTING */
+          onPermission={(p) => {
+            setPermissionPosition(p);
+            setPermissionSettingOpen(true);
+          }}
         />
 
+        {/* PERMISSION TABLE */}
         <PermissionTable
           permissions={permissions}
           onAdd={() => {
@@ -144,7 +167,15 @@ export default function MainPageSetting({
         onOpenChange={setPermissionOpen}
         editData={editPermission}
       />
-      
+
+      {/* 🔐 POSITION PERMISSION MODAL */}
+      <UpdatePositionPermission
+        isOpen={permissionSettingOpen}
+        onOpenChange={setPermissionSettingOpen}
+        position={permissionPosition}
+        permissions={permissions}
+      />
+
       {/* CONFIRM MODAL */}
       <Modal
         isOpen={!!deleteModal}
@@ -168,7 +199,7 @@ export default function MainPageSetting({
                   </div>
                   <div className="text-xs text-default-400">
                     {isActive
-                      ? "สามารถเปิดใช้งานใหม่ได้ภายหลัง"
+                                           ? "สามารถเปิดใช้งานใหม่ได้ภายหลัง"
                       : "รายการนี้จะกลับมาใช้งานได้"}
                   </div>
                 </div>

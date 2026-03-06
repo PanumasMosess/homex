@@ -140,6 +140,8 @@ model position_permission {
 
   permissionId Int // FK -> permission.id
   permission   permission @relation(fields: [permissionId], references: [id])
+
+  @@unique([positionId, permissionId])
 }
 
 // =====================================
