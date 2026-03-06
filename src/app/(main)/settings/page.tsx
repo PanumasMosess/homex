@@ -16,6 +16,7 @@ const Page = async () => {
 
   const permissions = await prisma.permission.findMany({
     where: { organizationId },
+    include: { positions: true },
     orderBy: { createdAt: "desc" },
   });
 

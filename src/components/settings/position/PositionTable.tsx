@@ -24,20 +24,22 @@ import {
   Pencil,
   Trash2,
   Search,
+  RotateCcw,
+  Shield,
 } from "lucide-react";
-
-import { RotateCcw } from "lucide-react";
 
 export default function PositionTable({
   positions = [],
   onAdd,
   onEdit,
   onToggle,
+  onPermission,
 }: {
   positions: any[];
   onAdd: () => void;
   onEdit: (p: any) => void;
   onToggle: (p: any) => void;
+  onPermission: (p: any) => void;
 }) {
 
   const [q, setQ] = useState("");
@@ -194,6 +196,16 @@ export default function PositionTable({
                 {/* ✅ แสดงตลอด */}
                 <TableCell>
                   <div className="flex justify-center gap-2">
+                    <Button
+                      isIconOnly
+                      size="sm"
+                      radius="full"
+                      variant="flat"
+                      className="text-orange-500 bg-orange-500/10 hover:bg-orange-500/20"
+                      onPress={() => onPermission(p)}
+                    >
+                      <Shield size={16} />
+                    </Button>
                     <Button
                       isIconOnly
                       size="sm"

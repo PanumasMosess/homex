@@ -2,7 +2,6 @@
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
 import { ActionState, CreatePermissionData } from "@/lib/type";
 
 /* ====================================================== */
@@ -79,8 +78,6 @@ export async function createPermission(
         isActive: true,
       },
     });
-
-    revalidatePath("/setting");
 
     return {
       success: true,
@@ -186,15 +183,12 @@ export async function updatePermission(
 
     await prisma.permission.update({
       where: { id },
-
       data: {
         permissionKey,
         permissionName,
         permissionDesc: permissionDesc || null,
       },
     });
-
-    revalidatePath("/setting");
 
     return {
       success: true,
@@ -213,14 +207,14 @@ export async function updatePermission(
 /* DELETE */
 /* ====================================================== */
 
-export async function deletePermission(id: number): Promise<ActionState> {
+export async function deletePermission(
+  id: number,
+): Promise<ActionState> {
   try {
     await prisma.permission.update({
       where: { id },
       data: { isActive: false },
     });
-
-    revalidatePath("/setting");
 
     return {
       success: true,
@@ -239,14 +233,14 @@ export async function deletePermission(id: number): Promise<ActionState> {
 /* RESTORE */
 /* ====================================================== */
 
-export async function restorePermission(id: number): Promise<ActionState> {
+export async function restorePermission(
+  id: number,
+): Promise<ActionState> {
   try {
     await prisma.permission.update({
       where: { id },
       data: { isActive: true },
     });
-
-    revalidatePath("/setting");
 
     return {
       success: true,
@@ -259,4 +253,4 @@ export async function restorePermission(id: number): Promise<ActionState> {
       message: "ไม่สามารถเปิด Permission ได้",
     };
   }
-}
+}   

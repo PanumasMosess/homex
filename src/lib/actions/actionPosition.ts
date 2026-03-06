@@ -2,7 +2,6 @@
 
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
-import { revalidatePath } from "next/cache";
 import { ActionState, CreatePositionData } from "@/lib/type";
 
 /* ====================================================== */
@@ -59,8 +58,6 @@ export async function createPosition(
         isActive: true,
       },
     });
-
-    revalidatePath("/setting");
 
     return {
       success: true,
@@ -149,8 +146,6 @@ export async function updatePosition(
       },
     });
 
-    revalidatePath("/setting");
-
     return {
       success: true,
       error: false,
@@ -168,7 +163,9 @@ export async function updatePosition(
 /* DELETE (SOFT DELETE) */
 /* ====================================================== */
 
-export async function deletePosition(id: number): Promise<ActionState> {
+export async function deletePosition(
+  id: number,
+): Promise<ActionState> {
   try {
     const session = await auth();
     const organizationId = Number(session?.user?.organizationId);
@@ -218,8 +215,6 @@ export async function deletePosition(id: number): Promise<ActionState> {
       data: { isActive: false },
     });
 
-    revalidatePath("/setting");
-
     return {
       success: true,
       error: false,
@@ -237,7 +232,9 @@ export async function deletePosition(id: number): Promise<ActionState> {
 /* RESTORE */
 /* ====================================================== */
 
-export async function restorePosition(id: number): Promise<ActionState> {
+export async function restorePosition(
+  id: number,
+): Promise<ActionState> {
   try {
     const session = await auth();
     const organizationId = Number(session?.user?.organizationId);
@@ -269,8 +266,6 @@ export async function restorePosition(id: number): Promise<ActionState> {
       where: { id },
       data: { isActive: true },
     });
-
-    revalidatePath("/setting");
 
     return {
       success: true,
