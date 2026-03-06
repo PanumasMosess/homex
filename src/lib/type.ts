@@ -238,3 +238,5 @@ export interface CreatePermissionData {
   permissionName: string;
   permissionDesc?: string;
 }
+
+export type SectionType = "tasks" | "purchasing" | "documents" | "camera" | (string & {});
