@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useMemo, useEffect, useCallback, useRef } from "react";
-import { Search, Building2, FileText, ShoppingCart, Cctv } from "lucide-react";
+import {
+  Search,
+  Building2,
+  FileText,
+  ShoppingCart,
+  Cctv,
+  Banknote,
+} from "lucide-react";
 
 import {
   Button,
@@ -81,6 +88,7 @@ const ProjectDetail = ({
     customer: "",
     image: "",
     video: "",
+    budget: 0,
   });
 
   const [q, setQ] = useState("");
@@ -145,6 +153,7 @@ const ProjectDetail = ({
       customer: localStorage.getItem("currentProjectCustomer") || "",
       image: localStorage.getItem("currentProjectImage") || "",
       video: localStorage.getItem("currentProjectVideo") || "",
+      budget: parseInt(localStorage.getItem("currentProjectBudget") ?? "0"),
     });
 
     const initialFilteredTasks = dataDetail.filter(
@@ -712,6 +721,62 @@ const ProjectDetail = ({
     }
   };
 
+  const budgetSummary = useMemo(() => {
+    const totalBudget = tasks.reduce(
+      (sum, t) => sum + (Number(t.budget) || 0),
+      0,
+    );
+
+    return {
+      expenses: totalBudget,
+    };
+  }, [tasks]);
+
+  const handleAISuccess = async (subtasks: any[]) => {
+    if (!selected) return;
+
+    try {
+      const savePromises = subtasks.map((item) =>
+        createSubTask({
+          detailName: item.detailName,
+          detailDesc: item.detailDesc || "",
+          weightPercent: Number(item.weightPercent) || 0,
+          taskId: selected.id,
+          projectId: Number(projectInfo.id),
+          organizationId: organizationId,
+          status: false,
+        }),
+      );
+
+      const results = await Promise.all(savePromises);
+
+      const newSavedSubtasks = results
+        .filter((res) => res.success)
+        .map((res) => res.data);
+
+      if (newSavedSubtasks.length === 0) throw new Error("บันทึกไม่สำเร็จ");
+
+      const updatedDetails = [...(selected.details || []), ...newSavedSubtasks];
+      const newProgress = calculateTaskProgress(updatedDetails);
+
+      await updateMainTask(selected.id, { progressPercent: newProgress });
+
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === selected.id
+            ? {
+                ...t,
+                details: updatedDetails,
+                progressPercent: newProgress,
+              }
+            : t,
+        ),
+      );
+    } catch (error) {
+      console.error("AI Save Error:", error);
+    }
+  };
+
   const mediaUrl = projectInfo.video;
   const mediaType = getMediaType(mediaUrl);
 
@@ -758,6 +823,32 @@ const ProjectDetail = ({
           <p className="text-default-500 dark:text-zinc-400 text-xs sm:text-sm truncate">
             ลูกค้า: {projectInfo.customer || "-"}
           </p>
+          <div className="grid grid-cols-2 gap-2 py-1">
+            <div className="bg-background/50 dark:bg-zinc-800/50 p-2 rounded-xl border border-default-100">
+              <p className="text-[10px] uppercase text-default-400 font-bold mb-0.5">
+                งบประมาณโครงการ
+              </p>
+              <p className="text-sm sm:text-base font-bold text-primary flex items-center gap-1.5">
+                <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>{projectInfo.budget.toLocaleString()}</span>
+              </p>
+            </div>
+            <div className="bg-background/50 dark:bg-zinc-800/50 p-2 rounded-xl border border-default-100">
+              <p className="text-[10px] uppercase text-default-400 font-bold mb-0.5">
+                ค่าใช้จ่ายโดยประมาณ
+              </p>
+              <p
+                className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${
+                  budgetSummary.expenses > projectInfo.budget
+                    ? "text-danger"
+                    : "text-warning"
+                }`}
+              >
+                <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                <span>{budgetSummary.expenses.toLocaleString()}</span>
+              </p>
+            </div>
+          </div>
           <div className="flex gap-2 sm:gap-3 flex-wrap">
             <Chip color="primary" size="sm">
               IN PROGRESS
@@ -800,7 +891,6 @@ const ProjectDetail = ({
         </div>
       </div>
 
-      {/* --- 🌟 SECTION SELECTOR (Grid 2x2 สำหรับ iPhone 14) --- */}
       <div className="w-full">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
           {[
@@ -971,6 +1061,8 @@ const ProjectDetail = ({
         onOpenChange={(isOpen) => {
           if (!isOpen) setSelectedId(null);
         }}
+        isDismissable={false}
+        isKeyboardDismissDisabled={true}
         size="3xl"
         placement="center"
         classNames={{
@@ -1039,6 +1131,8 @@ const ProjectDetail = ({
                     setNewSubtask={setNewSubtask}
                     handleSaveSubtask={handleSaveSubtask}
                     isSavingSubtask={isSavingSubtask}
+                    taskName={selected?.taskName}
+                    onAISuccess={handleAISuccess}
                   />
                 </div>
               )}

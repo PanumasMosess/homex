@@ -1,5 +1,9 @@
+import { generateSubtasksAI } from "@/lib/ai/geminiAI";
 import { CreateSubtaskFormProps } from "@/lib/type";
-import { Button, Input, Textarea } from "@heroui/react";
+import { Button, Input, Spinner, Textarea } from "@heroui/react";
+import { Sparkles } from "lucide-react";
+import { useState } from "react";
+import { toast } from "react-toastify";
 
 const CreateSubtaskForm = ({
   isAddingSubtask,
@@ -8,18 +12,62 @@ const CreateSubtaskForm = ({
   setNewSubtask,
   handleSaveSubtask,
   isSavingSubtask,
+  taskName,
+  onAISuccess,
 }: CreateSubtaskFormProps) => {
+  const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  const handleAIQuery = async () => {
+    if (!taskName) {
+      toast.warning("ไม่พบชื่อโครงการหลักสำหรับวิเคราะห์");
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      const myPrompt = `ช่วยลิสต์รายการย่อย (subtasks) สำหรับงานก่อสร้างชื่อ "${taskName}" มาให้หน่อยจำนวน 10 ข้อ โดยขอผลลัพธ์เป็น JSON array ของวัตถุที่มีฟิลด์ detailName, detailDesc, และ weightPercent (รวมกันได้ 100)`;
+      const result = await generateSubtasksAI(myPrompt);
+
+      if (result && result.length > 0) {
+        if (onAISuccess) {
+          await onAISuccess(result);
+          toast.success("AI สร้างและบันทึกรายการย่อยเรียบร้อยแล้ว");
+        }
+      } else {
+        toast.error("AI ไม่สามารถสร้างข้อมูลได้");
+      }
+    } catch (error) {
+      console.error("AI Query Error:", error);
+      toast.error("เกิดข้อผิดพลาดในการทำงานของ AI");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   if (!isAddingSubtask) {
     return (
-      <Button
-        color="primary"
-        variant="flat"
-        size="sm"
-        className="mt-2"
-        onPress={() => setIsAddingSubtask(true)}
-      >
-        + เพิ่มรายการย่อย
-      </Button>
+      <div className="flex gap-2 mt-2">
+        <Button
+          color="primary"
+          variant="flat"
+          size="sm"
+          onPress={() => setIsAddingSubtask(true)}
+        >
+          + เพิ่มรายการย่อย
+        </Button>
+
+        <Button
+          color="secondary"
+          variant="ghost"
+          size="sm"
+          startContent={!isGeneratingAI && <Sparkles size={16} />}
+          onPress={handleAIQuery}
+          isLoading={isGeneratingAI}
+        >
+          {isGeneratingAI ? "AI กำลังคิด..." : "สร้างงานย่อย 10 ข้อด้วย AI"}
+        </Button>
+      </div>
     );
   }
   return (

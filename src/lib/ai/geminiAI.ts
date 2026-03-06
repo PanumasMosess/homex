@@ -103,17 +103,14 @@ export async function checkVideoStatus(operationName: string) {
       throw new Error("ไม่สามารถดาวน์โหลดไฟล์วิดีโอจาก Google API ได้");
 
     const videoArrayBuffer = await videoFetchRes.arrayBuffer();
-    
+
     const blob = new Blob([videoArrayBuffer], { type: "video/mp4" });
     const formData = new FormData();
     formData.append("file", blob, "ai_generated_video.mp4");
 
     console.log("ดาวน์โหลดไฟล์สำเร็จ! กำลังอัปโหลดขึ้น S3...");
-    
-    const s3Response = await sendbase64toS3DataVdo(
-      formData,
-      "vdo_projects",
-    );
+
+    const s3Response = await sendbase64toS3DataVdo(formData, "vdo_projects");
 
     if (s3Response && s3Response.url) {
       console.log(`✅ อัปโหลดขึ้น S3 สมบูรณ์! URL: ${s3Response.url}`);
@@ -246,5 +243,53 @@ export const generationImage3D = async (img_Url: string, progress: number) => {
   } catch (error) {
     console.error("Gemini image generation error:", error);
     return { success: false, error: "Failed to process gen with AI." };
+  }
+};
+
+export const generateSubtasksAI = async (prompt: string) => {
+  try {
+    const result = await ai_gemini.models.generateContent({
+      model: model_version,
+      config: {
+        systemInstruction: `คุณคือผู้จัดการโครงการก่อสร้างมืออาชีพ 
+        หน้าที่ของคุณคือการแตกงานหลักให้เป็นงานย่อย (Subtasks) จำนวน 10 ข้อ
+        เงื่อนไขการตอบกลับ:
+        - ตอบกลับเป็น JSON array ของวัตถุเท่านั้น
+        - แต่ละวัตถุต้องมีฟิลด์: 
+          1. "detailName" (ชื่อรายการภาษาไทย)
+          2. "detailDesc" (คำอธิบายสั้นๆ ภาษาไทย)
+          3. "weightPercent" (ตัวเลขน้ำหนักงาน โดยผลรวมทั้ง 10 ข้อต้องเท่ากับ 100 พอดี)
+        - ห้ามมีข้อความนำหรือคำลงท้าย ห้ามมี Markdown format (เช่น \`\`\`json)`,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!responseText) {
+      console.error("AI Response structure is invalid or empty:", result);
+      return [];
+    }
+    try {
+      const subtasks = JSON.parse(responseText);
+
+      if (Array.isArray(subtasks)) {
+        return subtasks.map((item: any) => ({
+          detailName: item.detailName || "งานย่อยไม่มีชื่อ",
+          detailDesc: item.detailDesc || "",
+          weightPercent: Number(item.weightPercent) || 10,
+        }));
+      }
+
+      return [];
+    } catch (parseError) {
+      console.error("JSON Parse Error. Raw response:", responseText);
+      return [];
+    }
+  } catch (error) {
+    console.error("Error generating subtasks with AI:", error);
+    throw error;
   }
 };

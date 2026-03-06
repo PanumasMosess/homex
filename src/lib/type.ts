@@ -182,6 +182,8 @@ export interface CreateSubtaskFormProps {
   setNewSubtask: (val: any) => void;
   handleSaveSubtask: () => void;
   isSavingSubtask: boolean;
+  taskName?: string;
+  onAISuccess?: (subtasks: any[]) => void;
 }
 
 export interface UpdateMainTaskProps {
@@ -239,4 +241,9 @@ export interface CreatePermissionData {
   permissionDesc?: string;
 }
 
-export type SectionType = "tasks" | "purchasing" | "documents" | "camera" | (string & {});
+export type SectionType =
+  | "tasks"
+  | "purchasing"
+  | "documents"
+  | "camera"
+  | (string & {});
