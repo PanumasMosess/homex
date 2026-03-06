@@ -41,7 +41,6 @@ const MainTaskCard = ({ task, onSelect }: MainTaskCardProps) => {
             {(task.details || []).length || 0}
           </p>
 
-          {/* 🌟 3. ใส่ max-w-full และ truncate เผื่อตัวเลข Budget ยาวระดับร้อยล้านพันล้านจะได้ไม่ดันจอพัง */}
           <div className="flex items-center gap-1 sm:gap-1.5 font-medium text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20 px-1.5 py-0.5 sm:px-2 rounded-md shrink-0 max-w-full min-w-0">
             <Banknote className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             <span className="truncate">
