@@ -247,3 +247,18 @@ export type SectionType =
   | "documents"
   | "camera"
   | (string & {});
+
+  
+export type CreateSupplierProps = {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  editData?: any;
+};
+
+export interface CreateSupplierData {
+  supplierName: string
+  supplierPhone?: string
+  supplierEmail?: string
+  supplierAddress?: string
+  supplierDesc?: string
+}

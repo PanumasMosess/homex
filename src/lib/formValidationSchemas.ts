@@ -195,3 +195,24 @@ export const PermissionSchema_ = z.object({
 });
 
 export type PermissionSchema = z.infer<typeof PermissionSchema_>;
+
+export const SupplierSchema_ = z.object({
+  supplierName: z
+    .string()
+    .min(1, { message: "กรุณากรอก Supplier Name" })
+    .max(150),
+
+  supplierPhone: z.string().max(50).optional(),
+
+  supplierEmail: z
+    .string()
+    .email("รูปแบบ Email ไม่ถูกต้อง")
+    .optional()
+    .or(z.literal("")),
+
+  supplierAddress: z.string().max(255).optional(),
+
+  supplierDesc: z.string().max(255).optional(),
+});
+
+export type SupplierSchema = z.infer<typeof SupplierSchema_>;
