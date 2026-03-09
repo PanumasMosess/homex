@@ -4,6 +4,12 @@ import MainPageSetting from "@/components/settings/MainPageSetting";
 
 export const dynamic = "force-dynamic";
 
+import { Metadata } from "next";
+
+export const metadata: Metadata = {
+  title: "Setting",
+};
+
 const Page = async () => {
 
   const session = await auth();

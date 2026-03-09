@@ -43,7 +43,7 @@ export interface MainPageProjectProps {
 
 export type Status = "todo" | "progress" | "done";
 
-export type TabTask = "all" | "progress" | "done" | "todo";
+export type TabTask = "all" | "progress" | "done" | "todo" | "user";
 
 export interface Subtask {
   id: number;
@@ -248,7 +248,6 @@ export type SectionType =
   | "camera"
   | (string & {});
 
-  
 export type CreateSupplierProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
@@ -256,9 +255,9 @@ export type CreateSupplierProps = {
 };
 
 export interface CreateSupplierData {
-  supplierName: string
-  supplierPhone?: string
-  supplierEmail?: string
-  supplierAddress?: string
-  supplierDesc?: string
+  supplierName: string;
+  supplierPhone?: string;
+  supplierEmail?: string;
+  supplierAddress?: string;
+  supplierDesc?: string;
 }
