@@ -336,4 +336,21 @@ model projects_running {
   project project[]
 }
 
- 
+model supplier {
+  id Int @id @default(autoincrement())
+
+  supplierName    String
+  supplierPhone   String?
+  supplierEmail   String?
+  supplierAddress String?
+  supplierDesc    String?
+
+  isActive Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // relations
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+}
