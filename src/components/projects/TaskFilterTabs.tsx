@@ -10,6 +10,12 @@ const TaskFilterTabs = ({ activeTab, setActiveTab }: TaskFilterTabsProps) => {
       hoverClass: "hover:border-zinc-800 dark:hover:border-zinc-100",
     },
     {
+      key: "user",
+      label: "My Tasks",
+      activeClass: "bg-secondary text-white border-transparent shadow-sm",
+      hoverClass: "hover:border-secondary",
+    },
+    {
       key: "TODO",
       label: "Todo",
       activeClass: "bg-default-500 text-white border-transparent",

@@ -176,14 +176,24 @@ const ProjectDetail = ({
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
-      const matchTab =
-        activeTab === "all" || (t.status || "").toUpperCase() === activeTab;
+      console.log(t);
+      
+      let matchTab = false;
+      if (activeTab === "all") {
+        matchTab = true;
+      } else if (activeTab === "user") {
+        matchTab = Number(t.createdById) === Number(currentUserId);
+      } else {
+        matchTab = (t.status || "").toUpperCase() === activeTab.toUpperCase();
+      }
+
       const matchQ =
         debouncedQ === "" ||
         (t.taskName || "").toLowerCase().includes(debouncedQ.toLowerCase());
+
       return matchTab && matchQ;
     });
-  }, [tasks, activeTab, debouncedQ]);
+  }, [tasks, activeTab, debouncedQ, , currentUserId]);
 
   const displayedTasks = useMemo(() => {
     return filteredTasks.slice(0, visibleCount);
