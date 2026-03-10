@@ -9,7 +9,15 @@ import { Button } from "@heroui/button";
 import Image from "next/image";
 import { menuItems } from "@/lib/setting_data";
 import { handleSignOut } from "@/lib/actions/actionAuths";
-import { Modal, ModalBody, ModalContent, ModalFooter, ModalHeader, useDisclosure } from "@heroui/react";
+import {
+  Modal,
+  ModalBody,
+  ModalContent,
+  ModalFooter,
+  ModalHeader,
+  useDisclosure,
+} from "@heroui/react";
+import { useSession } from "next-auth/react";
 
 export const HomexSidebar = ({
   isOpenSideBar,
@@ -17,7 +25,16 @@ export const HomexSidebar = ({
   setIsOpen,
 }: SidebarProps) => {
   const pathname = usePathname();
+  const { data: session } = useSession();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
+
+  const userPermissions = session?.user?.permissions || [];
+
+  const allowedMenuItems = menuItems.filter((item) => {
+    if (!item.permissionKey) return true;
+
+    return userPermissions.includes(item.permissionKey);
+  });
 
   const sidebarClasses = `
     fixed z-50 h-screen bg-background/90 backdrop-blur-xl border-r-small border-default-100 
@@ -93,7 +110,7 @@ export const HomexSidebar = ({
         </div>
 
         <div className="flex flex-col gap-2 p-4 flex-1 overflow-y-auto">
-          {menuItems.map((item) => {
+          {allowedMenuItems.map((item) => {
             const isActive = pathname === item.path;
 
             const LinkContent = (
@@ -158,7 +175,7 @@ export const HomexSidebar = ({
           {isCollapsed ? (
             <>
               <Button
-                onPress={onOpen} 
+                onPress={onOpen}
                 variant="flat"
                 color="danger"
                 radius="full"
@@ -171,7 +188,7 @@ export const HomexSidebar = ({
               <div className="hidden md:block">
                 <Tooltip content="Logout" placement="right" color="danger">
                   <Button
-                    onPress={onOpen} 
+                    onPress={onOpen}
                     isIconOnly
                     variant="flat"
                     color="danger"
@@ -220,8 +237,8 @@ export const HomexSidebar = ({
                       color="danger"
                       onPress={() => {
                         localStorage.clear();
-                        handleSignOut(); 
-                        onClose(); 
+                        handleSignOut();
+                        onClose();
                       }}
                     >
                       ออกจากระบบ
