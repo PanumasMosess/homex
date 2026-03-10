@@ -18,6 +18,7 @@ const MainPageProject = ({
   organizationId,
   currentUserId,
   projects,
+  users,
 }: MainPageProjectProps) => {
   const { isOpen, onOpen, onOpenChange } = useDisclosure(); 
   const editModal = useDisclosure(); 
@@ -210,6 +211,7 @@ const MainPageProject = ({
             <ProjectCard
               key={project.id}
               project={project}
+              users={users}
               onEdit={handleEditClick}
             />
           ))}
