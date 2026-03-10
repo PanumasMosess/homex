@@ -5,7 +5,12 @@ export const menuItems = [
   { name: "Dashboard", icon: Home, path: "/dashboard" },
   { name: "Projects", icon: Box, path: "/projects" },
   { name: "User", icon: Users, path: "/user" },
-  { name: "Settings", icon: Settings, path: "/settings" },
+  {
+    name: "Settings",
+    icon: Settings,
+    path: "/settings",
+    permissionKey: "PAGE_SETTING",
+  },
 ];
 
 export const linkUserTemp = [{ name: "Profile", path: "/profile_temp.png" }];
@@ -226,87 +231,86 @@ export const calculateTaskProgress = (details: any[]) => {
   return Math.round((completedWeight / totalWeight) * 100);
 };
 
+// // สร้างไว้ให้ gen by AI
+// const handleGenerateVideo = async () => {
+//   setIsGeneratingVideo(true);
+//   try {
+//     const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
+//     const startRes = await startVideoJob(prompt_vdo, projectInfo.image);
 
-  // // สร้างไว้ให้ gen by AI
-  // const handleGenerateVideo = async () => {
-  //   setIsGeneratingVideo(true);
-  //   try {
-  //     const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
-  //     const startRes = await startVideoJob(prompt_vdo, projectInfo.image);
+//     if (!startRes.success || !startRes.operationName) {
+//       toast.error(startRes.error || "ไม่สามารถเริ่มสร้างวิดีโอได้");
+//       setIsGeneratingVideo(false);
+//       return;
+//     }
 
-  //     if (!startRes.success || !startRes.operationName) {
-  //       toast.error(startRes.error || "ไม่สามารถเริ่มสร้างวิดีโอได้");
-  //       setIsGeneratingVideo(false);
-  //       return;
-  //     }
+//     toast.info(
+//       "กำลังสร้างวิดีโอด้วย AI (อาจใช้เวลา 1-3 นาที) โปรดรอสักครู่...",
+//     );
+//     let isDone = false;
+//     let finalVideoUrl = "";
 
-  //     toast.info(
-  //       "กำลังสร้างวิดีโอด้วย AI (อาจใช้เวลา 1-3 นาที) โปรดรอสักครู่...",
-  //     );
-  //     let isDone = false;
-  //     let finalVideoUrl = "";
+//     while (!isDone) {
+//       await new Promise((resolve) => setTimeout(resolve, 10000));
+//       const checkRes = await checkVideoStatus(startRes.operationName);
+//       if (checkRes.status === "success" && checkRes.videoUrl) {
+//         isDone = true;
+//         finalVideoUrl = checkRes.videoUrl;
+//       } else if (checkRes.status === "error") {
+//         isDone = true;
+//         throw new Error(checkRes.error || "เกิดข้อผิดพลาดระหว่างสร้างวิดีโอ");
+//       }
+//     }
 
-  //     while (!isDone) {
-  //       await new Promise((resolve) => setTimeout(resolve, 10000));
-  //       const checkRes = await checkVideoStatus(startRes.operationName);
-  //       if (checkRes.status === "success" && checkRes.videoUrl) {
-  //         isDone = true;
-  //         finalVideoUrl = checkRes.videoUrl;
-  //       } else if (checkRes.status === "error") {
-  //         isDone = true;
-  //         throw new Error(checkRes.error || "เกิดข้อผิดพลาดระหว่างสร้างวิดีโอ");
-  //       }
-  //     }
+//     if (finalVideoUrl) {
+//       if (projectInfo.video) {
+//         try {
+//           const urlObj = new URL(projectInfo.video);
+//           let fileKey = urlObj.pathname.substring(1);
+//           if (fileKey.startsWith("homex/"))
+//             fileKey = fileKey.replace("homex/", "");
+//           await deleteFileS3(fileKey);
+//         } catch (err) {}
+//       }
+//       setProjectInfo((prev) => ({ ...prev, video: finalVideoUrl }));
+//       await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl);
+//       toast.success("สร้างและบันทึกสำเร็จ!");
+//     }
+//   } catch (error) {
+//     toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
+//   } finally {
+//     setIsGeneratingVideo(false);
+//   }
+// };
 
-  //     if (finalVideoUrl) {
-  //       if (projectInfo.video) {
-  //         try {
-  //           const urlObj = new URL(projectInfo.video);
-  //           let fileKey = urlObj.pathname.substring(1);
-  //           if (fileKey.startsWith("homex/"))
-  //             fileKey = fileKey.replace("homex/", "");
-  //           await deleteFileS3(fileKey);
-  //         } catch (err) {}
-  //       }
-  //       setProjectInfo((prev) => ({ ...prev, video: finalVideoUrl }));
-  //       await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl);
-  //       toast.success("สร้างและบันทึกสำเร็จ!");
-  //     }
-  //   } catch (error) {
-  //     toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
-  //   } finally {
-  //     setIsGeneratingVideo(false);
-  //   }
-  // };
-
-  // //สร้างไว้เผื่อใช้
-  // const handelGenerate3D = async () => {
-  //   setIsGeneratingVideo(true);
-  //   try {
-  //     let finalVideoUrl = await generationImage3D(
-  //       projectInfo.image,
-  //       projectProgress,
-  //     );
-  //     if (finalVideoUrl?.answer) {
-  //       if (projectInfo.video) {
-  //         try {
-  //           const urlObj = new URL(projectInfo.video);
-  //           let fileKey = urlObj.pathname.substring(1);
-  //           if (fileKey.startsWith("homex/"))
-  //             fileKey = fileKey.replace("homex/", "");
-  //           await deleteFileS3(fileKey);
-  //         } catch (err) {}
-  //       }
-  //       setProjectInfo((prev) => ({
-  //         ...prev,
-  //         video: finalVideoUrl?.answer || "",
-  //       }));
-  //       await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl?.answer);
-  //       toast.success("สร้างและบันทึกสำเร็จ!");
-  //     }
-  //   } catch (error) {
-  //     toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
-  //   } finally {
-  //     setIsGeneratingVideo(false);
-  //   }
-  // };
+// //สร้างไว้เผื่อใช้
+// const handelGenerate3D = async () => {
+//   setIsGeneratingVideo(true);
+//   try {
+//     let finalVideoUrl = await generationImage3D(
+//       projectInfo.image,
+//       projectProgress,
+//     );
+//     if (finalVideoUrl?.answer) {
+//       if (projectInfo.video) {
+//         try {
+//           const urlObj = new URL(projectInfo.video);
+//           let fileKey = urlObj.pathname.substring(1);
+//           if (fileKey.startsWith("homex/"))
+//             fileKey = fileKey.replace("homex/", "");
+//           await deleteFileS3(fileKey);
+//         } catch (err) {}
+//       }
+//       setProjectInfo((prev) => ({
+//         ...prev,
+//         video: finalVideoUrl?.answer || "",
+//       }));
+//       await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl?.answer);
+//       toast.success("สร้างและบันทึกสำเร็จ!");
+//     }
+//   } catch (error) {
+//     toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
+//   } finally {
+//     setIsGeneratingVideo(false);
+//   }
+// };
