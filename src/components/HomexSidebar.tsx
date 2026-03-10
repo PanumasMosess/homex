@@ -18,6 +18,7 @@ import {
   useDisclosure,
 } from "@heroui/react";
 import { useSession } from "next-auth/react";
+import { useMemo } from "react";
 
 export const HomexSidebar = ({
   isOpenSideBar,
@@ -28,13 +29,14 @@ export const HomexSidebar = ({
   const { data: session } = useSession();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
 
-  const userPermissions = session?.user?.permissions || [];
-
-  const allowedMenuItems = menuItems.filter((item) => {
-    if (!item.permissionKey) return true;
-
-    return userPermissions.includes(item.permissionKey);
-  });
+  const allowedMenuItems = useMemo(() => {
+    if (status === "loading") return [];
+    const userPermissions = session?.user?.permissions || [];
+    return menuItems.filter((item) => {
+      if (!item.permissionKey) return true;
+      return userPermissions.includes(item.permissionKey);
+    });
+  }, [session, status]);
 
   const sidebarClasses = `
     fixed z-50 h-screen bg-background/90 backdrop-blur-xl border-r-small border-default-100 

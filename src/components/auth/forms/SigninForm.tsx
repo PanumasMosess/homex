@@ -40,7 +40,8 @@ const SigninForm = () => {
       if (result.message === "Invalid credentials") {
         toast.error("ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง");
         setIsSubmitting(false);
-      } else {
+      } else {    
+        window.location.replace("/dashboard");
         setIsSubmitting(false);
       }
     } catch (error) {
