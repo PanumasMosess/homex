@@ -14,6 +14,8 @@ declare module "next-auth" {
       createdAt: Date;
       organizationId: number | null;
       positionId: number | null;
+      permissions: string[];
+      positionName: string | null;
     } & DefaultSession["user"];
   }
 
@@ -29,6 +31,8 @@ declare module "next-auth" {
     createdAt: Date;
     organizationId: number | null;
     positionId: number | null;
+    permissions: string[];
+    positionName: string | null;
   }
 }
 
@@ -45,5 +49,7 @@ declare module "next-auth/jwt" {
     createdAt: Date;
     organizationId: number | null;
     positionId: number | null;
+    permissions: string[];
+    positionName: string | null;
   }
 }

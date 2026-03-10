@@ -31,7 +31,7 @@ export async function createEmployee(
     }
 
     const hash = await bcrypt.hash(data.password, 10);
-    console.log("CREATE DATA:", data);
+    // console.log("CREATE DATA:", data);
     await prisma.user.create({
       data: {
         username: data.username,
