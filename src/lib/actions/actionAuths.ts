@@ -11,7 +11,7 @@ export const verifyCredentials = async (finalData: SignInSchema) => {
     const result = await signIn("credentials", {
       username,
       passwordHash,
-      redirectTo: "/dashboard",
+      redirect: false,
     });
 
     return result;
