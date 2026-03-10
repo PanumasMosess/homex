@@ -68,6 +68,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
         token.createdAt = user.createdAt as Date;
         token.organizationId = user.organizationId as number;
         token.positionId = user.positionId as number;
+        token.permissions = user.permissions as string[];
+        token.positionName = user.positionName as string | null;
       }
 
       if (trigger === "update" && session) {
@@ -89,6 +91,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       session.user.createdAt = token.createdAt as Date;
       session.user.organizationId = token.organizationId as number | 0;
       session.user.positionId = token.positionId as number | null;
+      session.user.permissions = token.permissions as string[];
+      session.user.positionName = token.positionName as string | null;
       return session;
     },
   },

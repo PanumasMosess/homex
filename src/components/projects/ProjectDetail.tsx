@@ -176,8 +176,6 @@ const ProjectDetail = ({
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((t) => {
-      console.log(t);
-      
       let matchTab = false;
       if (activeTab === "all") {
         matchTab = true;
@@ -787,6 +785,9 @@ const ProjectDetail = ({
     }
   };
 
+  const isOwner =
+    selected && Number(selected.assignedId) === Number(currentUserId);
+
   const mediaUrl = projectInfo.video;
   const mediaType = getMediaType(mediaUrl);
 
@@ -1083,13 +1084,15 @@ const ProjectDetail = ({
         <ModalContent className="flex flex-col overflow-hidden">
           {selected && (
             <ModalBody className="space-y-5 md:py-8 overflow-y-auto scrollbar-hide flex-1 p-4">
-              <TaskActionButtons
-                isEditMode={isEditMode}
-                setIsEditMode={setIsEditMode}
-                isSaving={isSaving}
-                handleSaveTaskEdit={handleSaveTaskEdit}
-                setIsDeleteModalOpen={setIsDeleteModalOpen}
-              />
+              {isOwner && (
+                <TaskActionButtons
+                  isEditMode={isEditMode}
+                  setIsEditMode={setIsEditMode}
+                  isSaving={isSaving}
+                  handleSaveTaskEdit={handleSaveTaskEdit}
+                  setIsDeleteModalOpen={setIsDeleteModalOpen}
+                />
+              )}
               <div className="flex flex-col md:flex-row gap-6">
                 <img
                   src={selected.coverImageUrl || "/placeholder-image.jpg"}
@@ -1134,16 +1137,18 @@ const ProjectDetail = ({
                       </div>
                     )}
                   </div>
-                  <CreateSubtaskForm
-                    isAddingSubtask={isAddingSubtask}
-                    setIsAddingSubtask={setIsAddingSubtask}
-                    newSubtask={newSubtask}
-                    setNewSubtask={setNewSubtask}
-                    handleSaveSubtask={handleSaveSubtask}
-                    isSavingSubtask={isSavingSubtask}
-                    taskName={selected?.taskName}
-                    onAISuccess={handleAISuccess}
-                  />
+                  {isOwner && (
+                    <CreateSubtaskForm
+                      isAddingSubtask={isAddingSubtask}
+                      setIsAddingSubtask={setIsAddingSubtask}
+                      newSubtask={newSubtask}
+                      setNewSubtask={setNewSubtask}
+                      handleSaveSubtask={handleSaveSubtask}
+                      isSavingSubtask={isSavingSubtask}
+                      taskName={selected?.taskName}
+                      onAISuccess={handleAISuccess}
+                    />
+                  )}
                 </div>
               )}
             </ModalBody>
