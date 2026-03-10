@@ -308,6 +308,7 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
         : null,
       status: updateData.status,
       budget: updateData.budget,
+      progressPercent: updateData.progressPercent,
       updatedAt: new Date(),
     };
 

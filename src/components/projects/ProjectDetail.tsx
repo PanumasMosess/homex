@@ -68,6 +68,7 @@ const ProjectDetail = ({
   organizationId,
   currentUserId,
   dataDetail,
+  isSpadmin,
 }: ProjectDetailProps) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -272,90 +273,6 @@ const ProjectDetail = ({
       activationConstraint: { delay: 150, tolerance: 5 },
     }),
   );
-
-  // สร้างไว้ให้ gen by AI
-  const handleGenerateVideo = async () => {
-    setIsGeneratingVideo(true);
-    try {
-      const prompt_vdo = `Locked-off camera. Time-lapse shows the rapid construction of the modern building from an empty plot. Active construction cranes, workers, and materials are visible and moving fast. The surrounding environment, including the street, cars, trees, and lighting, remains perfectly identical to the reference image throughout the entire video. The building finishes exactly as shown in the reference. Realistic. exactly 8 seconds duration, 720p resolution, 16:9 aspect ratio`;
-      const startRes = await startVideoJob(prompt_vdo, projectInfo.image);
-
-      if (!startRes.success || !startRes.operationName) {
-        toast.error(startRes.error || "ไม่สามารถเริ่มสร้างวิดีโอได้");
-        setIsGeneratingVideo(false);
-        return;
-      }
-
-      toast.info(
-        "กำลังสร้างวิดีโอด้วย AI (อาจใช้เวลา 1-3 นาที) โปรดรอสักครู่...",
-      );
-      let isDone = false;
-      let finalVideoUrl = "";
-
-      while (!isDone) {
-        await new Promise((resolve) => setTimeout(resolve, 10000));
-        const checkRes = await checkVideoStatus(startRes.operationName);
-        if (checkRes.status === "success" && checkRes.videoUrl) {
-          isDone = true;
-          finalVideoUrl = checkRes.videoUrl;
-        } else if (checkRes.status === "error") {
-          isDone = true;
-          throw new Error(checkRes.error || "เกิดข้อผิดพลาดระหว่างสร้างวิดีโอ");
-        }
-      }
-
-      if (finalVideoUrl) {
-        if (projectInfo.video) {
-          try {
-            const urlObj = new URL(projectInfo.video);
-            let fileKey = urlObj.pathname.substring(1);
-            if (fileKey.startsWith("homex/"))
-              fileKey = fileKey.replace("homex/", "");
-            await deleteFileS3(fileKey);
-          } catch (err) {}
-        }
-        setProjectInfo((prev) => ({ ...prev, video: finalVideoUrl }));
-        await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl);
-        toast.success("สร้างและบันทึกสำเร็จ!");
-      }
-    } catch (error) {
-      toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
-    } finally {
-      setIsGeneratingVideo(false);
-    }
-  };
-
-  //สร้างไว้เผื่อใช้
-  const handelGenerate3D = async () => {
-    setIsGeneratingVideo(true);
-    try {
-      let finalVideoUrl = await generationImage3D(
-        projectInfo.image,
-        projectProgress,
-      );
-      if (finalVideoUrl?.answer) {
-        if (projectInfo.video) {
-          try {
-            const urlObj = new URL(projectInfo.video);
-            let fileKey = urlObj.pathname.substring(1);
-            if (fileKey.startsWith("homex/"))
-              fileKey = fileKey.replace("homex/", "");
-            await deleteFileS3(fileKey);
-          } catch (err) {}
-        }
-        setProjectInfo((prev) => ({
-          ...prev,
-          video: finalVideoUrl?.answer || "",
-        }));
-        await updateVdoProject(parseInt(projectInfo.id), finalVideoUrl?.answer);
-        toast.success("สร้างและบันทึกสำเร็จ!");
-      }
-    } catch (error) {
-      toast.error("เกิดข้อผิดพลาดในการสร้างวิดีโอ");
-    } finally {
-      setIsGeneratingVideo(false);
-    }
-  };
 
   const handleUploadVideo = async (file: File) => {
     if (!projectInfo.id) {
@@ -786,7 +703,9 @@ const ProjectDetail = ({
   };
 
   const isOwner =
-    selected && Number(selected.assignedId) === Number(currentUserId);
+    selected && Number(selected.createdById) === Number(currentUserId);
+
+  const canManage = isOwner || isSpadmin;
 
   const mediaUrl = projectInfo.video;
   const mediaType = getMediaType(mediaUrl);
@@ -1084,7 +1003,7 @@ const ProjectDetail = ({
         <ModalContent className="flex flex-col overflow-hidden">
           {selected && (
             <ModalBody className="space-y-5 md:py-8 overflow-y-auto scrollbar-hide flex-1 p-4">
-              {isOwner && (
+              {canManage && (
                 <TaskActionButtons
                   isEditMode={isEditMode}
                   setIsEditMode={setIsEditMode}
@@ -1107,6 +1026,7 @@ const ProjectDetail = ({
                     setEditFormData={setEditFormData}
                     isUpdatingStatusMainTask={isUpdatingStatusMainTask}
                     handleUpdateStatusMainTask={handleUpdateStatusMainTask}
+                    isOwner={canManage}
                   />
                 </div>
               </div>
@@ -1129,6 +1049,7 @@ const ProjectDetail = ({
                           handleSaveSubtaskEdit={handleSaveSubtaskEdit}
                           handleToggleSubtask={handleToggleSubtask}
                           handleDeleteSubtask={setSubtaskIdToDelete}
+                          canManage={canManage}
                         />
                       ))
                     ) : (
@@ -1137,7 +1058,7 @@ const ProjectDetail = ({
                       </div>
                     )}
                   </div>
-                  {isOwner && (
+                  {canManage && (
                     <CreateSubtaskForm
                       isAddingSubtask={isAddingSubtask}
                       setIsAddingSubtask={setIsAddingSubtask}

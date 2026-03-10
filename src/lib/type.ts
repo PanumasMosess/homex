@@ -84,6 +84,7 @@ export interface ProjectDetailProps {
   organizationId: number;
   currentUserId: number;
   dataDetail: Task[];
+  isSpadmin: any;
 }
 
 export interface CreateMainTaskProps {
@@ -173,6 +174,7 @@ export interface SubtaskItemProps {
   handleSaveSubtaskEdit: () => void;
   handleToggleSubtask: (id: number, status: boolean) => void;
   handleDeleteSubtask: (id: number) => void;
+  canManage?: boolean;
 }
 
 export interface CreateSubtaskFormProps {
@@ -193,6 +195,7 @@ export interface UpdateMainTaskProps {
   setEditFormData: (data: any) => void;
   isUpdatingStatusMainTask: boolean;
   handleUpdateStatusMainTask: (status: string) => void;
+  isOwner: any;
 }
 
 export interface DeleteTaskModalProps {

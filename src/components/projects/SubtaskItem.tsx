@@ -2,7 +2,7 @@ import { SubtaskItemProps } from "@/lib/type";
 import { Button, Checkbox, Input, Spinner, Textarea } from "@heroui/react";
 import { Clock, Pencil, Trash2 } from "lucide-react";
 
- const SubtaskItem = ({
+const SubtaskItem = ({
   subtask: s,
   updatingSubtaskId,
   editingSubtaskId,
@@ -14,6 +14,7 @@ import { Clock, Pencil, Trash2 } from "lucide-react";
   handleSaveSubtaskEdit,
   handleToggleSubtask,
   handleDeleteSubtask,
+  canManage,
 }: SubtaskItemProps) => {
   return (
     <div className="border-b border-default-100 dark:border-zinc-800/50 pb-4 mb-3 last:border-0 last:mb-0">
@@ -133,7 +134,10 @@ import { Clock, Pencil, Trash2 } from "lucide-react";
               ) : (
                 <Checkbox
                   isSelected={!!s.status}
-                  onValueChange={() => handleToggleSubtask(s.id, !!s.status)}
+                  isDisabled={!canManage}
+                  onValueChange={() =>
+                    canManage && handleToggleSubtask(s.id, !!s.status)
+                  }
                 />
               )}
             </div>
@@ -182,28 +186,29 @@ import { Clock, Pencil, Trash2 } from "lucide-react";
               </div>
             </div>
           </div>
-
-          <div className="flex items-center gap-1 shrink-0">
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all"
-              onPress={() => startEditSubtask(s)}
-            >
-              <Pencil size={16} />
-            </Button>
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              color="danger"
-              className="text-default-400 hover:text-danger hover:bg-danger/10 transition-all"
-              onPress={() => handleDeleteSubtask(s.id)}
-            >
-              <Trash2 size={16} />
-            </Button>
-          </div>
+          {canManage && (
+            <div className="flex items-center gap-1 shrink-0">
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                className="text-default-400 hover:text-primary hover:bg-primary/10 transition-all"
+                onPress={() => startEditSubtask(s)}
+              >
+                <Pencil size={16} />
+              </Button>
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                color="danger"
+                className="text-default-400 hover:text-danger hover:bg-danger/10 transition-all"
+                onPress={() => handleDeleteSubtask(s.id)}
+              >
+                <Trash2 size={16} />
+              </Button>
+            </div>
+          )}
         </div>
       )}
     </div>
