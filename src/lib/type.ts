@@ -39,6 +39,7 @@ export interface MainPageProjectProps {
   organizationId: number;
   currentUserId: number;
   projects: ProjectUI[];
+  userType: any;
   users: {
     id: number;
     displayName: string | null;

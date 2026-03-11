@@ -11,6 +11,7 @@ const Project = async () => {
   const session = await auth();
   const currentUserId = session?.user?.id ? parseInt(session.user.id) : 0;
   const organizationId = session?.user.organizationId ?? 0;
+  const userType = session?.user.positionName ?? "";
 
   const projects = await prisma.project.findMany({
     where: {
@@ -107,6 +108,7 @@ const Project = async () => {
       organizationId={organizationId}
       currentUserId={currentUserId}
       projects={uiProjects}
+      userType={userType}
       users={users}
     ></MainPageProject>
   );

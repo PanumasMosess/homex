@@ -12,7 +12,7 @@ const Page = async () => {
 
   const currentUserId = session?.user?.id ? parseInt(session.user.id) : 0;
   const organizationId = session?.user.organizationId ?? 0;
-  const isSpadmin = session?.user?.positionName === "Spadmin";
+  const isSpadmin = session?.user?.positionName ?? "";
 
   const mainTasks = await prisma.task.findMany({
     where: {
