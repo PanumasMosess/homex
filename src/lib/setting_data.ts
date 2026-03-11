@@ -4,7 +4,7 @@ import { Task } from "./type";
 export const menuItems = [
   { name: "Dashboard", icon: Home, path: "/dashboard" },
   { name: "Projects", icon: Box, path: "/projects" },
-  { name: "User", icon: Users, path: "/user" },
+  { name: "User", icon: Users, path: "/user", permissionKey: "PAGE_USER" },
   {
     name: "Settings",
     icon: Settings,

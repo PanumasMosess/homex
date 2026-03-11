@@ -18,9 +18,10 @@ const MainPageProject = ({
   organizationId,
   currentUserId,
   projects,
+  userType,
 }: MainPageProjectProps) => {
-  const { isOpen, onOpen, onOpenChange } = useDisclosure(); 
-  const editModal = useDisclosure(); 
+  const { isOpen, onOpen, onOpenChange } = useDisclosure();
+  const editModal = useDisclosure();
 
   const [projectToEdit, setProjectToEdit] = useState<any>(null);
   const tabs = ["All", "IN_PROGRESS", "DONE", "PLANNING"] as const;
@@ -114,6 +115,8 @@ const MainPageProject = ({
     editModal.onOpen();
   };
 
+  const isCustomer = userType === "Customer";
+
   return (
     <div className="p-3 sm:p-6 lg:p-8 max-w-[1600px] mx-auto min-h-screen pb-24">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4 sm:mb-8">
@@ -146,13 +149,15 @@ const MainPageProject = ({
             type="search"
           />
 
-          <Button
-            onPress={onOpen}
-            className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black font-medium shadow-md h-10 sm:h-11"
-            radius="full"
-          >
-            <Plus size={18} /> <span className="text-sm">สร้างโครงการ</span>
-          </Button>
+          {!isCustomer && (
+            <Button
+              onPress={onOpen}
+              className="w-full sm:w-auto bg-black text-white dark:bg-white dark:text-black font-medium shadow-md h-10 sm:h-11"
+              radius="full"
+            >
+              <Plus size={18} /> <span className="text-sm">สร้างโครงการ</span>
+            </Button>
+          )}
         </div>
       </div>
 

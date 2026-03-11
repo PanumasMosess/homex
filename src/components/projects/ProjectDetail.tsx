@@ -704,8 +704,9 @@ const ProjectDetail = ({
 
   const isOwner =
     selected && Number(selected.createdById) === Number(currentUserId);
-
-  const canManage = isOwner || isSpadmin;
+  const spadmin = isSpadmin === "Spadmin";
+  const canManage = isOwner || spadmin;
+  const isCustomer = isSpadmin === "Customer";
 
   const mediaUrl = projectInfo.video;
   const mediaType = getMediaType(mediaUrl);
@@ -792,32 +793,34 @@ const ProjectDetail = ({
             color="primary"
             className="py-1 w-full"
           />
-          <div className="pt-2 w-full max-w-full">
-            <div className="relative w-full sm:w-auto block">
-              <input
-                type="file"
-                accept=".mp4,.mov"
-                className={`absolute inset-0 w-full h-full opacity-0 z-10 ${isUploadingVideo ? "cursor-not-allowed" : "cursor-pointer"}`}
-                disabled={isUploadingVideo}
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (file && file.size <= 10 * 1024 * 1024)
-                    await handleUploadVideo(file);
-                  else if (file)
-                    toast.error("ขนาดไฟล์ใหญ่เกินไป (ไม่เกิน 10MB)");
-                  e.target.value = "";
-                }}
-              />
-              <Button
-                color="primary"
-                variant="shadow"
-                className="font-medium w-full sm:w-auto"
-                isLoading={isUploadingVideo}
-              >
-                {isUploadingVideo ? "กำลังอัปโหลด..." : "📤 อัปโหลดวิดีโอ"}
-              </Button>
+          {!isCustomer && (
+            <div className="pt-2 w-full max-w-full">
+              <div className="relative w-full sm:w-auto block">
+                <input
+                  type="file"
+                  accept=".mp4,.mov"
+                  className={`absolute inset-0 w-full h-full opacity-0 z-10 ${isUploadingVideo ? "cursor-not-allowed" : "cursor-pointer"}`}
+                  disabled={isUploadingVideo}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file && file.size <= 10 * 1024 * 1024)
+                      await handleUploadVideo(file);
+                    else if (file)
+                      toast.error("ขนาดไฟล์ใหญ่เกินไป (ไม่เกิน 10MB)");
+                    e.target.value = "";
+                  }}
+                />
+                <Button
+                  color="primary"
+                  variant="shadow"
+                  className="font-medium w-full sm:w-auto"
+                  isLoading={isUploadingVideo}
+                >
+                  {isUploadingVideo ? "กำลังอัปโหลด..." : "📤 อัปโหลดวิดีโอ"}
+                </Button>
+              </div>
             </div>
-          </div>
+          )}
         </div>
       </div>
 
@@ -876,14 +879,16 @@ const ProjectDetail = ({
                     Board
                   </Button>
                 </div>
-                <Button
-                  onPress={onOpen}
-                  color="primary"
-                  radius="full"
-                  className="font-bold shrink-0"
-                >
-                  + สร้าง Task เอง
-                </Button>
+                {!isCustomer && (
+                  <Button
+                    onPress={onOpen}
+                    color="primary"
+                    radius="full"
+                    className="font-bold shrink-0"
+                  >
+                    + สร้าง Task เอง
+                  </Button>
+                )}
               </div>
             </div>
 
