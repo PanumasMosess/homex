@@ -39,6 +39,13 @@ export interface MainPageProjectProps {
   organizationId: number;
   currentUserId: number;
   projects: ProjectUI[];
+  users: {
+    id: number;
+    displayName: string | null;
+    position?: {
+      positionName: string;
+    } | null;
+  }[];
 }
 
 export type Status = "todo" | "progress" | "done";
