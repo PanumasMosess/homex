@@ -35,16 +35,20 @@ import {
   Wallet,
   Trash2,
   Edit,
+  Users,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "react-toastify";
+import UpdateProjectMembers from "./forms/updateProjectMembers";
 
 const ProjectCard = ({
   project,
+  users,
   onEdit,
 }: {
   project: any;
+  users: any[];
   onEdit?: (project: any) => void;
 }) => {
   const router = useRouter();
@@ -53,7 +57,8 @@ const ProjectCard = ({
   const deleteModal = useDisclosure();
   const [isDeleting, setIsDeleting] = useState(false);
   const dueInfo = getDueInfo(finishPlanned, project.status, project.progress);
-
+  const [memberOpen, setMemberOpen] = useState(false);
+  
   const plannedDays =
     project.durationDays != null
       ? Number(project.durationDays)
@@ -145,6 +150,13 @@ const ProjectCard = ({
               </DropdownTrigger>
 
               <DropdownMenu aria-label="Project Actions" variant="flat">
+                <DropdownItem
+                  key="members"
+                  startContent={<Users size={18} />}
+                  onPress={() => setMemberOpen(true)}
+                >
+                  จัดการทีมโครงการ
+                </DropdownItem>
                 <DropdownItem
                   key="edit"
                   startContent={<Edit size={18} />}
@@ -330,6 +342,12 @@ const ProjectCard = ({
           )}
         </ModalContent>
       </Modal>
+      <UpdateProjectMembers
+        isOpen={memberOpen}
+        onOpenChange={setMemberOpen}
+        project={project}
+        users={users}
+      />
     </Card>
   );
 };

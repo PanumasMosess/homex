@@ -36,6 +36,41 @@ const Project = async () => {
       budget: true,
       mapUrl: true,
       startActual: true,
+
+      members: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+              position: {
+                select: {
+                  positionName: true,
+                },
+              },
+            },
+          },
+        },
+      }
+    },
+  });
+
+  const users = await prisma.user.findMany({
+    where: {
+      organizationId,
+      isActive: true,
+    },
+    select: {
+      id: true,
+      displayName: true,
+      position: {
+        select: {
+          positionName: true,
+        },
+      },
+    },
+    orderBy: {
+      displayName: "asc",
     },
   });
 
@@ -65,6 +100,7 @@ const Project = async () => {
     projectsCode: p.projectCode ?? "",
     customerName: p.customerName ?? "",
     video: p.coverVideoUrl ?? "",
+    members: p.members ?? [],
   }));
 
   return (
@@ -73,6 +109,7 @@ const Project = async () => {
       currentUserId={currentUserId}
       projects={uiProjects}
       userType={userType}
+      users={users}
     ></MainPageProject>
   );
 };
