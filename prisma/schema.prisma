@@ -36,6 +36,7 @@ model organization {
   projectImgs      project_img[] // รูปแนบโปรเจค
   tasks            task[] // งานหลักทั้งหมดของบริษัท (ทุกโปรเจค)
   taskDetails      task_detail[] // งานย่อยทั้งหมดของบริษัท (ทุกโปรเจค)
+  taskUsers        task_user[]        @relation("org_task_users")
   projectsRunnings projects_running[]
   suppliers        supplier[]
 }
@@ -84,6 +85,7 @@ model user {
   // user เป็น "ผู้อัปโหลดไฟล์"
   uploadedFiles project_file[] @relation("project_file_uploader")
   uploadedImgs  project_img[]  @relation("project_img_uploader")
+  taskUsers     task_user[]
 }
 
 // =====================================
@@ -289,7 +291,8 @@ model task {
   createdById Int // คนสร้าง task
   creator     user @relation("task_creator", fields: [createdById], references: [id])
 
-  details task_detail[] // ขั้นตอนย่อยของ task
+  details   task_detail[] // ขั้นตอนย่อยของ task
+  taskUsers task_user[]
 }
 
 // =====================================
@@ -323,6 +326,22 @@ model task_detail {
 
   taskId Int // FK -> task.id
   task   task @relation(fields: [taskId], references: [id])
+}
+
+model task_user {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  organizationId Int
+  organization   organization @relation("org_task_users", fields: [organizationId], references: [id])
+
+  taskId Int
+  task   task @relation(fields: [taskId], references: [id])
+
+  userId Int
+  user   user @relation(fields: [userId], references: [id])
+
+  @@unique([taskId, userId])
 }
 
 model projects_running {

@@ -138,9 +138,9 @@ const UpdateMainTask = ({
         )}
 
         {/* แสดงคนรับผิดชอบงาน (ถ้ามี) ช่วยให้ Layout ดูเต็มขึ้น */}
-        <div className="text-xs text-default-400 italic">
+        {/* <div className="text-xs text-default-400 italic">
           ID ผู้รับผิดชอบ: {selected.createdById || "-"}
-        </div>
+        </div> */}
       </div>
 
       {/* รายละเอียดงาน */}

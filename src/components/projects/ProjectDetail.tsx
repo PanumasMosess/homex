@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Cctv,
   Banknote,
+  Users,
 } from "lucide-react";
 
 import {
@@ -20,6 +21,7 @@ import {
   ModalBody,
   useDisclosure,
   Spinner,
+  Avatar,
 } from "@heroui/react";
 
 import {
@@ -352,10 +354,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                  ...t,
-                  status: taskToUpdate.status,
-                  progressPercent: taskToUpdate.progressPercent,
-                }
+                ...t,
+                status: taskToUpdate.status,
+                progressPercent: taskToUpdate.progressPercent,
+              }
               : t,
           ),
         );
@@ -690,10 +692,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-                ...t,
-                details: updatedDetails,
-                progressPercent: newProgress,
-              }
+              ...t,
+              details: updatedDetails,
+              progressPercent: newProgress,
+            }
             : t,
         ),
       );
@@ -771,9 +773,9 @@ const ProjectDetail = ({
               <p
                 className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${
                   budgetSummary.expenses > projectInfo.budget
-                    ? "text-danger"
-                    : "text-warning"
-                }`}
+                  ? "text-danger"
+                  : "text-warning"
+                  }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -1023,7 +1025,7 @@ const ProjectDetail = ({
                   className="w-full md:w-80 h-48 object-cover rounded-2xl"
                   alt="Cover"
                 />
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 space-y-4">
                   <UpdateMainTask
                     isEditMode={isEditMode}
                     selected={selected}
@@ -1033,6 +1035,38 @@ const ProjectDetail = ({
                     handleUpdateStatusMainTask={handleUpdateStatusMainTask}
                     isOwner={canManage}
                   />
+
+                  {/* 👥 ผู้รับผิดชอบ */}
+                  {selected.assignees && selected.assignees.length > 0 && (
+                    <div className="space-y-3">
+
+                      <div className="flex items-center gap-2 text-default-400 text-sm font-medium">
+                        <Users size={16} />
+                        ผู้รับผิดชอบ
+                      </div>
+
+                      <div className="flex gap-6">
+
+                        {selected.assignees?.map((user: any) => (
+                          <div
+                            key={user.id}
+                            className="flex flex-col items-center gap-1"
+                          >
+                            <Avatar
+                              size="md"
+                              name={user.displayName}
+                            />
+
+                            <span className="text-xs text-default-400">
+                              {user.displayName}
+                            </span>
+                          </div>
+                        ))}
+
+                      </div>
+
+                    </div>
+                  )}
                 </div>
               </div>
               {!isEditMode && (

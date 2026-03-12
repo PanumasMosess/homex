@@ -31,6 +31,9 @@ import { CreateMainTaskProps } from "@/lib/type";
 import { generationImage } from "@/lib/ai/geminiAI";
 import { createMainTask } from "@/lib/actions/actionProject";
 
+import SelectTaskMembers from "./selectTaskMembers";
+import { getProjectMembers, addTaskMembers } from "@/lib/actions/actionTaskMember";
+
 const CreateMainTask = ({
   isOpen,
   onOpenChange,
@@ -44,6 +47,19 @@ const CreateMainTask = ({
   const [isPending, startTransition] = useTransition();
 
   const [durationDays, setDurationDays] = useState<number | "">("");
+
+  const [members, setMembers] = useState<any[]>([]);
+  const [assignees, setAssignees] = useState<any[]>([]);
+  useEffect(() => {
+
+    async function loadMembers() {
+      const data = await getProjectMembers(projectId);
+      setMembers(data);
+    }
+
+    loadMembers();
+
+  }, [projectId]);
 
   const formAddTask = useForm<MainTaskSchema>({
     resolver: zodResolver(MainTaskSchema_),
@@ -80,6 +96,7 @@ const CreateMainTask = ({
   const resetFormState = () => {
     formAddTask.reset();
     setDurationDays("");
+    setAssignees([]);
   };
 
   const handleModalClose = () => {
@@ -88,7 +105,7 @@ const CreateMainTask = ({
   };
 
   const onSubmit = async (dataForm: any) => {
-    // ใช้ any ชั่วคราวรับ budget
+  // ใช้ any ชั่วคราวรับ budget
     if (!dataForm.startPlanned || !dataForm.finishPlanned) {
       toast.warning("กรุณาระบุวันเริ่มงานและระยะเวลาให้ครบถ้วน");
       return;
@@ -103,8 +120,8 @@ const CreateMainTask = ({
         createdById: Number(currentUserId) || 0,
         organizationId: Number(organizationId) || 0,
         projectId: Number(projectId) || 0,
-        progressPercent: 0, 
-        budget: Number(dataForm.budget) || 0, 
+        progressPercent: 0,
+        budget: Number(dataForm.budget) || 0,
         coverImageUrl: url?.answer || "",
       };
 
@@ -114,6 +131,12 @@ const CreateMainTask = ({
         const res = await createMainTask(dummyState, finalData);
 
         if (res?.success) {
+          if (res?.taskId && assignees.length > 0) {
+            await addTaskMembers(
+              res.taskId,
+              assignees.map((u: any) => u.id)
+            );
+          }
           toast.success("บันทึกงานใหม่เรียบร้อย!");
           router.refresh();
           handleModalClose();
@@ -275,16 +298,17 @@ const CreateMainTask = ({
                 </div>
 
                 {/* 4. Dummy Assignee */}
-                <Select
-                  label="ผู้รับผิดชอบ (จำลอง)"
-                  placeholder="เลือกผู้รับผิดชอบ"
-                  labelPlacement="outside"
-                  variant="bordered"
-                  startContent={<User className="text-default-400" size={18} />}
-                >
-                  <SelectItem key="somchai">สมชาย (หัวหน้าช่าง)</SelectItem>
-                  <SelectItem key="somying">สมหญิง (แอดมินโครงการ)</SelectItem>
-                </Select>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <User className="text-default-400" size={18} />
+                    ผู้รับผิดชอบ
+                  </label>
+                  <SelectTaskMembers
+                    members={members}
+                    selected={assignees}
+                    setSelected={setAssignees}
+                  />
+                </div>
 
                 {/* 5. Description */}
                 <Textarea
