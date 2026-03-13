@@ -125,11 +125,12 @@ export interface MainPageUserProps {
   positions: any[];
 }
 
-export interface ActionState {
+export type ActionState = {
   success: boolean;
   error: boolean;
   message?: string;
-}
+  taskId?: number;
+};
 
 export interface CreateEmployeeData {
   username: string;

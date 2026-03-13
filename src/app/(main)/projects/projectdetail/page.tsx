@@ -38,6 +38,16 @@ const Page = async () => {
       projectId: true,
       organizationId: true,
       createdById: true,
+      taskUsers: {
+        include: {
+          user: {
+            select: {
+              id: true,
+              displayName: true,
+            },
+          },
+        },
+      },
       details: {
         orderBy: {
           sortOrder: "asc",
@@ -49,6 +59,7 @@ const Page = async () => {
   const formattedTasks = mainTasks.map((task) => ({
     ...task,
     budget: task.budget ? Number(task.budget) : null,
+    assignees: task.taskUsers?.map((t) => t.user) || [],
   }));
 
   return (

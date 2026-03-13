@@ -8,11 +8,7 @@ import {
 } from "@/lib/formValidationSchemas";
 import { calcDurationDays } from "../setting_data";
 
-type ActionState = {
-  success: boolean;
-  error: boolean;
-  message?: string;
-};
+import { ActionState } from "@/lib/type";
 
 export async function createProject(
   _prevState: ActionState,
@@ -127,7 +123,7 @@ export async function createMainTask(
       ? new Date(data.finishPlanned)
       : null;
     const durationDays = calcDurationDays(startPlanned, finishPlanned);
-    await prisma.task.create({
+    const task = await prisma.task.create({
       data: {
         taskName: data.taskName,
         taskDesc: data.taskDesc ?? null,
@@ -157,7 +153,11 @@ export async function createMainTask(
       },
     });
 
-    return { success: true, error: false };
+    return {
+      success: true,
+      error: false,
+      taskId: task.id,
+    };
   } catch (e: unknown) {
     if (e instanceof Error) {
       return {
