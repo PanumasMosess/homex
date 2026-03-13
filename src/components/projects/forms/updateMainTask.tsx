@@ -13,8 +13,6 @@ import {
 import { formatDate } from "@/lib/setting_data";
 import { UpdateMainTaskProps } from "@/lib/type";
 import { Users } from "lucide-react";
-import { useEffect, useState } from "react";
-import { getProjectMembers } from "@/lib/actions/actionTaskMember";
 
 const UpdateMainTask = ({
   isEditMode,
@@ -23,37 +21,23 @@ const UpdateMainTask = ({
   setEditFormData,
   isUpdatingStatusMainTask,
   handleUpdateStatusMainTask,
-  projectId,
+  members,
   isOwner,
 }: UpdateMainTaskProps) => {
-  const [members, setMembers] = useState<any[]>([]);
+ 
+  const handleSelectionChange = (keys: any) => {
+    const selectedIds = Array.from(keys).map(Number);
 
-  useEffect(() => {
-    async function loadMembers() {
-      const data = await getProjectMembers(projectId);
-      setMembers(data);
-    }
+    const updatedAssignees = members.filter((m) =>
+      selectedIds.includes(Number(m.id)),
+    );
 
-    loadMembers();
-  }, [projectId]);
-
-  useEffect(() => {
-    if (isEditMode && editFormData.assigneeIds && members.length > 0) {
-      const updatedAssignees = members.filter((m) =>
-        editFormData.assigneeIds.includes(Number(m.id)),
-      );
-
-      if (
-        JSON.stringify(editFormData.assignees) !==
-        JSON.stringify(updatedAssignees)
-      ) {
-        setEditFormData((prev: any) => ({
-          ...prev,
-          assignees: updatedAssignees,
-        }));
-      }
-    }
-  }, [editFormData.assigneeIds, members, isEditMode, setEditFormData]);
+    setEditFormData({
+      ...editFormData,
+      assigneeIds: selectedIds,
+      assignees: updatedAssignees,
+    });
+  };
 
   if (isEditMode) {
     return (
@@ -93,13 +77,7 @@ const UpdateMainTask = ({
             placeholder="เลือกผู้รับผิดชอบ..."
             selectionMode="multiple"
             selectedKeys={new Set((editFormData.assigneeIds || []).map(String))}
-            onSelectionChange={(keys) => {
-              const selectedIds = Array.from(keys).map(Number);
-              setEditFormData({
-                ...editFormData,
-                assigneeIds: selectedIds,
-              });
-            }}
+            onSelectionChange={handleSelectionChange}
             renderValue={(items) => (
               <div className="flex flex-wrap gap-2">
                 {items.map((item) => (
