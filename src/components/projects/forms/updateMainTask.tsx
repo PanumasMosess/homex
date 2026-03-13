@@ -1,6 +1,20 @@
-import { Button, Chip, Input, Progress, Textarea } from "@heroui/react";
+"use client";
+
+import {
+  Avatar,
+  Button,
+  Chip,
+  Input,
+  Progress,
+  Select,
+  SelectItem,
+  Textarea,
+} from "@heroui/react";
 import { formatDate } from "@/lib/setting_data";
 import { UpdateMainTaskProps } from "@/lib/type";
+import { Users } from "lucide-react";
+import { useEffect, useState } from "react";
+import { getProjectMembers } from "@/lib/actions/actionTaskMember";
 
 const UpdateMainTask = ({
   isEditMode,
@@ -9,8 +23,38 @@ const UpdateMainTask = ({
   setEditFormData,
   isUpdatingStatusMainTask,
   handleUpdateStatusMainTask,
+  projectId,
   isOwner,
 }: UpdateMainTaskProps) => {
+  const [members, setMembers] = useState<any[]>([]);
+
+  useEffect(() => {
+    async function loadMembers() {
+      const data = await getProjectMembers(projectId);
+      setMembers(data);
+    }
+
+    loadMembers();
+  }, [projectId]);
+
+  useEffect(() => {
+    if (isEditMode && editFormData.assigneeIds && members.length > 0) {
+      const updatedAssignees = members.filter((m) =>
+        editFormData.assigneeIds.includes(Number(m.id)),
+      );
+
+      if (
+        JSON.stringify(editFormData.assignees) !==
+        JSON.stringify(updatedAssignees)
+      ) {
+        setEditFormData((prev: any) => ({
+          ...prev,
+          assignees: updatedAssignees,
+        }));
+      }
+    }
+  }, [editFormData.assigneeIds, members, isEditMode, setEditFormData]);
+
   if (isEditMode) {
     return (
       <div className="space-y-4">
@@ -37,6 +81,54 @@ const UpdateMainTask = ({
             })
           }
         />
+
+        {/* 👥 ส่วนแก้ไขผู้รับผิดชอบ */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-default-600">
+            แก้ไขผู้รับผิดชอบ
+          </label>
+          <Select
+            items={members}
+            variant="bordered"
+            placeholder="เลือกผู้รับผิดชอบ..."
+            selectionMode="multiple"
+            selectedKeys={new Set((editFormData.assigneeIds || []).map(String))}
+            onSelectionChange={(keys) => {
+              const selectedIds = Array.from(keys).map(Number);
+              setEditFormData({
+                ...editFormData,
+                assigneeIds: selectedIds,
+              });
+            }}
+            renderValue={(items) => (
+              <div className="flex flex-wrap gap-2">
+                {items.map((item) => (
+                  <Chip key={item.key} size="sm" variant="flat" color="primary">
+                    {item.data.displayName}
+                  </Chip>
+                ))}
+              </div>
+            )}
+          >
+            {(user) => (
+              <SelectItem key={user.id} textValue={user.displayName}>
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    size="sm"
+                    src={user.avatarUrl}
+                    name={user.displayName}
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-small">{user.displayName}</span>
+                    <span className="text-tiny text-default-400">
+                      {user.positionName}
+                    </span>
+                  </div>
+                </div>
+              </SelectItem>
+            )}
+          </Select>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-start">
           <Input
             label="วันที่เริ่ม"
@@ -203,6 +295,27 @@ const UpdateMainTask = ({
           showValueLabel={false}
         />
       </div>
+      {/* 👥 ผู้รับผิดชอบ */}
+      {selected.assignees && selected.assignees.length > 0 && (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 text-default-400 text-sm font-medium">
+            <Users size={16} />
+            ผู้รับผิดชอบ
+          </div>
+
+          <div className="flex gap-6">
+            {selected.assignees?.map((user: any) => (
+              <div key={user.id} className="flex flex-col items-center gap-1">
+                <Avatar size="md" name={user.displayName} />
+
+                <span className="text-xs text-default-400">
+                  {user.displayName}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

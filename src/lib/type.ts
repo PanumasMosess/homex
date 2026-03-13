@@ -204,6 +204,7 @@ export interface UpdateMainTaskProps {
   setEditFormData: (data: any) => void;
   isUpdatingStatusMainTask: boolean;
   handleUpdateStatusMainTask: (status: string) => void;
+  projectId: number;
   isOwner: any;
 }
 

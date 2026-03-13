@@ -32,7 +32,10 @@ import { generationImage } from "@/lib/ai/geminiAI";
 import { createMainTask } from "@/lib/actions/actionProject";
 
 import SelectTaskMembers from "./selectTaskMembers";
-import { getProjectMembers, addTaskMembers } from "@/lib/actions/actionTaskMember";
+import {
+  getProjectMembers,
+  addTaskMembers,
+} from "@/lib/actions/actionTaskMember";
 
 const CreateMainTask = ({
   isOpen,
@@ -50,15 +53,14 @@ const CreateMainTask = ({
 
   const [members, setMembers] = useState<any[]>([]);
   const [assignees, setAssignees] = useState<any[]>([]);
-  useEffect(() => {
 
+  useEffect(() => {
     async function loadMembers() {
       const data = await getProjectMembers(projectId);
       setMembers(data);
     }
 
     loadMembers();
-
   }, [projectId]);
 
   const formAddTask = useForm<MainTaskSchema>({
@@ -105,7 +107,7 @@ const CreateMainTask = ({
   };
 
   const onSubmit = async (dataForm: any) => {
-  // ใช้ any ชั่วคราวรับ budget
+    // ใช้ any ชั่วคราวรับ budget
     if (!dataForm.startPlanned || !dataForm.finishPlanned) {
       toast.warning("กรุณาระบุวันเริ่มงานและระยะเวลาให้ครบถ้วน");
       return;
@@ -134,7 +136,7 @@ const CreateMainTask = ({
           if (res?.taskId && assignees.length > 0) {
             await addTaskMembers(
               res.taskId,
-              assignees.map((u: any) => u.id)
+              assignees.map((u: any) => u.id),
             );
           }
           toast.success("บันทึกงานใหม่เรียบร้อย!");

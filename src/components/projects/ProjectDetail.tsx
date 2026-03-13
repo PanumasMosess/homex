@@ -8,7 +8,6 @@ import {
   ShoppingCart,
   Cctv,
   Banknote,
-  Users,
 } from "lucide-react";
 
 import {
@@ -21,7 +20,6 @@ import {
   ModalBody,
   useDisclosure,
   Spinner,
-  Avatar,
 } from "@heroui/react";
 
 import {
@@ -51,6 +49,7 @@ import {
   updateSubtask,
   updateProjectProgressDB,
   deleteSubtask,
+  updateMainTaskForm,
 } from "@/lib/actions/actionProject";
 import {
   checkVideoStatus,
@@ -354,10 +353,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                ...t,
-                status: taskToUpdate.status,
-                progressPercent: taskToUpdate.progressPercent,
-              }
+                  ...t,
+                  status: taskToUpdate.status,
+                  progressPercent: taskToUpdate.progressPercent,
+                }
               : t,
           ),
         );
@@ -368,7 +367,10 @@ const ProjectDetail = ({
 
   useEffect(() => {
     if (selected) {
-      setEditFormData(selected);
+      setEditFormData({
+        ...selected,
+        assigneeIds: selected.assignees?.map((a: any) => a.id) || [],
+      });
       setIsEditMode(false);
     }
   }, [selected]);
@@ -385,8 +387,8 @@ const ProjectDetail = ({
         );
         dataToSave.finishPlanned = startDate;
       }
-
-      const res = await updateMainTask(editFormData.id, dataToSave);
+     
+      const res = await updateMainTaskForm(editFormData.id, dataToSave);
       if (!res.success) throw new Error(res.error || "บันทึกข้อมูลไม่สำเร็จ");
       setTasks((prev) =>
         prev.map((t) =>
@@ -692,10 +694,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-              ...t,
-              details: updatedDetails,
-              progressPercent: newProgress,
-            }
+                ...t,
+                details: updatedDetails,
+                progressPercent: newProgress,
+              }
             : t,
         ),
       );
@@ -773,9 +775,9 @@ const ProjectDetail = ({
               <p
                 className={`text-sm sm:text-base font-bold flex items-center gap-1.5 ${
                   budgetSummary.expenses > projectInfo.budget
-                  ? "text-danger"
-                  : "text-warning"
-                  }`}
+                    ? "text-danger"
+                    : "text-warning"
+                }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -1033,40 +1035,9 @@ const ProjectDetail = ({
                     setEditFormData={setEditFormData}
                     isUpdatingStatusMainTask={isUpdatingStatusMainTask}
                     handleUpdateStatusMainTask={handleUpdateStatusMainTask}
+                    projectId={Number(projectInfo.id)}
                     isOwner={canManage}
                   />
-
-                  {/* 👥 ผู้รับผิดชอบ */}
-                  {selected.assignees && selected.assignees.length > 0 && (
-                    <div className="space-y-3">
-
-                      <div className="flex items-center gap-2 text-default-400 text-sm font-medium">
-                        <Users size={16} />
-                        ผู้รับผิดชอบ
-                      </div>
-
-                      <div className="flex gap-6">
-
-                        {selected.assignees?.map((user: any) => (
-                          <div
-                            key={user.id}
-                            className="flex flex-col items-center gap-1"
-                          >
-                            <Avatar
-                              size="md"
-                              name={user.displayName}
-                            />
-
-                            <span className="text-xs text-default-400">
-                              {user.displayName}
-                            </span>
-                          </div>
-                        ))}
-
-                      </div>
-
-                    </div>
-                  )}
                 </div>
               </div>
               {!isEditMode && (
