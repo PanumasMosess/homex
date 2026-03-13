@@ -102,6 +102,7 @@ export interface CreateMainTaskProps {
   organizationId: number;
   currentUserId: number;
   projectCode: string;
+  members: any[];
 }
 
 export interface CreateEmployeeProps {
@@ -204,7 +205,7 @@ export interface UpdateMainTaskProps {
   setEditFormData: (data: any) => void;
   isUpdatingStatusMainTask: boolean;
   handleUpdateStatusMainTask: (status: string) => void;
-  projectId: number;
+  members: any[];
   isOwner: any;
 }
 

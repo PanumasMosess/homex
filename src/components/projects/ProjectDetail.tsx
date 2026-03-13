@@ -64,6 +64,7 @@ import UpdateMainTask from "./forms/updateMainTask";
 import DeleteTaskModal from "./DeleteTaskModal";
 import TaskActionButtons from "./TaskActionButtons";
 import DeleteSubtaskModal from "./DeleteSubtaskModal";
+import { getProjectMembers } from "@/lib/actions/actionTaskMember";
 
 const ProjectDetail = ({
   organizationId,
@@ -132,6 +133,9 @@ const ProjectDetail = ({
   const observerTarget = useRef<HTMLDivElement | null>(null);
   const [isUploadingVideo, setIsUploadingVideo] = useState(false);
 
+  const [projectMembers, setProjectMembers] = useState<any[]>([]);
+  const lastLoadedMemberId = useRef<number | null>(null);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
     return () => clearTimeout(timer);
@@ -170,6 +174,18 @@ const ProjectDetail = ({
       setQ("");
     }
   }, [view]);
+
+  useEffect(() => {
+    const pId = Number(projectInfo.id);
+    if (pId && pId !== lastLoadedMemberId.current) {
+      const load = async () => {
+        const data = await getProjectMembers(pId);
+        setProjectMembers(data || []);
+        lastLoadedMemberId.current = pId;
+      };
+      load();
+    }
+  }, [projectInfo.id]);
 
   const selected = useMemo(
     () => tasks.find((t) => t.id === selectedId) || null,
@@ -387,7 +403,7 @@ const ProjectDetail = ({
         );
         dataToSave.finishPlanned = startDate;
       }
-     
+
       const res = await updateMainTaskForm(editFormData.id, dataToSave);
       if (!res.success) throw new Error(res.error || "บันทึกข้อมูลไม่สำเร็จ");
       setTasks((prev) =>
@@ -903,6 +919,7 @@ const ProjectDetail = ({
               organizationId={organizationId}
               currentUserId={currentUserId}
               projectCode={projectInfo.code}
+              members={projectMembers}
             />
 
             <div className="space-y-4">
@@ -1035,7 +1052,7 @@ const ProjectDetail = ({
                     setEditFormData={setEditFormData}
                     isUpdatingStatusMainTask={isUpdatingStatusMainTask}
                     handleUpdateStatusMainTask={handleUpdateStatusMainTask}
-                    projectId={Number(projectInfo.id)}
+                    members={projectMembers}
                     isOwner={canManage}
                   />
                 </div>

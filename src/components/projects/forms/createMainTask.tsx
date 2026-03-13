@@ -44,24 +44,24 @@ const CreateMainTask = ({
   organizationId,
   currentUserId,
   projectCode,
+  members
 }: CreateMainTaskProps) => {
   const router = useRouter();
   const [isCreateTask, setIsCreateTask] = useState(false);
   const [isPending, startTransition] = useTransition();
 
   const [durationDays, setDurationDays] = useState<number | "">("");
-
-  const [members, setMembers] = useState<any[]>([]);
   const [assignees, setAssignees] = useState<any[]>([]);
 
-  useEffect(() => {
-    async function loadMembers() {
-      const data = await getProjectMembers(projectId);
-      setMembers(data);
-    }
-
-    loadMembers();
-  }, [projectId]);
+  // useEffect(() => {
+  //   if (isOpen && projectId && members.length === 0) {
+  //     const loadMembers = async () => {
+  //       const data = await getProjectMembers(projectId);
+  //       setMembers(data);
+  //     };
+  //     loadMembers();
+  //   }
+  // }, [isOpen, projectId, members.length]);
 
   const formAddTask = useForm<MainTaskSchema>({
     resolver: zodResolver(MainTaskSchema_),
