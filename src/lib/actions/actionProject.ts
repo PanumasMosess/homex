@@ -324,6 +324,63 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
   }
 };
 
+export const updateMainTaskForm = async (taskId: number, updateData: any) => {
+  try {
+    const { assigneeIds, organizationId, ...rest } = updateData;
+
+    const dataToUpdate = {
+      taskName: rest.taskName,
+      taskDesc: rest.taskDesc || null,
+      startPlanned: rest.startPlanned ? new Date(rest.startPlanned) : null,
+      finishPlanned: rest.finishPlanned ? new Date(rest.finishPlanned) : null,
+      durationDays: rest.durationDays ? Number(rest.durationDays) : null,
+      status: rest.status,
+      budget: rest.budget ? Number(rest.budget) : 0,
+      progressPercent: rest.progressPercent ? Number(rest.progressPercent) : 0,
+      updatedAt: new Date(),
+    };
+
+    const result = await prisma.$transaction(async (tx) => {
+      const updatedTask = await tx.task.update({
+        where: { id: taskId },
+        data: dataToUpdate,
+      });
+
+      if (assigneeIds !== undefined) {
+        await tx.task_user.deleteMany({
+          where: { taskId: taskId },
+        });
+        if (assigneeIds.length > 0) {
+          await tx.task_user.createMany({
+            data: assigneeIds.map((uid: number) => ({
+              taskId: taskId,
+              userId: uid,
+              organizationId: organizationId || updatedTask.organizationId,
+            })),
+          });
+        }
+      }
+
+      const task = await tx.task.findUnique({
+        where: { id: taskId },
+        include: {
+          taskUsers: { include: { user: true } },
+          details: true,
+        },
+      });
+      return JSON.parse(JSON.stringify(task));
+    });
+
+    return { success: true, data: result };
+  } catch (error: any) {
+    console.error("Error updating main task:", error);
+    return {
+      success: false,
+      error: "เกิดข้อผิดพลาดในการบันทึกข้อมูล กรุณาลองใหม่อีกครั้ง",
+    };
+  }
+};
+
 export async function createSubTask(data: any) {
   try {
     const startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
