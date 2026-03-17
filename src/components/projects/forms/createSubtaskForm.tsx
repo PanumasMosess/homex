@@ -26,7 +26,14 @@ const CreateSubtaskForm = ({
     setIsGeneratingAI(true);
 
     try {
-      const myPrompt = `ช่วยลิสต์รายการย่อย (subtasks) สำหรับงานก่อสร้างชื่อ "${taskName}" มาให้หน่อยจำนวน 10 ข้อ โดยขอผลลัพธ์เป็น JSON array ของวัตถุที่มีฟิลด์ detailName, detailDesc, และ weightPercent (รวมกันได้ 100)`;
+      const myPrompt = `คุณคือวิศวกรควบคุมงานก่อสร้างมืออาชีพ ช่วยวิเคราะห์และลิสต์รายการย่อย (subtasks) สำหรับงานก่อสร้างชื่อ "${taskName}" 
+      โดยให้พิจารณาจำนวนข้อตามความเหมาะสมและความซับซ้อนของหน้างานจริง (ไม่จำกัดจำนวนข้อ แต่ต้องครอบคลุม)
+      ขอผลลัพธ์เป็น JSON array ของวัตถุที่มีฟิลด์:
+      1. detailName: ชื่อขั้นตอนสั้นๆ เข้าใจง่าย
+      2. detailDesc: อธิบายวิธีการทำงานเบื้องต้น
+      3. weightPercent: ค่าน้ำหนักความสำคัญของงาน (ผลรวมของทุกข้อต้องได้ 100 พอดี)
+      ตอบกลับเฉพาะ JSON array เท่านั้น`;
+      
       const result = await generateSubtasksAI(myPrompt);
 
       if (result && result.length > 0) {
