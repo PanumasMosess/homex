@@ -72,7 +72,7 @@ const CreateSubtaskForm = ({
           onPress={handleAIQuery}
           isLoading={isGeneratingAI}
         >
-          {isGeneratingAI ? "AI กำลังคิด..." : "สร้างงานย่อย 10 ข้อด้วย AI"}
+          {isGeneratingAI ? "AI กำลังคิด..." : "สร้างงานย่อยด้วย AI"}
         </Button>
       </div>
     );
