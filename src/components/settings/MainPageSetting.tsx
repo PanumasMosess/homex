@@ -22,6 +22,15 @@ import UpdatePositionPermission from "./position/forms/updatePositionPermission"
 
 import SupplierTable from "./supplier/SupplierTable";
 import CreateSupplier from "./supplier/forms/createSupplier";
+
+import ContractorTable from "./contractor/ContractorTable";
+import CreateContractor from "./contractor/forms/createContractor";
+
+import {
+  deleteContractor,
+  restoreContractor
+} from "@/lib/actions/actionContractor";
+
 import {
   deleteSupplier,
   restoreSupplier
@@ -40,11 +49,13 @@ import {
 export default function MainPageSetting({
   positions,
   permissions,
-  suppliers
+  suppliers,
+  contractors,
 }: {
   positions: any[];
   permissions: any[];
   suppliers: any[];
+  contractors: any[];
 }) {
 
   const router = useRouter();
@@ -61,6 +72,9 @@ export default function MainPageSetting({
   const [supplierOpen, setSupplierOpen] = useState(false);
   const [editSupplier, setEditSupplier] = useState<any>(null);
 
+  const [contractorOpen, setContractorOpen] = useState(false);
+  const [editContractor, setEditContractor] = useState<any>(null);
+
   /* 🔐 POSITION PERMISSION */
   const [permissionSettingOpen, setPermissionSettingOpen] = useState(false);
   const [permissionPosition, setPermissionPosition] = useState<any>(null);
@@ -71,7 +85,7 @@ export default function MainPageSetting({
   /* ========================= */
   /* TOGGLE ACTIVE */
   /* ========================= */
-  const handleToggle = (type: "position" | "permission" | "supplier", data: any) => {
+  const handleToggle = (type: "position" | "permission" | "supplier" | "contractor", data: any) => {
     setDeleteModal({
       type,
       data,
@@ -96,6 +110,10 @@ export default function MainPageSetting({
         ? await deleteSupplier(data.id)
         : await restoreSupplier(data.id);
 
+    } else if (type === "contractor") {
+      res = data.isActive
+        ? await deleteContractor(data.id)
+        : await restoreContractor(data.id);
     }
     setIsDeleting(false);
     if (res?.success) {
@@ -181,6 +199,18 @@ export default function MainPageSetting({
           onToggle={(s) => handleToggle("supplier", s)}
         />
 
+        <ContractorTable
+          contractors={contractors}
+          onAdd={() => {
+            setEditContractor(null);
+            setContractorOpen(true);
+          }}
+          onEdit={(c) => {
+            setEditContractor(c);
+            setContractorOpen(true);
+          }}
+          onToggle={(c) => handleToggle("contractor", c)}
+        />
       </div>
 
       {/* POSITION FORM */}
@@ -204,6 +234,13 @@ export default function MainPageSetting({
         isOpen={supplierOpen}
         onOpenChange={setSupplierOpen}
         editData={editSupplier}
+      />
+
+      <CreateContractor
+        key={`contractor-${editContractor?.id ?? "create"}`}
+        isOpen={contractorOpen}
+        onOpenChange={setContractorOpen}
+        editData={editContractor}
       />
 
       {/* 🔐 POSITION PERMISSION MODAL */}

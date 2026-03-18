@@ -31,11 +31,17 @@ const Page = async () => {
     orderBy: { createdAt: "desc" },
   });
 
+  const contractors = await prisma.contractor.findMany({
+    where: { organizationId },
+    orderBy: { createdAt: "desc" },
+  });
+
   return (
     <MainPageSetting
       positions={positions}
       permissions={permissions}
       suppliers={suppliers}
+      contractors={contractors}
     />
   );
 };

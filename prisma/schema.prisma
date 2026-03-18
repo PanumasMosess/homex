@@ -39,6 +39,8 @@ model organization {
   taskUsers        task_user[]        @relation("org_task_users")
   projectsRunnings projects_running[]
   suppliers        supplier[]
+  contractors      contractor[]
+  taskContractors  task_contractor[]
 }
 
 // =====================================
@@ -291,8 +293,9 @@ model task {
   createdById Int // คนสร้าง task
   creator     user @relation("task_creator", fields: [createdById], references: [id])
 
-  details   task_detail[] // ขั้นตอนย่อยของ task
-  taskUsers task_user[]
+  details         task_detail[] // ขั้นตอนย่อยของ task
+  taskUsers       task_user[]
+  taskContractors task_contractor[]
 }
 
 // =====================================
@@ -372,4 +375,38 @@ model supplier {
   // relations
   organizationId Int
   organization   organization @relation(fields: [organizationId], references: [id])
+}
+
+model contractor {
+  id Int @id @default(autoincrement())
+  contractorName    String
+  contractorPhone   String?
+  contractorEmail   String?
+  contractorAddress String?
+  contractorDesc    String?
+  isActive Boolean @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+  taskContractors task_contractor[]
+}
+
+model task_contractor {
+  id Int @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+  
+  taskId Int
+  task   task @relation(fields: [taskId], references: [id])
+
+  contractorId Int
+  contractor   contractor @relation(fields: [contractorId], references: [id])
+
+  @@unique([taskId, contractorId])
 }
