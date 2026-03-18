@@ -216,3 +216,21 @@ export const SupplierSchema_ = z.object({
 });
 
 export type SupplierSchema = z.infer<typeof SupplierSchema_>;
+
+export const ContractorSchema_ = z.object({
+  contractorName: z
+    .string()
+    .min(1, { message: "กรุณากรอก Contractor Name" })
+    .max(150),
+
+  contractorPhone: z.string().max(50).optional(),
+  contractorEmail: z
+    .string()
+    .email("รูปแบบ Email ไม่ถูกต้อง")
+    .optional()
+    .or(z.literal("")),
+  contractorAddress: z.string().max(255).optional(),
+  contractorDesc: z.string().max(255).optional(),
+});
+
+export type ContractorSchema = z.infer<typeof ContractorSchema_>;

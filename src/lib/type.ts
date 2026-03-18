@@ -276,6 +276,19 @@ export interface CreateSupplierData {
   supplierDesc?: string;
 }
 
+export type CreateContractorProps = {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  editData?: any;
+};
+
+export interface CreateContractorData {
+  contractorName: string;
+  contractorPhone?: string;
+  contractorEmail?: string;
+  contractorAddress?: string;
+  contractorDesc?: string;
+}
 export interface DocumentSectionProps {
   organizationId: number;
   currentUserId: number;
