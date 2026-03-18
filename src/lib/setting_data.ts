@@ -314,3 +314,20 @@ export const calculateTaskProgress = (details: any[]) => {
 //     setIsGeneratingVideo(false);
 //   }
 // };
+
+export const PROJECT_DOC_TYPES = [
+  { key: "contract", label: "สัญญาจ้าง / LOI", textValue: "สัญญาจ้าง" },
+  { key: "quotation", label: "ใบเสนอราคา (Quotation)", textValue: "ใบเสนอราคา" },
+  { key: "invoice", label: "ใบแจ้งหนี้ / ใบเสร็จรับเงิน", textValue: "ใบแจ้งหนี้/ใบเสร็จ" },
+  { key: "boq", label: "บัญชีแสดงปริมาณวัสดุ (BOQ)", textValue: "BOQ" },
+  { key: "drawing_arch", label: "แบบสถาปัตยกรรม (Architectural)", textValue: "แบบสถาปัตยกรรม" },
+  { key: "drawing_struct", label: "แบบวิศวกรรมโครงสร้าง (Structural)", textValue: "แบบโครงสร้าง" },
+  { key: "drawing_mep", label: "แบบระบบ MEP (ไฟฟ้า/ประปา/แอร์)", textValue: "แบบระบบไฟฟ้า-ประปา" },
+  { key: "as_built", label: "แบบแปลนจริง (As-Built Drawing)", textValue: "แบบ As-Built" },
+  { key: "shop_drawing", label: "แบบขยายหน้างาน (Shop Drawing)", textValue: "Shop Drawing" },
+  { key: "material_approval", label: "เอกสารอนุมัติวัสดุ (Material Submit)", textValue: "เอกสารอนุมัติวัสดุ" },
+  { key: "daily_report", label: "รายงานหน้างานประจำวัน (Daily Report)", textValue: "รายงานประจำวัน" },
+  { key: "inspection", label: "ใบแจ้งเข้าตรวจงาน (RFI / Inspection)", textValue: "เอกสารตรวจสอบ" },
+  { key: "permit", label: "ใบอนุญาตก่อสร้าง / เอกสารราชการ", textValue: "ใบอนุญาตก่อสร้าง" },
+  { key: "others", label: "เอกสารอื่นๆ", textValue: "อื่นๆ" },
+];

@@ -275,3 +275,45 @@ export interface CreateSupplierData {
   supplierAddress?: string;
   supplierDesc?: string;
 }
+
+export interface DocumentSectionProps {
+  organizationId: number;
+  currentUserId: number;
+  isSpadmin: any;
+  projectId: number;
+}
+
+export interface UploadModalDocProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+  onSuccess?: () => void;
+}
+
+export interface ProjectFile {
+  id?: number;
+  fileName: string;
+  fileUrl: string;
+  fileType?: string | null;
+  note?: string | null;
+  createdAt?: Date | string;
+  organizationId: number;
+  projectId: number;
+  uploadedById?: number | null;
+}
+
+export interface ConfirmDeleteDocModal {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  onConfirm: () => void;
+  title?: string;
+  description?: string;
+  isLoading?: boolean;
+}
+
+export interface CategoryFilterDocProps {
+  selectedCategory: string;
+  onSelectCategory: (category: string) => void;
+}
