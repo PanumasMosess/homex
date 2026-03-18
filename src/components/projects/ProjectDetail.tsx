@@ -65,6 +65,7 @@ import DeleteTaskModal from "./DeleteTaskModal";
 import TaskActionButtons from "./TaskActionButtons";
 import DeleteSubtaskModal from "./DeleteSubtaskModal";
 import { getProjectMembers } from "@/lib/actions/actionTaskMember";
+import DocumentSection from "./DocumentSection";
 
 const ProjectDetail = ({
   organizationId,
@@ -1001,8 +1002,17 @@ const ProjectDetail = ({
           </div>
         )}
 
+        {activeSection === "documents" && (
+          <DocumentSection
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+            isSpadmin={isSpadmin}
+            projectId={Number(projectInfo.id)}
+          />
+        )}
+
         {/* Section อื่นๆ */}
-        {activeSection !== "tasks" && (
+        {!["tasks", "documents"].includes(activeSection) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
             <p className="text-default-400 font-bold uppercase tracking-widest">
               Coming Soon
