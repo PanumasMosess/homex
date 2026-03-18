@@ -9,6 +9,8 @@ import {
 import { calcDurationDays } from "../setting_data";
 
 import { ActionState } from "@/lib/type";
+import { error } from "console";
+import { deleteFileS3 } from "./actionIndex";
 
 export async function createProject(
   _prevState: ActionState,
@@ -520,5 +522,115 @@ export async function deleteSubtask(subtaskId: number) {
   } catch (error: any) {
     console.error("Delete Subtask Error:", error);
     return { success: false, error: "เกิดข้อผิดพลาดในการลบรายการย่อย" };
+  }
+}
+
+export async function createDocFile(data: any) {
+  try {
+    if (!data.fileUrl || !data.projectId) {
+      return { success: false, error: "ข้อมูลไม่ครบถ้วน" };
+    }
+
+    const newFile = await prisma.project_file.create({
+      data: {
+        fileName: data.fileName,
+        fileUrl: data.fileUrl,
+        fileType: data.fileType,
+        note: data.note || "",
+        organizationId: Number(data.organizationId),
+        projectId: Number(data.projectId),
+        uploadedById: Number(data.uploadedById),
+      },
+    });
+
+    return {
+      success: true,
+      error: false,
+      message: "เพิ่มเอกสารสำเร็จ",
+      data: JSON.parse(JSON.stringify(newFile)),
+    };
+  } catch (error: any) {
+    console.error("❌ Error in createDocFile:", error);
+    return {
+      success: false,
+      error: true,
+      message: error.message || "ไม่สามารถบันทึกข้อมูลไฟล์ได้",
+    };
+  }
+}
+
+export async function getAllDoc(projectId: number, organizationId: number) {
+  try {
+    if (!projectId || !organizationId) {
+      return {
+        success: false,
+        error: "ข้อมูลโครงการหรือองค์กรไม่ถูกต้อง",
+        data: [],
+      };
+    }
+
+    const files = await prisma.project_file.findMany({
+      where: {
+        projectId: Number(projectId),
+        organizationId: Number(organizationId),
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    });
+
+    return {
+      success: true,
+      error: false,
+      data: JSON.parse(JSON.stringify(files)),
+    };
+  } catch (error: any) {
+    console.error("❌ Fetch Docs Error:", error);
+    return {
+      success: false,
+      error: "ไม่สามารถดึงข้อมูลเอกสารได้",
+      data: [],
+    };
+  }
+}
+
+export async function deleteDocFile(id: number, organizationId: number) {
+  try {
+    const fileData = await prisma.project_file.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!fileData) throw new Error("ไม่พบข้อมูลไฟล์");
+
+    try {
+      const urlObj = new URL(fileData.fileUrl);
+      let fileKey = urlObj.pathname.substring(1); 
+
+      if (fileKey.startsWith("homex/")) {
+        fileKey = fileKey.replace("homex/", "");
+      }
+
+      if (fileKey) {
+        const s3Res = await deleteFileS3(decodeURIComponent(fileKey));
+
+        if (!s3Res.success) {
+          console.error("S3 Delete Error:", s3Res.error);
+        }
+      }
+    } catch (urlError) {
+      console.error("URL Parsing Error:", urlError);
+    }
+
+    await prisma.project_file.delete({
+      where: { id },
+    });
+
+    return { success: true, error: false, message: "ลบไฟล์เรียบร้อยแล้ว" };
+  } catch (error: any) {
+    return {
+      success: false,
+      error: true,
+      message: error.message || "ลบไม่สำเร็จ",
+    };
   }
 }
