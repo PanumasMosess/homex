@@ -37,6 +37,9 @@ import {
   addTaskMembers,
 } from "@/lib/actions/actionTaskMember";
 
+import SelectTaskContractors from "./selectTaskContractors";
+import { addTaskContractors } from "@/lib/actions/actionTaskContractor";
+
 const CreateMainTask = ({
   isOpen,
   onOpenChange,
@@ -44,7 +47,8 @@ const CreateMainTask = ({
   organizationId,
   currentUserId,
   projectCode,
-  members
+  members,
+  contractors,
 }: CreateMainTaskProps) => {
   const router = useRouter();
   const [isCreateTask, setIsCreateTask] = useState(false);
@@ -62,6 +66,8 @@ const CreateMainTask = ({
   //     loadMembers();
   //   }
   // }, [isOpen, projectId, members.length]);
+
+  const [contractorsSelected, setContractorsSelected] = useState<any[]>([]);
 
   const formAddTask = useForm<MainTaskSchema>({
     resolver: zodResolver(MainTaskSchema_),
@@ -99,6 +105,7 @@ const CreateMainTask = ({
     formAddTask.reset();
     setDurationDays("");
     setAssignees([]);
+    setContractorsSelected([]);
   };
 
   const handleModalClose = () => {
@@ -139,6 +146,14 @@ const CreateMainTask = ({
               assignees.map((u: any) => u.id),
             );
           }
+
+          if (res?.taskId && contractorsSelected.length > 0) {
+            await addTaskContractors(
+              res.taskId,
+              contractorsSelected.map((c: any) => c.id),
+            );
+          }
+
           toast.success("บันทึกงานใหม่เรียบร้อย!");
           router.refresh();
           handleModalClose();
@@ -296,6 +311,17 @@ const CreateMainTask = ({
                         ? `คาดว่าจะเสร็จ: ${formAddTask.getValues("finishPlanned")}`
                         : "เลือกวันเริ่มงานและใส่จำนวนวัน"
                     }
+                  />
+                </div>
+                    
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    👷 ผู้รับเหมา
+                  </label>
+                  <SelectTaskContractors
+                    contractors={contractors}
+                    selected={contractorsSelected}
+                    setSelected={setContractorsSelected}
                   />
                 </div>
 

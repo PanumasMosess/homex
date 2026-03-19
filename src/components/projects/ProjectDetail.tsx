@@ -65,6 +65,7 @@ import DeleteTaskModal from "./DeleteTaskModal";
 import TaskActionButtons from "./TaskActionButtons";
 import DeleteSubtaskModal from "./DeleteSubtaskModal";
 import { getProjectMembers } from "@/lib/actions/actionTaskMember";
+import { getContractors } from "@/lib/actions/actionTaskContractor";
 import DocumentSection from "./DocumentSection";
 
 const ProjectDetail = ({
@@ -136,6 +137,7 @@ const ProjectDetail = ({
 
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const lastLoadedMemberId = useRef<number | null>(null);
+  const [contractors, setContractors] = useState<any[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
@@ -187,6 +189,16 @@ const ProjectDetail = ({
       load();
     }
   }, [projectInfo.id]);
+
+  useEffect(() => {
+    if (organizationId) {
+      const load = async () => {
+        const data = await getContractors(organizationId);
+        setContractors(data || []);
+      };
+      load();
+    }
+  }, [organizationId]);
 
   const selected = useMemo(
     () => tasks.find((t) => t.id === selectedId) || null,
@@ -370,10 +382,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                  ...t,
-                  status: taskToUpdate.status,
-                  progressPercent: taskToUpdate.progressPercent,
-                }
+                ...t,
+                status: taskToUpdate.status,
+                progressPercent: taskToUpdate.progressPercent,
+              }
               : t,
           ),
         );
@@ -386,7 +398,10 @@ const ProjectDetail = ({
     if (selected) {
       setEditFormData({
         ...selected,
+        // 👥 ผู้รับผิดชอบ
         assigneeIds: selected.assignees?.map((a: any) => a.id) || [],
+        // 👷 ผู้รับเหมา
+        contractorIds: selected.contractors?.map((c: any) => c.id) || [],
       });
       setIsEditMode(false);
     }
@@ -711,10 +726,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-                ...t,
-                details: updatedDetails,
-                progressPercent: newProgress,
-              }
+              ...t,
+              details: updatedDetails,
+              progressPercent: newProgress,
+            }
             : t,
         ),
       );
@@ -794,7 +809,7 @@ const ProjectDetail = ({
                   budgetSummary.expenses > projectInfo.budget
                     ? "text-danger"
                     : "text-warning"
-                }`}
+                  }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -921,6 +936,7 @@ const ProjectDetail = ({
               currentUserId={currentUserId}
               projectCode={projectInfo.code}
               members={projectMembers}
+              contractors={contractors}
             />
 
             <div className="space-y-4">
@@ -1063,6 +1079,7 @@ const ProjectDetail = ({
                     isUpdatingStatusMainTask={isUpdatingStatusMainTask}
                     handleUpdateStatusMainTask={handleUpdateStatusMainTask}
                     members={projectMembers}
+                    contractors={contractors}
                     isOwner={canManage}
                   />
                 </div>

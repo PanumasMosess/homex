@@ -48,6 +48,17 @@ const Page = async () => {
           },
         },
       },
+      taskContractors: {
+        include: {
+          contractor: {
+            select: {
+              id: true,
+              contractorName: true,
+              contractorPhone: true,
+            },
+          },
+        },
+      },
       details: {
         orderBy: {
           sortOrder: "asc",
@@ -60,6 +71,7 @@ const Page = async () => {
     ...task,
     budget: task.budget ? Number(task.budget) : null,
     assignees: task.taskUsers?.map((t) => t.user) || [],
+    contractors: task.taskContractors?.map((tc) => tc.contractor) || [],
   }));
 
   return (
