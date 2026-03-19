@@ -573,6 +573,7 @@ export async function getAllDoc(projectId: number, organizationId: number) {
       where: {
         projectId: Number(projectId),
         organizationId: Number(organizationId),
+        fileStatus: "ACTIVE"
       },
       orderBy: {
         createdAt: "desc",
@@ -602,27 +603,30 @@ export async function deleteDocFile(id: number, organizationId: number) {
 
     if (!fileData) throw new Error("ไม่พบข้อมูลไฟล์");
 
-    try {
-      const urlObj = new URL(fileData.fileUrl);
-      let fileKey = urlObj.pathname.substring(1); 
+    // try {
+    //   const urlObj = new URL(fileData.fileUrl);
+    //   let fileKey = urlObj.pathname.substring(1);
 
-      if (fileKey.startsWith("homex/")) {
-        fileKey = fileKey.replace("homex/", "");
-      }
+    //   if (fileKey.startsWith("homex/")) {
+    //     fileKey = fileKey.replace("homex/", "");
+    //   }
 
-      if (fileKey) {
-        const s3Res = await deleteFileS3(decodeURIComponent(fileKey));
+    //   if (fileKey) {
+    //     const s3Res = await deleteFileS3(decodeURIComponent(fileKey));
 
-        if (!s3Res.success) {
-          console.error("S3 Delete Error:", s3Res.error);
-        }
-      }
-    } catch (urlError) {
-      console.error("URL Parsing Error:", urlError);
-    }
+    //     if (!s3Res.success) {
+    //       console.error("S3 Delete Error:", s3Res.error);
+    //     }
+    //   }
+    // } catch (urlError) {
+    //   console.error("URL Parsing Error:", urlError);
+    // }
 
-    await prisma.project_file.delete({
+    await prisma.project_file.update({
       where: { id },
+      data: {
+        fileStatus: "ARCHIVED", // หรือ "ARCHIVED" ตามที่คุณกำหนดไว้
+      },
     });
 
     return { success: true, error: false, message: "ลบไฟล์เรียบร้อยแล้ว" };
