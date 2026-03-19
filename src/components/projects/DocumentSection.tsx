@@ -109,6 +109,8 @@ const DocumentSection = ({
     return matchesSearch && matchesCategory;
   });
 
+  const isCustomer = isSpadmin === "Customer";
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="flex gap-2">
@@ -121,9 +123,11 @@ const DocumentSection = ({
           onValueChange={setSearchQuery}
           isClearable
         />
-        <Button color="primary" radius="lg" onPress={uploadModal.onOpen}>
-          <Plus />
-        </Button>
+        {!isCustomer && (
+          <Button color="primary" radius="lg" onPress={uploadModal.onOpen}>
+            <Plus />
+          </Button>
+        )}
       </div>
 
       <CategoryFilterDoc
@@ -185,15 +189,17 @@ const DocumentSection = ({
                 >
                   <Download size={18} />
                 </Button>
-                <Button
-                  isIconOnly
-                  variant="light"
-                  size="sm"
-                  color="danger"
-                  onPress={() => askDelete(doc)}
-                >
-                  <Trash2 size={18} className="text-danger" />
-                </Button>
+                {!isCustomer && (
+                  <Button
+                    isIconOnly
+                    variant="light"
+                    size="sm"
+                    color="danger"
+                    onPress={() => askDelete(doc)}
+                  >
+                    <Trash2 size={18} className="text-danger" />
+                  </Button>
+                )}
               </div>
             </CardBody>
           </Card>
