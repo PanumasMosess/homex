@@ -141,7 +141,6 @@ const CreateMainTask = ({
         setEstimatedDuration(res.estimatedDurationDays.toString());
 
         toast.success("ประเมินราคากลางและระยะเวลาสำเร็จ", { theme: "dark" });
-
       } else {
         toast.error("AI ไม่สามารถประเมินข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
       }
@@ -165,6 +164,11 @@ const CreateMainTask = ({
   };
 
   const onSubmit = async (dataForm: any) => {
+    if (!formAddTask.getValues("estimatedBudget")) {
+      toast.warning("กรุณากดค้นหาราคากลาง (AI) ก่อนสร้างงาน");
+      return;
+    }
+
     if (!dataForm.startPlanned || !dataForm.finishPlanned) {
       toast.warning("กรุณาระบุวันเริ่มงานและระยะเวลาให้ครบถ้วน");
       return;
@@ -317,7 +321,7 @@ const CreateMainTask = ({
                       </Button>
                     </div>
 
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <Input
                         type="number"
                         isRequired
@@ -330,15 +334,21 @@ const CreateMainTask = ({
                           <span className="text-default-400 text-xs">บาท</span>
                         }
                         isInvalid={!!errors.estimatedBudget}
-                        errorMessage={errors.estimatedBudget?.message as string}                   
-                        value={formAddTask.watch("estimatedBudget")?.toString() || ""}                       
+                        errorMessage={errors.estimatedBudget?.message as string}
+                        value={
+                          formAddTask.watch("estimatedBudget")?.toString() || ""
+                        }
                         onValueChange={(val) =>
-                          formAddTask.setValue("estimatedBudget", Number(val) || 0, {
-                            shouldValidate: true,
-                          })
+                          formAddTask.setValue(
+                            "estimatedBudget",
+                            Number(val) || 0,
+                            {
+                              shouldValidate: true,
+                            },
+                          )
                         }
                       />
-                      
+
                       <Input
                         type="number"
                         isRequired
@@ -351,12 +361,22 @@ const CreateMainTask = ({
                           <span className="text-default-400 text-xs">วัน</span>
                         }
                         isInvalid={!!errors.estimatedDurationDays}
-                        errorMessage={errors.estimatedDurationDays?.message as string}                       
-                        value={formAddTask.watch("estimatedDurationDays")?.toString() || ""}                   
+                        errorMessage={
+                          errors.estimatedDurationDays?.message as string
+                        }
+                        value={
+                          formAddTask
+                            .watch("estimatedDurationDays")
+                            ?.toString() || ""
+                        }
                         onValueChange={(val) =>
-                          formAddTask.setValue("estimatedDurationDays", Number(val) || 0, {
-                            shouldValidate: true,
-                          })
+                          formAddTask.setValue(
+                            "estimatedDurationDays",
+                            Number(val) || 0,
+                            {
+                              shouldValidate: true,
+                            },
+                          )
                         }
                       />
                     </div>
