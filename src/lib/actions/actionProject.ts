@@ -9,8 +9,6 @@ import {
 import { calcDurationDays } from "../setting_data";
 
 import { ActionState } from "@/lib/type";
-import { error } from "console";
-import { deleteFileS3 } from "./actionIndex";
 import { createFeedPost } from "./actionFeed";
 import { auth } from "@/auth";
 
