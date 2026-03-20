@@ -12,7 +12,7 @@ import {
 } from "@heroui/react";
 import { formatDate } from "@/lib/setting_data";
 import { UpdateMainTaskProps } from "@/lib/type";
-import { Users } from "lucide-react";
+import { Sparkles, Users } from "lucide-react";
 
 const UpdateMainTask = ({
   isEditMode,
@@ -25,7 +25,6 @@ const UpdateMainTask = ({
   contractors,
   isOwner,
 }: UpdateMainTaskProps) => {
-
   const handleSelectionChange = (keys: any) => {
     const selectedIds = Array.from(keys).map(Number);
 
@@ -116,9 +115,7 @@ const UpdateMainTask = ({
                     className="bg-default-200 text-default-700"
                   />
                   <div className="flex flex-col">
-                    <span className="text-small">
-                      {c.contractorName}
-                    </span>
+                    <span className="text-small">{c.contractorName}</span>
                     <span className="text-tiny text-default-400">
                       {c.contractorPhone || "-"}
                     </span>
@@ -179,8 +176,8 @@ const UpdateMainTask = ({
             value={
               editFormData.startPlanned
                 ? new Date(editFormData.startPlanned)
-                  .toISOString()
-                  .split("T")[0]
+                    .toISOString()
+                    .split("T")[0]
                 : ""
             }
             onChange={(e) =>
@@ -288,8 +285,33 @@ const UpdateMainTask = ({
         </div>
       )}
 
+      {(selected.estimatedBudget || selected.estimatedDurationDays) && (
+        <div className="grid grid-cols-2 gap-6 bg-secondary/5 p-4 rounded-2xl border border-secondary/20">
+          <div className="space-y-1">
+            <p className="text-[10px] text-secondary font-bold uppercase flex items-center gap-1">
+              <Sparkles size={12} /> ระยะเวลาที่ AI ประเมิน
+            </p>
+            <p className="text-sm font-semibold text-secondary">
+              {selected.estimatedDurationDays
+                ? `${selected.estimatedDurationDays} วัน`
+                : "-"}
+            </p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-[10px] text-secondary font-bold uppercase flex items-center gap-1">
+              <Sparkles size={12} /> ราคากลาง AI ประเมิน
+            </p>
+            <p className="text-sm font-bold text-secondary">
+              {selected.estimatedBudget
+                ? `฿${Number(selected.estimatedBudget).toLocaleString()}`
+                : "-"}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* ข้อมูลสถิติและกำหนดการ */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-6 bg-default-50/50 p-4 rounded-2xl border border-default-100">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-6 bg-default-50/50 p-4 rounded-2xl border border-default-100">
         <div className="space-y-1">
           <p className="text-[10px] text-default-400 font-bold uppercase">
             กำหนดเริ่ม
@@ -306,6 +328,16 @@ const UpdateMainTask = ({
             {selected.finishPlanned ? formatDate(selected.finishPlanned) : "-"}
           </p>
         </div>
+
+        <div className="space-y-1">
+          <p className="text-[10px] text-default-400 font-bold uppercase">
+            ระยะเวลา
+          </p>
+          <p className="text-sm font-semibold">
+            {selected.durationDays ? `${selected.durationDays} วัน` : "-"}
+          </p>
+        </div>
+
         <div className="space-y-1">
           <p className="text-[10px] text-default-400 font-bold uppercase">
             งบประมาณ
@@ -362,9 +394,7 @@ const UpdateMainTask = ({
                   name={c.contractorName}
                   className="w-6 h-6 text-[10px] bg-default-200 text-default-600"
                 />
-                <span className="text-[11px]">
-                  {c.contractorName}
-                </span>
+                <span className="text-[11px]">{c.contractorName}</span>
               </div>
             ))}
           </div>
