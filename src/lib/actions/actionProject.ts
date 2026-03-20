@@ -328,7 +328,7 @@ export const updateMainTask = async (taskId: number, updateData: any) => {
 
 export const updateMainTaskForm = async (taskId: number, updateData: any) => {
   try {
-    const { assigneeIds, organizationId, ...rest } = updateData;
+    const { assigneeIds, contractorIds, organizationId, ...rest } = updateData;
 
     const dataToUpdate = {
       taskName: rest.taskName,
@@ -363,10 +363,27 @@ export const updateMainTaskForm = async (taskId: number, updateData: any) => {
         }
       }
 
+      if (contractorIds !== undefined) {
+        // ลบของเก่าออกก่อน
+        await tx.task_contractor.deleteMany({
+          where: { taskId: taskId },
+        });
+        if (contractorIds.length > 0) {
+          await tx.task_contractor.createMany({
+            data: contractorIds.map((cid: number) => ({
+              taskId: taskId,
+              contractorId: cid,
+              organizationId: organizationId || updatedTask.organizationId,
+            })),
+          });
+        }
+      }
+
       const task = await tx.task.findUnique({
         where: { id: taskId },
         include: {
           taskUsers: { include: { user: true } },
+          taskContractors: { include: { contractor: true } },
           details: true,
         },
       });
@@ -573,7 +590,7 @@ export async function getAllDoc(projectId: number, organizationId: number) {
       where: {
         projectId: Number(projectId),
         organizationId: Number(organizationId),
-        fileStatus: "ACTIVE"
+        fileStatus: "ACTIVE",
       },
       orderBy: {
         createdAt: "desc",
