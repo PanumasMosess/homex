@@ -103,6 +103,7 @@ export interface CreateMainTaskProps {
   currentUserId: number;
   projectCode: string;
   members: any[];
+  contractors: any[];
 }
 
 export interface CreateEmployeeProps {
@@ -206,6 +207,7 @@ export interface UpdateMainTaskProps {
   isUpdatingStatusMainTask: boolean;
   handleUpdateStatusMainTask: (status: string) => void;
   members: any[];
+  contractors: any[];
   isOwner: any;
 }
 
@@ -330,3 +332,15 @@ export interface CategoryFilterDocProps {
   selectedCategory: string;
   onSelectCategory: (category: string) => void;
 }
+
+export type SelectMemberProps = {
+  members: any[];
+  selected: any[];
+  setSelected: (users: any[]) => void;
+};
+
+export type SelectContractorProps = {
+  contractors: any[];
+  selected: any[];
+  setSelected: (contractors: any[]) => void;
+};
