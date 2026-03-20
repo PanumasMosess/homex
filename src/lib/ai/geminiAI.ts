@@ -294,3 +294,51 @@ export const generateSubtasksAI = async (prompt: string) => {
     throw error;
   }
 };
+
+export const generateTakeBudget_Durationday = async (prompt: string) => {
+  try {
+    const result = await ai_gemini.models.generateContent({
+      model: model_version, 
+      config: {
+        systemInstruction: `คุณคือวิศวกรประเมินราคาและวางแผนงานก่อสร้างมืออาชีพ (Estimator & Planner) ในประเทศไทย
+        หน้าที่ของคุณคือการวิเคราะห์ชื่องานก่อสร้างที่ได้รับ และประเมิน "ราคากลางโดยประมาณ (บาท)" และ "ระยะเวลาทำงานคร่าวๆ (วัน)"
+        เงื่อนไขการตอบกลับ:
+        - ประเมินตัวเลขโดยอ้างอิงจากมาตรฐานงานก่อสร้างทั่วไปในประเทศไทย (สมมติว่าเป็นโครงการขนาดกลาง)
+        - ตอบกลับเป็น JSON Object เพียง 1 ก้อนเท่านั้น ห้ามเป็น Array
+        - วัตถุต้องมี 3 ฟิลด์นี้เท่านั้น: 
+          1. "estimatedBudget" (ตัวเลขจำนวนเต็ม ราคากลางโดยประมาณ หน่วยเป็นบาท ห้ามใส่ลูกน้ำ)
+          2. "estimatedDurationDays" (ตัวเลขจำนวนเต็ม ระยะเวลาทำงานคร่าวๆ หน่วยเป็นวัน)
+          3. "reason" (คำอธิบายสั้นๆ 1-2 บรรทัด ว่าทำไมถึงประเมินราคากับเวลานี้ อ้างอิงจากปริมาณงานหรือวัสดุอะไร)
+        - ห้ามมีข้อความนำหรือคำลงท้าย ห้ามครอบด้วย Markdown format (เช่น \`\`\`json)`,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!responseText) {
+      console.error("AI Response structure is invalid or empty:", result);
+      return null; // เปลี่ยนจากคืนค่า [] เป็น null เพื่อให้เช็ค error ได้ง่ายขึ้น
+    }
+    
+    try {
+      const estimate = JSON.parse(responseText);
+
+      // คืนค่าเป็น Object แทน Array
+      return {
+        estimatedBudget: Number(estimate.estimatedBudget) || 0,
+        estimatedDurationDays: Number(estimate.estimatedDurationDays) || 1, // ค่าเริ่มต้นให้เป็น 1 วัน
+        reason: estimate.reason || "ประเมินจากมาตรฐานงานก่อสร้างทั่วไป",
+      };
+      
+    } catch (parseError) {
+      console.error("JSON Parse Error. Raw response:", responseText);
+      return null;
+    }
+  } catch (error) {
+    console.error("Error generating estimate with AI:", error);
+    throw error;
+  }
+}

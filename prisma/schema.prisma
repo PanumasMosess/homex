@@ -274,22 +274,28 @@ model project_user {
 // Task = งานหลัก (เช่น เทพื้น, ก่อกำแพง)
 // =====================================
 model task {
-  id              Int       @id @default(autoincrement())
+  id              Int     @id @default(autoincrement())
   taskName        String? // ชื่องาน เช่น "เทพื้น"
   taskDesc        String? // รายละเอียดงาน
-  status          String    @default("TODO") // TODO / DOING / DONE / BLOCKED
-  progressPercent Int       @default(0) // ความคืบหน้า 0..100
+  status          String  @default("TODO") // TODO / DOING / DONE / BLOCKED
+  progressPercent Int     @default(0) // ความคืบหน้า 0..100
   coverImageUrl   String? // รูปตัวแทนงาน (1 รูป)
+
+  // 🌟 --- AI Estimation (ข้อมูลประเมินจาก AI) ---
+  estimatedBudget       Decimal?  @db.Decimal(12, 2) // ราคากลาง (ประเมินโดย AI)
+  startAiPlanned        DateTime?
+  estimatedDurationDays Int? // ระยะเวลาทำงานคร่าวๆ (จำนวนวัน ประเมินโดย AI)
+
   // planned schedule
-  startPlanned    DateTime?
-  finishPlanned   DateTime?
-  durationDays    Int?
-  budget          Decimal?  @db.Decimal(12, 2) // งบประมาณ
+  startPlanned  DateTime?
+  finishPlanned DateTime?
+  durationDays  Int?
+  budget        Decimal?  @db.Decimal(12, 2) // งบประมาณ
   // actual schedule
-  startActual     DateTime?
-  finishActual    DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @default(now())
+  startActual   DateTime?
+  finishActual  DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @default(now())
 
   // ---------- relations ----------
   organizationId Int // FK -> organization.id

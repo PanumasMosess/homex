@@ -131,9 +131,17 @@ export async function createMainTask(
       data: {
         taskName: data.taskName,
         taskDesc: data.taskDesc ?? null,
-        status: data.status ?? "todo",
+        status: data.status ?? "TODO",
         budget: Number(data.budget) || 0,
         coverImageUrl: data.coverImageUrl ?? null,
+
+        estimatedBudget: data.estimatedBudget
+          ? Number(data.estimatedBudget)
+          : null,
+        estimatedDurationDays: data.estimatedDurationDays
+          ? Number(data.estimatedDurationDays)
+          : null,
+        startAiPlanned: startPlanned,
 
         startPlanned: startPlanned,
         finishPlanned: finishPlanned,

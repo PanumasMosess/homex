@@ -12,6 +12,7 @@ import {
   Textarea,
   Select,
   SelectItem,
+  Divider,
 } from "@heroui/react";
 import {
   ClipboardList,
@@ -20,6 +21,9 @@ import {
   AlertCircle,
   Clock,
   User,
+  Search,
+  Sparkles,
+  ArrowDownToLine,
 } from "lucide-react";
 
 import { useForm } from "react-hook-form";
@@ -28,14 +32,14 @@ import { MainTaskSchema, MainTaskSchema_ } from "@/lib/formValidationSchemas";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
 import { CreateMainTaskProps } from "@/lib/type";
-import { generationImage } from "@/lib/ai/geminiAI";
+import {
+  generateTakeBudget_Durationday,
+  generationImage,
+} from "@/lib/ai/geminiAI";
 import { createMainTask } from "@/lib/actions/actionProject";
 
 import SelectTaskMembers from "./selectTaskMembers";
-import {
-  getProjectMembers,
-  addTaskMembers,
-} from "@/lib/actions/actionTaskMember";
+import { addTaskMembers } from "@/lib/actions/actionTaskMember";
 
 import SelectTaskContractors from "./selectTaskContractors";
 import { addTaskContractors } from "@/lib/actions/actionTaskContractor";
@@ -56,18 +60,11 @@ const CreateMainTask = ({
 
   const [durationDays, setDurationDays] = useState<number | "">("");
   const [assignees, setAssignees] = useState<any[]>([]);
-
-  // useEffect(() => {
-  //   if (isOpen && projectId && members.length === 0) {
-  //     const loadMembers = async () => {
-  //       const data = await getProjectMembers(projectId);
-  //       setMembers(data);
-  //     };
-  //     loadMembers();
-  //   }
-  // }, [isOpen, projectId, members.length]);
-
   const [contractorsSelected, setContractorsSelected] = useState<any[]>([]);
+
+  const [isEstimating, setIsEstimating] = useState(false);
+  const [estimatedBudget, setEstimatedBudget] = useState("");
+  const [estimatedDuration, setEstimatedDuration] = useState("");
 
   const formAddTask = useForm<MainTaskSchema>({
     resolver: zodResolver(MainTaskSchema_),
@@ -76,6 +73,8 @@ const CreateMainTask = ({
       taskDesc: "",
       status: "TODO",
       budget: "" as unknown as number,
+      estimatedBudget: "" as unknown as number,
+      startAiPlanned: "",
       startPlanned: "",
       finishPlanned: "",
       coverImageUrl: "",
@@ -106,6 +105,8 @@ const CreateMainTask = ({
     setDurationDays("");
     setAssignees([]);
     setContractorsSelected([]);
+    setEstimatedBudget("");
+    setEstimatedDuration("");
   };
 
   const handleModalClose = () => {
@@ -113,8 +114,57 @@ const CreateMainTask = ({
     onOpenChange(false);
   };
 
+  const handleEstimateSearch = async () => {
+    const taskName = formAddTask.getValues("taskName");
+    if (!taskName) {
+      toast.warning("กรุณาพิมพ์ชื่อหัวข้อ/งาน ก่อนกดค้นหา");
+      return;
+    }
+
+    setIsEstimating(true);
+    try {
+      const res = await generateTakeBudget_Durationday(taskName);
+
+      if (res) {
+        formAddTask.setValue("estimatedBudget", res.estimatedBudget, {
+          shouldValidate: true,
+        });
+        formAddTask.setValue(
+          "estimatedDurationDays",
+          res.estimatedDurationDays,
+          {
+            shouldValidate: true,
+          },
+        );
+
+        setEstimatedBudget(res.estimatedBudget.toString());
+        setEstimatedDuration(res.estimatedDurationDays.toString());
+
+        toast.success("ประเมินราคากลางและระยะเวลาสำเร็จ", { theme: "dark" });
+
+      } else {
+        toast.error("AI ไม่สามารถประเมินข้อมูลได้ กรุณาลองใหม่อีกครั้ง");
+      }
+    } catch (error) {
+      toast.error("เกิดข้อผิดพลาดในการค้นหาข้อมูล");
+    } finally {
+      setIsEstimating(false);
+    }
+  };
+
+  const applyEstimatesToForm = () => {
+    if (estimatedBudget) {
+      formAddTask.setValue("budget", Number(estimatedBudget), {
+        shouldValidate: true,
+      });
+    }
+    if (estimatedDuration) {
+      setDurationDays(Number(estimatedDuration));
+    }
+    toast.info("นำข้อมูลไปใส่ในฟอร์มแล้ว");
+  };
+
   const onSubmit = async (dataForm: any) => {
-    // ใช้ any ชั่วคราวรับ budget
     if (!dataForm.startPlanned || !dataForm.finishPlanned) {
       toast.warning("กรุณาระบุวันเริ่มงานและระยะเวลาให้ครบถ้วน");
       return;
@@ -220,19 +270,100 @@ const CreateMainTask = ({
             >
               <ModalBody>
                 {/* 1. Task Name */}
-                <Input
-                  isRequired
-                  label="ชื่อหัวข้อ/งาน"
-                  placeholder="เช่น งานวางฐานราก, งานระบบไฟฟ้า"
-                  labelPlacement="outside"
-                  variant="bordered"
-                  isInvalid={!!errors.taskName}
-                  errorMessage={errors.taskName?.message}
-                  startContent={
-                    <ClipboardList className="text-default-400" size={18} />
-                  }
-                  {...formAddTask.register("taskName")}
-                />
+                <div className="flex flex-col sm:flex-row gap-3 items-end">
+                  <Input
+                    isRequired
+                    label="ชื่อหัวข้อ/งาน"
+                    placeholder="เช่น งานวางฐานราก, งานระบบไฟฟ้า"
+                    labelPlacement="outside"
+                    variant="bordered"
+                    className="flex-1"
+                    isInvalid={!!errors.taskName}
+                    errorMessage={errors.taskName?.message}
+                    startContent={
+                      <ClipboardList className="text-default-400" size={18} />
+                    }
+                    {...formAddTask.register("taskName")}
+                  />
+                  {/* 🌟 ปุ่มค้นหา */}
+                  <Button
+                    color="secondary"
+                    variant="flat"
+                    className="w-full sm:w-auto shrink-0 font-medium"
+                    onPress={handleEstimateSearch}
+                    isLoading={isEstimating}
+                    startContent={!isEstimating && <Sparkles size={18} />}
+                  >
+                    ค้นหาราคากลาง
+                  </Button>
+                </div>
+
+                {/* 🌟 กล่องแสดงผลลัพธ์การค้นหา ราคากลาง & เวลาคร่าวๆ */}
+                {(estimatedBudget || estimatedDuration) && (
+                  <div className="bg-secondary/10 border border-secondary/20 p-4 rounded-xl flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-300">
+                    <div className="flex justify-between items-center">
+                      <p className="text-sm font-semibold text-secondary flex items-center gap-2">
+                        <Sparkles size={16} /> ผลลัพธ์จากการค้นหา
+                        (ข้อมูลอ้างอิง)
+                      </p>
+                      <Button
+                        size="sm"
+                        color="secondary"
+                        variant="shadow"
+                        onPress={applyEstimatesToForm}
+                        startContent={<ArrowDownToLine size={14} />}
+                      >
+                        นำไปใช้ในฟอร์ม
+                      </Button>
+                    </div>
+
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <Input
+                        type="number"
+                        isRequired
+                        readOnly
+                        label="ราคากลางโดยประมาณ"
+                        labelPlacement="outside"
+                        variant="bordered"
+                        color="secondary"
+                        endContent={
+                          <span className="text-default-400 text-xs">บาท</span>
+                        }
+                        isInvalid={!!errors.estimatedBudget}
+                        errorMessage={errors.estimatedBudget?.message as string}                   
+                        value={formAddTask.watch("estimatedBudget")?.toString() || ""}                       
+                        onValueChange={(val) =>
+                          formAddTask.setValue("estimatedBudget", Number(val) || 0, {
+                            shouldValidate: true,
+                          })
+                        }
+                      />
+                      
+                      <Input
+                        type="number"
+                        isRequired
+                        readOnly
+                        label="ระยะเวลาคร่าวๆ (AI)"
+                        labelPlacement="outside"
+                        variant="bordered"
+                        color="secondary"
+                        endContent={
+                          <span className="text-default-400 text-xs">วัน</span>
+                        }
+                        isInvalid={!!errors.estimatedDurationDays}
+                        errorMessage={errors.estimatedDurationDays?.message as string}                       
+                        value={formAddTask.watch("estimatedDurationDays")?.toString() || ""}                   
+                        onValueChange={(val) =>
+                          formAddTask.setValue("estimatedDurationDays", Number(val) || 0, {
+                            shouldValidate: true,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+                )}
+
+                <Divider className="my-1 opacity-50" />
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                   <Select
@@ -251,7 +382,7 @@ const CreateMainTask = ({
 
                   <Input
                     type="number"
-                    label="งบประมาณ"
+                    label="งบประมาณ (ที่ใช้จริง)"
                     placeholder="0"
                     labelPlacement="outside"
                     variant="bordered"
@@ -313,11 +444,9 @@ const CreateMainTask = ({
                     }
                   />
                 </div>
-                    
+
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">
-                    👷 ผู้รับเหมา
-                  </label>
+                  <label className="text-sm font-medium">👷 ผู้รับเหมา</label>
                   <SelectTaskContractors
                     contractors={contractors}
                     selected={contractorsSelected}

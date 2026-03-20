@@ -400,9 +400,7 @@ const ProjectDetail = ({
     if (selected) {
       setEditFormData({
         ...selected,
-        // 👥 ผู้รับผิดชอบ
         assigneeIds: selected.assignees?.map((a: any) => a.id) || [],
-        // 👷 ผู้รับเหมา
         contractorIds: selected.contractors?.map((c: any) => c.id) || [],
       });
       setIsEditMode(false);
