@@ -28,7 +28,6 @@ import { DocumentSectionProps, ProjectFile } from "@/lib/type";
 import { deleteDocFile, getAllDoc } from "@/lib/actions/actionProject";
 import { toast } from "react-toastify";
 import { PROJECT_DOC_TYPES } from "@/lib/setting_data";
-import { useRouter } from "next/navigation";
 import ConfirmDeleteModal from "./ConfirmDeleteModal";
 import CategoryFilterDoc from "./CategoryFilterDoc";
 
