@@ -9,6 +9,10 @@ import {
 import { calcDurationDays } from "../setting_data";
 
 import { ActionState } from "@/lib/type";
+import { error } from "console";
+import { deleteFileS3 } from "./actionIndex";
+import { createFeedPost } from "./actionFeed";
+import { auth } from "@/auth";
 
 export async function createProject(
   _prevState: ActionState,
@@ -159,6 +163,15 @@ export async function createMainTask(
           },
         },
       },
+    });
+
+    await createFeedPost({
+      feedType: "TASK_CREATED",
+      content: `สร้าง Task "${data.taskName}"`,
+      organizationId: Number(data.organizationId),
+      projectId: Number(data.projectId),
+      userId: Number(data.createdById),
+      taskId: task.id,
     });
 
     return {
@@ -442,6 +455,21 @@ export async function createSubTask(data: any) {
       };
     }
 
+    const session = await auth();
+    const feedUserId = session?.user?.id ? parseInt(session.user.id) : 0;
+
+    if (feedUserId) {
+      await createFeedPost({
+        feedType: "SUBTASK_UPDATED",
+        content: `เพิ่มรายการย่อย "${data.detailName}"`,
+        organizationId: data.organizationId,
+        projectId: data.projectId,
+        userId: feedUserId,
+        taskId: data.taskId,
+        subtaskId: newTaskDetail.id,
+      });
+    }
+
     return {
       success: true,
       error: false,
@@ -463,10 +491,30 @@ export async function toggleSubtaskStatus(
   newStatus: boolean,
 ) {
   try {
-    await prisma.task_detail.update({
+    const detail = await prisma.task_detail.update({
       where: { id: subtaskId },
       data: { status: newStatus },
+      include: { task: { select: { id: true, coverImageUrl: true } } },
     });
+
+    if (newStatus === true) {
+      const session = await auth();
+      const feedUserId = session?.user?.id ? parseInt(session.user.id) : 0;
+
+      if (feedUserId) {
+        await createFeedPost({
+          feedType: "SUBTASK_COMPLETED",
+          content: `สำเร็จรายการย่อย "${detail.detailName}"`,
+          organizationId: detail.organizationId,
+          projectId: detail.projectId,
+          userId: feedUserId,
+          taskId: detail.taskId,
+          subtaskId: detail.id,
+          imageUrl: detail.task?.coverImageUrl || undefined,
+        });
+      }
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error("Toggle Subtask Error:", error);
@@ -538,9 +586,30 @@ export async function updateProjectProgressDB(
 
 export async function deleteSubtask(subtaskId: number) {
   try {
+    const detail = await prisma.task_detail.findUnique({
+      where: { id: subtaskId },
+    });
+
     await prisma.task_detail.delete({
       where: { id: subtaskId },
     });
+
+    if (detail) {
+      const session = await auth();
+      const feedUserId = session?.user?.id ? parseInt(session.user.id) : 0;
+
+      if (feedUserId) {
+        await createFeedPost({
+          feedType: "SUBTASK_DELETED",
+          content: `ลบรายการย่อย "${detail.detailName}"`,
+          organizationId: detail.organizationId,
+          projectId: detail.projectId,
+          userId: feedUserId,
+          taskId: detail.taskId,
+        });
+      }
+    }
+
     return { success: true };
   } catch (error: any) {
     console.error("Delete Subtask Error:", error);
