@@ -8,6 +8,7 @@ import {
   ShoppingCart,
   Cctv,
   Banknote,
+  Rss,
 } from "lucide-react";
 
 import {
@@ -67,6 +68,7 @@ import DeleteSubtaskModal from "./DeleteSubtaskModal";
 import { getProjectMembers } from "@/lib/actions/actionTaskMember";
 import { getContractors } from "@/lib/actions/actionTaskContractor";
 import DocumentSection from "./DocumentSection";
+import FeedSection from "./feed/FeedSection";
 
 const ProjectDetail = ({
   organizationId,
@@ -861,9 +863,10 @@ const ProjectDetail = ({
       </div>
 
       <div className="w-full">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
           {[
             { id: "tasks", label: "งาน", icon: <Building2 size={18} /> },
+            { id: "feed", label: "ฟีด", icon: <Rss size={18} /> },
             {
               id: "purchasing",
               label: "จัดซื้อ",
@@ -1027,8 +1030,16 @@ const ProjectDetail = ({
           />
         )}
 
+        {activeSection === "feed" && (
+          <FeedSection
+            projectId={Number(projectInfo.id)}
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+          />
+        )}
+
         {/* Section อื่นๆ */}
-        {!["tasks", "documents"].includes(activeSection) && (
+        {!["tasks", "documents", "feed"].includes(activeSection) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
             <p className="text-default-400 font-bold uppercase tracking-widest">
               Coming Soon

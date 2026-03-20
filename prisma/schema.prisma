@@ -41,6 +41,7 @@ model organization {
   suppliers        supplier[]
   contractors      contractor[]
   taskContractors  task_contractor[]
+  feedPosts        feed_post[]
 }
 
 // =====================================
@@ -88,6 +89,11 @@ model user {
   uploadedFiles project_file[] @relation("project_file_uploader")
   uploadedImgs  project_img[]  @relation("project_img_uploader")
   taskUsers     task_user[]
+  feedPosts    feed_post[]         @relation("feed_post_author")
+  feedLikes    feed_like[]         @relation("feed_like_user")
+  feedComments feed_comment[]      @relation("feed_comment_user")
+  feedCommentLikes feed_comment_like[] @relation("feed_comment_like_user")
+  feedShares   feed_share[]        @relation("feed_share_user")
 }
 
 // =====================================
@@ -197,6 +203,7 @@ model project {
   taskDetails task_detail[] // งานย่อยทั้งหมดของโปรเจค
   files       project_file[] // ไฟล์แนบของโปรเจค
   imgs        project_img[] // รูปแนบของโปรเจค
+  feedPosts   feed_post[]
 }
 
 // =====================================
@@ -297,6 +304,7 @@ model task {
   details         task_detail[] // ขั้นตอนย่อยของ task
   taskUsers       task_user[]
   taskContractors task_contractor[]
+  feedPosts       feed_post[]
 }
 
 // =====================================
@@ -330,6 +338,8 @@ model task_detail {
 
   taskId Int // FK -> task.id
   task   task @relation(fields: [taskId], references: [id])
+
+  feedPosts feed_post[]
 }
 
 model task_user {
@@ -410,4 +420,104 @@ model task_contractor {
   contractor   contractor @relation(fields: [contractorId], references: [id])
 
   @@unique([taskId, contractorId])
+}
+
+// =====================================
+// FeedPost = โพสต์ในฟีด (สร้างอัตโนมัติเมื่อมี task event)
+// =====================================
+model feed_post {
+  id       Int      @id @default(autoincrement())
+  feedType String // TASK_CREATED | SUBTASK_UPDATED | SUBTASK_COMPLETED | SUBTASK_DELETED
+  content  String?  @db.Text // เนื้อหาโพสต์
+  imageUrl String?  @db.Text // รูปภาพ (เช่น coverImage ของ task)
+  createdAt DateTime @default(now())
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id])
+
+  taskId Int?
+  task   task? @relation(fields: [taskId], references: [id])
+
+  subtaskId Int?
+  subtask   task_detail? @relation(fields: [subtaskId], references: [id])
+
+  userId Int
+  user   user @relation("feed_post_author", fields: [userId], references: [id])
+
+  likes    feed_like[]
+  comments feed_comment[]
+  shares   feed_share[]
+}
+
+// =====================================
+// FeedLike = ไลค์โพสต์
+// =====================================
+model feed_like {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  feedPostId Int
+  feedPost   feed_post @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   user @relation("feed_like_user", fields: [userId], references: [id])
+
+  @@unique([feedPostId, userId])
+}
+
+// =====================================
+// FeedComment = ความคิดเห็นในโพสต์ (nested reply ได้)
+// =====================================
+model feed_comment {
+  id        Int      @id @default(autoincrement())
+  content   String   @db.Text
+  imageUrl  String?  @db.Text
+  createdAt DateTime @default(now())
+
+  feedPostId Int
+  feedPost   feed_post @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   user @relation("feed_comment_user", fields: [userId], references: [id])
+
+  // nested reply
+  parentId Int?
+  parent   feed_comment?  @relation("comment_replies", fields: [parentId], references: [id])
+  replies  feed_comment[] @relation("comment_replies")
+
+  likes feed_comment_like[]
+}
+
+// =====================================
+// FeedCommentLike = ไลค์ความคิดเห็น
+// =====================================
+model feed_comment_like {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  feedCommentId Int
+  feedComment   feed_comment @relation(fields: [feedCommentId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   user @relation("feed_comment_like_user", fields: [userId], references: [id])
+
+  @@unique([feedCommentId, userId])
+}
+
+// =====================================
+// FeedShare = แชร์โพสต์
+// =====================================
+model feed_share {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now())
+
+  feedPostId Int
+  feedPost   feed_post @relation(fields: [feedPostId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   user @relation("feed_share_user", fields: [userId], references: [id])
 }

@@ -262,6 +262,7 @@ export type SectionType =
   | "purchasing"
   | "documents"
   | "camera"
+  | "feed"
   | (string & {});
 
 export type CreateSupplierProps = {
@@ -344,3 +345,71 @@ export type SelectContractorProps = {
   selected: any[];
   setSelected: (contractors: any[]) => void;
 };
+
+// =====================================
+// Feed Types
+// =====================================
+
+export type FeedType =
+  | "TASK_CREATED"
+  | "SUBTASK_UPDATED"
+  | "SUBTASK_COMPLETED"
+  | "SUBTASK_DELETED";
+
+export interface FeedPostUser {
+  id: number;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface FeedCommentData {
+  id: number;
+  content: string;
+  imageUrl: string | null;
+  createdAt: string;
+  user: FeedPostUser;
+  parentId: number | null;
+  replies: FeedCommentData[];
+  _count: { likes: number };
+  isLiked: boolean;
+}
+
+export interface FeedPostData {
+  id: number;
+  feedType: FeedType;
+  content: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  user: FeedPostUser;
+  task: { id: number; taskName: string | null } | null;
+  subtask: { id: number; detailName: string } | null;
+  _count: { likes: number; comments: number; shares: number };
+  isLiked: boolean;
+  previewComments: FeedCommentData[];
+}
+
+export interface FeedSectionProps {
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+}
+
+export interface FeedCardProps {
+  post: FeedPostData;
+  currentUserId: number;
+  onLikeToggle: (postId: number) => void;
+  onComment: (postId: number, content: string, parentId?: number, imageUrl?: string) => void;
+  onShare: (postId: number) => void;
+  onLoadComments: (postId: number) => void;
+  onLikeComment: (postId: number, commentId: number) => void;
+}
+
+export interface CommentSectionProps {
+  postId: number;
+  comments: FeedCommentData[];
+  currentUserId: number;
+  onComment: (postId: number, content: string, parentId?: number, imageUrl?: string) => void;
+  onLikeComment: (postId: number, commentId: number) => void;
+  totalComments: number;
+  onLoadAll: () => void;
+}
