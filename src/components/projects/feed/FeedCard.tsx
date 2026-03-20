@@ -6,7 +6,6 @@ import {
   ThumbsUp,
   MessageCircle,
   Share2,
-  Bookmark,
   Globe,
   CheckCircle2,
   PlusCircle,
@@ -69,7 +68,6 @@ export default function FeedCard({
   onLikeComment,
 }: FeedCardProps) {
   const [showComments, setShowComments] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [likeCount, setLikeCount] = useState(post._count.likes);
   const [commentCount, setCommentCount] = useState(post._count.comments);
   const [shareCount, setShareCount] = useState(post._count.shares);
@@ -170,7 +168,7 @@ export default function FeedCard({
       <Divider className="my-1" />
 
       {/* Action buttons */}
-      <div className="grid grid-cols-4 px-1 py-0.5">
+      <div className="grid grid-cols-3 px-1 py-0.5">
         <button
           onClick={handleLike}
           className={`flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-default-100 dark:hover:bg-zinc-800 transition-colors text-sm font-medium ${
@@ -193,15 +191,6 @@ export default function FeedCard({
         >
           <Share2 size={18} />
           <span className="hidden sm:inline">แชร์</span>
-        </button>
-        <button
-          onClick={() => setSaved((v) => !v)}
-          className={`flex items-center justify-center gap-1.5 py-2 rounded-lg hover:bg-default-100 dark:hover:bg-zinc-800 transition-colors text-sm font-medium ${
-            saved ? "text-warning" : "text-default-500"
-          }`}
-        >
-          <Bookmark size={18} className={saved ? "fill-warning" : ""} />
-          <span className="hidden sm:inline">บันทึก</span>
         </button>
       </div>
 

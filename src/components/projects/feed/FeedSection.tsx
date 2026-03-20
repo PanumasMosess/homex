@@ -121,7 +121,7 @@ export default function FeedSection({
   const handleShare = async (postId: number) => {
     const res = await sharePost(postId);
     if (res.success) {
-      toast.success("แชร์เรียบร้อย");
+      toast.success("แชร์เรียบร้อย (In development");
     } else {
       toast.error(res.message || "แชร์ไม่สำเร็จ");
     }
