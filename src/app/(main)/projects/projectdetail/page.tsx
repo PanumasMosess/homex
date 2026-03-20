@@ -27,10 +27,13 @@ const Page = async () => {
       status: true,
       progressPercent: true,
       coverImageUrl: true,
+      estimatedBudget: true,
+      estimatedDurationDays: true,
       startPlanned: true,
       finishPlanned: true,
       durationDays: true,
       budget: true,
+      startAiPlanned: true,
       startActual: true,
       finishActual: true,
       createdAt: true,
@@ -70,6 +73,7 @@ const Page = async () => {
   const formattedTasks = mainTasks.map((task) => ({
     ...task,
     budget: task.budget ? Number(task.budget) : null,
+    estimatedBudget: task.estimatedBudget ? Number(task.estimatedBudget) : null,
     assignees: task.taskUsers?.map((t) => t.user) || [],
     contractors: task.taskContractors?.map((tc) => tc.contractor) || [],
   }));
