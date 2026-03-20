@@ -3,13 +3,14 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Avatar, Button, Input } from "@heroui/react";
 import { Search, UserPlus, X } from "lucide-react";
-import { SelectMemberProps } from "@/lib/type";
+import { SelectContractorProps } from "@/lib/type";
 
-export default function SelectTaskMembers({
-  members,
+export default function SelectTaskContractors({
+  contractors,
   selected,
   setSelected,
-}: SelectMemberProps) {
+}: SelectContractorProps) {
+
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
 
@@ -37,54 +38,58 @@ export default function SelectTaskMembers({
     }
   }, [open]);
 
-  /* ---------------- FILTER USERS ---------------- */
+  /* ---------------- FILTER ---------------- */
 
   const filtered = useMemo(() => {
     const keyword = q.toLowerCase();
 
-    return members.filter((u) => {
-      if (selected.some((s) => s.id === u.id)) return false;
+    return contractors.filter((c) => {
+
+      if (selected.some((s) => s.id === c.id)) return false;
 
       return (
-        u.displayName?.toLowerCase().includes(keyword) ||
-        u.position?.positionName?.toLowerCase().includes(keyword)
+        (c.contractorName ?? "").toLowerCase().includes(keyword) ||
+        (c.contractorPhone ?? "").toLowerCase().includes(keyword) ||
+        (c.contractorEmail ?? "").toLowerCase().includes(keyword)
       );
+
     });
-  }, [q, members, selected]);
 
-  /* ---------------- ADD USER ---------------- */
+  }, [q, contractors, selected]);
 
-  const addUser = (user: any) => {
-    setSelected([...selected, user]);
+  /* ---------------- ADD ---------------- */
+
+  const add = (c: any) => {
+    setSelected([...selected, c]);
     setQ("");
   };
 
-  /* ---------------- REMOVE USER ---------------- */
+  /* ---------------- REMOVE ---------------- */
 
-  const removeUser = (id: number) => {
-    setSelected(selected.filter((u) => u.id !== id));
+  const remove = (id: number) => {
+    setSelected(selected.filter((c) => c.id !== id));
   };
 
   return (
     <div ref={wrapperRef} className="relative">
 
-      {/* ---------------- SELECTED USERS ---------------- */}
+      {/* SELECTED */}
 
       <div className="flex flex-wrap items-center gap-2">
 
-        {selected.map((u) => (
+        {selected.map((c) => (
           <div
-            key={u.id}
+            key={c.id}
             className="group flex items-center gap-1 pl-1 pr-2 py-0.5 rounded-full bg-default-100 border hover:bg-default-200 transition"
           >
-            <Avatar size="sm" name={u.displayName} />
+            <Avatar size="sm" name={c.contractorName} />
 
             <span className="text-xs font-medium">
-              {u.displayName}
+              {c.contractorName}
             </span>
 
             <button
-              onClick={() => removeUser(u.id)}
+              onClick={() => remove(c.id)}
               className="opacity-50 group-hover:opacity-100 transition"
             >
               <X size={14} />
@@ -107,16 +112,14 @@ export default function SelectTaskMembers({
 
       </div>
 
-      {/* ---------------- DROPDOWN ---------------- */}
+      {/* DROPDOWN */}
 
       {open && (
         <div className="absolute z-50 mt-2 w-full border rounded-xl p-3 bg-background shadow-lg">
 
-          {/* SEARCH */}
-
           <Input
             ref={inputRef}
-            placeholder="ค้นหาพนักงาน..."
+            placeholder="ค้นหาผู้รับเหมา..."
             startContent={<Search size={16} />}
             value={q}
             onValueChange={setQ}
@@ -124,31 +127,29 @@ export default function SelectTaskMembers({
             size="sm"
           />
 
-          {/* LIST */}
-
           <div className="max-h-56 overflow-y-auto mt-2 space-y-1">
 
             {filtered.length === 0 && (
               <p className="text-xs text-default-400 text-center py-2">
-                ไม่พบพนักงาน
+                ไม่พบผู้รับเหมา
               </p>
             )}
 
-            {filtered.map((u) => (
+            {filtered.map((c) => (
               <div
-                key={u.id}
+                key={c.id}
                 className="flex items-center justify-between px-3 py-2 rounded-lg hover:bg-default-100 transition"
               >
                 <div className="flex items-center gap-2">
-                  <Avatar size="sm" name={u.displayName} />
+                  <Avatar size="sm" name={c.contractorName} />
 
                   <div>
                     <p className="text-sm font-medium">
-                      {u.displayName}
+                      {c.contractorName}
                     </p>
 
                     <p className="text-xs text-default-400">
-                      {u.position?.positionName}
+                      {c.contractorPhone || "-"}
                     </p>
                   </div>
                 </div>
@@ -158,12 +159,13 @@ export default function SelectTaskMembers({
                   radius="full"
                   variant="flat"
                   className="text-xs"
-                  onPress={() => addUser(u)}
+                  onPress={() => add(c)}
                 >
                   เพิ่ม
                 </Button>
               </div>
             ))}
+
           </div>
         </div>
       )}

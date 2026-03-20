@@ -22,9 +22,10 @@ const UpdateMainTask = ({
   isUpdatingStatusMainTask,
   handleUpdateStatusMainTask,
   members,
+  contractors,
   isOwner,
 }: UpdateMainTaskProps) => {
- 
+
   const handleSelectionChange = (keys: any) => {
     const selectedIds = Array.from(keys).map(Number);
 
@@ -65,6 +66,68 @@ const UpdateMainTask = ({
             })
           }
         />
+
+        {/* 👷 ผู้รับเหมา */}
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-default-600">
+            แก้ไขผู้รับเหมา
+          </label>
+
+          <Select
+            items={contractors}
+            variant="bordered"
+            placeholder="เลือกผู้รับเหมา..."
+            selectionMode="multiple"
+            selectedKeys={
+              new Set((editFormData.contractorIds || []).map(String))
+            }
+            onSelectionChange={(keys) => {
+              const selectedIds = Array.from(keys).map(Number);
+              const selectedContractors = contractors.filter((c) =>
+                selectedIds.includes(c.id),
+              );
+              setEditFormData({
+                ...editFormData,
+                contractorIds: selectedIds,
+                contractors: selectedContractors,
+              });
+            }}
+            renderValue={(items) => (
+              <div className="flex flex-wrap gap-2">
+                {items.map((item) => (
+                  <Chip
+                    key={item.key}
+                    size="sm"
+                    variant="flat"
+                    color="secondary" // 🔥 แยกสีจาก user
+                  >
+                    {item.data.contractorName}
+                  </Chip>
+                ))}
+              </div>
+            )}
+          >
+            {(c) => (
+              <SelectItem key={c.id} textValue={c.contractorName}>
+                <div className="flex items-center gap-2">
+                  <Avatar
+                    size="sm"
+                    name={c.contractorName}
+                    className="bg-default-200 text-default-700"
+                  />
+                  <div className="flex flex-col">
+                    <span className="text-small">
+                      {c.contractorName}
+                    </span>
+                    <span className="text-tiny text-default-400">
+                      {c.contractorPhone || "-"}
+                    </span>
+                  </div>
+                </div>
+              </SelectItem>
+            )}
+          </Select>
+        </div>
 
         {/* 👥 ส่วนแก้ไขผู้รับผิดชอบ */}
         <div className="space-y-2">
@@ -116,8 +179,8 @@ const UpdateMainTask = ({
             value={
               editFormData.startPlanned
                 ? new Date(editFormData.startPlanned)
-                    .toISOString()
-                    .split("T")[0]
+                  .toISOString()
+                  .split("T")[0]
                 : ""
             }
             onChange={(e) =>
@@ -273,6 +336,40 @@ const UpdateMainTask = ({
           showValueLabel={false}
         />
       </div>
+      {/* 👷 ผู้รับเหมา */}
+      {selected.contractors && selected.contractors.length > 0 && (
+        <div className="space-y-2">
+          {/* HEADER */}
+          <div className="flex items-center gap-2 text-default-400 text-sm font-medium">
+            <span>👷</span>
+            ผู้รับเหมา
+          </div>
+          {/* LIST */}
+          <div className="flex flex-wrap gap-2">
+            {selected.contractors.map((c: any) => (
+              <div
+                key={c.id}
+                className="
+                  flex items-center gap-1.5
+                  px-2 py-1
+                  rounded-full
+                  bg-default-100/80 dark:bg-zinc-800/80
+                  text-default-500
+                "
+              >
+                <Avatar
+                  size="sm"
+                  name={c.contractorName}
+                  className="w-6 h-6 text-[10px] bg-default-200 text-default-600"
+                />
+                <span className="text-[11px]">
+                  {c.contractorName}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* 👥 ผู้รับผิดชอบ */}
       {selected.assignees && selected.assignees.length > 0 && (
         <div className="space-y-3">
