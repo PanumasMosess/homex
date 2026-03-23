@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition, useMemo, useCallback, Fragment, useRef } from "react";
+import { useState, useEffect, useTransition, useMemo, useCallback, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -31,8 +31,6 @@ import {
   X,
   Pencil,
   Sparkles,
-  ChevronDown,
-  ChevronUp,
   ImagePlus,
   Link2,
   Check,
@@ -60,7 +58,7 @@ import {
   PART_TYPES,
   MATERIAL_GROUPS,
 } from "@/lib/formValidationSchemas";
-import { generateMaterialPriceEstimate } from "@/lib/ai/geminiAI";
+import { generateMaterialPriceEstimate, suggestTasksForMaterial } from "@/lib/ai/geminiAI";
 import {
   updateAiEstimates,
   addProcurementItemImage,
@@ -72,7 +70,6 @@ import {
   unlinkProcurementTask,
 } from "@/lib/actions/actionProcurement";
 import { uploadImageFormData } from "@/lib/actions/actionIndex";
-import QuotePanel from "./QuotePanel";
 import AiMaterialExtractor from "./AiMaterialExtractor";
 import PurchaseOrderPanel from "./PurchaseOrderPanel";
 
@@ -169,10 +166,6 @@ const ProcurementSection = ({
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [groupFilter, setGroupFilter] = useState<string>("ALL");
 
-  // Expanded row (for QuotePanel)
-  const [expandedRowId, setExpandedRowId] = useState<number | null>(null);
-  const [estimatingItemId, setEstimatingItemId] = useState<number | null>(null);
-
   // Inline image upload
   const [uploadingImageItemId, setUploadingImageItemId] = useState<number | null>(null);
   const imageInputRef = useRef<HTMLInputElement>(null);
@@ -183,10 +176,51 @@ const ProcurementSection = ({
   const [tempTaskIds, setTempTaskIds] = useState<Set<number>>(new Set());
   const [taskDialogSearch, setTaskDialogSearch] = useState("");
 
+  // AI task suggestion for new-row task dialog
+  const [newRowAiSuggestions, setNewRowAiSuggestions] = useState<
+    { taskId: number; confidence: number; reason: string }[]
+  >([]);
+  const [isNewRowAiSuggesting, setIsNewRowAiSuggesting] = useState(false);
+
   const openTaskDialog = (rowIdx: number) => {
     setTempTaskIds(new Set(newRows[rowIdx].taskIds));
     setTaskDialogSearch("");
+    setNewRowAiSuggestions([]);
     setTaskDialogRowIdx(rowIdx);
+  };
+
+  const handleNewRowAiSuggest = async () => {
+    if (taskDialogRowIdx === null) return;
+    const row = newRows[taskDialogRowIdx];
+    if (!row.materialName.trim()) {
+      toast.warning("กรุณากรอกชื่อวัสดุก่อน");
+      return;
+    }
+    setIsNewRowAiSuggesting(true);
+    setNewRowAiSuggestions([]);
+    try {
+      const result = await suggestTasksForMaterial(
+        row.materialName,
+        row.specification || "",
+        tasks.map((t) => ({ id: t.id, taskName: t.taskName, status: t.status })),
+      );
+      if (result.length > 0) {
+        setNewRowAiSuggestions(result);
+        // Auto-select suggested tasks
+        setTempTaskIds((prev) => {
+          const next = new Set(prev);
+          result.forEach((s) => next.add(s.taskId));
+          return next;
+        });
+        toast.success(`AI แนะนำ ${result.length} Task`);
+      } else {
+        toast.info("AI ไม่พบ Task ที่เกี่ยวข้อง");
+      }
+    } catch {
+      toast.error("AI แนะนำ Task ไม่สำเร็จ");
+    } finally {
+      setIsNewRowAiSuggesting(false);
+    }
   };
 
   const confirmTaskDialog = () => {
@@ -322,10 +356,46 @@ const ProcurementSection = ({
   const [editTaskSearch, setEditTaskSearch] = useState("");
   const [isEditTaskPending, setIsEditTaskPending] = useState(false);
 
+  // AI task suggestion for edit-mode task dialog
+  const [editAiSuggestions, setEditAiSuggestions] = useState<
+    { taskId: number; confidence: number; reason: string }[]
+  >([]);
+  const [isEditAiSuggesting, setIsEditAiSuggesting] = useState(false);
+
   const openEditTaskDialog = (item: ProcurementItemData) => {
     setEditTaskIds(new Set(item.taskLinks.map((tl) => tl.taskId)));
     setEditTaskSearch("");
+    setEditAiSuggestions([]);
     setEditTaskItem(item);
+  };
+
+  const handleEditAiSuggest = async () => {
+    if (!editTaskItem) return;
+    setIsEditAiSuggesting(true);
+    setEditAiSuggestions([]);
+    try {
+      const result = await suggestTasksForMaterial(
+        editTaskItem.materialName,
+        editTaskItem.specification || "",
+        tasks.map((t) => ({ id: t.id, taskName: t.taskName, status: t.status })),
+      );
+      if (result.length > 0) {
+        setEditAiSuggestions(result);
+        // Auto-select suggested tasks
+        setEditTaskIds((prev) => {
+          const next = new Set(prev);
+          result.forEach((s) => next.add(s.taskId));
+          return next;
+        });
+        toast.success(`AI แนะนำ ${result.length} Task`);
+      } else {
+        toast.info("AI ไม่พบ Task ที่เกี่ยวข้อง");
+      }
+    } catch {
+      toast.error("AI แนะนำ Task ไม่สำเร็จ");
+    } finally {
+      setIsEditAiSuggesting(false);
+    }
   };
 
   const confirmEditTaskDialog = async () => {
@@ -850,44 +920,6 @@ const ProcurementSection = ({
         toast.error(res.message || "เปลี่ยนสถานะไม่สำเร็จ");
       }
     });
-  };
-
-  // --- AI Price Estimate ---
-  const handleAiEstimate = async (itemId: number) => {
-    const item = items.find((i) => i.id === itemId);
-    if (!item) return;
-
-    setEstimatingItemId(itemId);
-    try {
-      const estimate = await generateMaterialPriceEstimate(
-        item.materialName,
-        item.specification || "",
-        item.unit || "",
-        item.quantity,
-      );
-
-      if (estimate) {
-        const res = await updateAiEstimates(
-          itemId,
-          estimate.priceMin,
-          estimate.priceMid,
-          estimate.priceMax,
-        );
-
-        if (res.success) {
-          toast.success(`AI ประเมินราคา: ฿${estimate.priceMid.toLocaleString()}/หน่วย`);
-          await loadItems();
-        } else {
-          toast.error(res.message || "บันทึกราคาประเมินไม่สำเร็จ");
-        }
-      } else {
-        toast.error("AI ไม่สามารถประเมินราคาได้");
-      }
-    } catch {
-      toast.error("เกิดข้อผิดพลาดในการประเมินราคา");
-    } finally {
-      setEstimatingItemId(null);
-    }
   };
 
   // --- Editable Cell ---
@@ -1523,8 +1555,8 @@ const ProcurementSection = ({
                   >
                     <div className="flex items-center gap-1">
                       {flexRender(header.column.columnDef.header, header.getContext())}
-                      {header.column.getIsSorted() === "asc" && <ChevronUp size={12} />}
-                      {header.column.getIsSorted() === "desc" && <ChevronDown size={12} />}
+                      {header.column.getIsSorted() === "asc" && <span className="text-[10px]">▲</span>}
+                      {header.column.getIsSorted() === "desc" && <span className="text-[10px]">▼</span>}
                     </div>
                   </th>
                 ))}
@@ -1754,50 +1786,27 @@ const ProcurementSection = ({
                 </td>
               </tr>
             ) : (
-              table.getRowModel().rows.map((row) => {
-                const isExpanded = expandedRowId === row.original.id;
-                return (
-                  <Fragment key={row.id}>
-                    <tr
-                      className={`group border-b border-default-100 dark:border-zinc-800 hover:bg-default-50 dark:hover:bg-zinc-800/30 transition-colors cursor-pointer ${
-                        editingRowId === row.original.id ? "bg-warning-50/30 dark:bg-warning-900/10" : ""
-                      } ${isExpanded ? "bg-primary-50/20 dark:bg-primary-900/5" : ""}`}
-                      onDoubleClick={() => {
-                        if (editingRowId === null) startEdit(row.original);
-                      }}
-                      onClick={() => {
-                        if (editingRowId === null) {
-                          setExpandedRowId(isExpanded ? null : row.original.id);
-                        }
-                      }}
+              table.getRowModel().rows.map((row) => (
+                <tr
+                  key={row.id}
+                  className={`group border-b border-default-100 dark:border-zinc-800 hover:bg-default-50 dark:hover:bg-zinc-800/30 transition-colors ${
+                    editingRowId === row.original.id ? "bg-warning-50/30 dark:bg-warning-900/10" : ""
+                  }`}
+                  onDoubleClick={() => {
+                    if (editingRowId === null) startEdit(row.original);
+                  }}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="px-3 py-2 whitespace-nowrap"
+                      style={{ maxWidth: cell.column.getSize() }}
                     >
-                      {row.getVisibleCells().map((cell) => (
-                        <td
-                          key={cell.id}
-                          className="px-3 py-2 whitespace-nowrap"
-                          style={{ maxWidth: cell.column.getSize() }}
-                        >
-                          {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                        </td>
-                      ))}
-                    </tr>
-                    {isExpanded && (
-                      <tr>
-                        <td colSpan={columns.length} className="p-0">
-                          <QuotePanel
-                            item={row.original}
-                            suppliers={suppliers}
-                            onRefresh={loadItems}
-                            onAiEstimate={handleAiEstimate}
-                            isEstimating={estimatingItemId === row.original.id}
-                            tasks={tasks}
-                          />
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                );
-              })
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))
             )}
           </tbody>
         </table>
@@ -1832,22 +1841,90 @@ const ProcurementSection = ({
         <ModalContent>
           {(onClose) => (
             <>
-              <ModalHeader className="flex items-center gap-2 pb-2">
-                <Link2 size={18} />
-                <span>เลือก Task ที่ต้องการผูก</span>
-                <Chip size="sm" variant="flat" color="primary" className="ml-2">
-                  เลือก {tempTaskIds.size}
-                </Chip>
+              <ModalHeader className="flex flex-col gap-1 pb-2">
+                <div className="flex items-center gap-2">
+                  <Link2 size={18} />
+                  <span>เลือก Task ที่ต้องการผูก</span>
+                  <Chip size="sm" variant="flat" color="primary" className="ml-2">
+                    เลือก {tempTaskIds.size}
+                  </Chip>
+                </div>
+                {taskDialogRowIdx !== null && newRows[taskDialogRowIdx] && (
+                  <p className="text-xs text-default-400 font-normal">
+                    {newRows[taskDialogRowIdx].materialName}
+                    {newRows[taskDialogRowIdx].specification ? ` | ${newRows[taskDialogRowIdx].specification}` : ""}
+                  </p>
+                )}
               </ModalHeader>
               <ModalBody className="pt-0">
-                <Input
-                  placeholder="ค้นหา Task..."
-                  value={taskDialogSearch}
-                  onValueChange={setTaskDialogSearch}
-                  isClearable
-                  size="sm"
-                  startContent={<Search size={14} />}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="ค้นหา Task..."
+                    value={taskDialogSearch}
+                    onValueChange={setTaskDialogSearch}
+                    isClearable
+                    size="sm"
+                    startContent={<Search size={14} />}
+                    className="flex-1"
+                  />
+                  <Tooltip content="AI แนะนำ Task ที่เกี่ยวข้อง">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="secondary"
+                      startContent={<Sparkles size={14} />}
+                      onPress={handleNewRowAiSuggest}
+                      isLoading={isNewRowAiSuggesting}
+                    >
+                      AI แนะนำ
+                    </Button>
+                  </Tooltip>
+                </div>
+
+                {/* AI Suggestions */}
+                {newRowAiSuggestions.length > 0 && (
+                  <div className="bg-secondary-50/50 dark:bg-secondary-900/10 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-secondary-600 uppercase">
+                      AI แนะนำ Task ที่เกี่ยวข้อง
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {newRowAiSuggestions.map((s) => {
+                        const task = tasks.find((t) => t.id === s.taskId);
+                        if (!task) return null;
+                        return (
+                          <div
+                            key={s.taskId}
+                            className="flex items-center justify-between bg-white dark:bg-zinc-800 rounded-lg p-2.5 border border-secondary-200 dark:border-secondary-800"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">
+                                {task.taskName || `Task #${s.taskId}`}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Chip size="sm" variant="flat" color="secondary" className="text-[10px]">
+                                  {Math.round(s.confidence * 100)}%
+                                </Chip>
+                                <span className="text-[10px] text-default-400 truncate">
+                                  {s.reason}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              onPress={() =>
+                                setNewRowAiSuggestions((prev) => prev.filter((x) => x.taskId !== s.taskId))
+                              }
+                            >
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {filteredDialogTasks.length === 0 ? (
                   <p className="text-xs text-default-400 text-center py-8">
@@ -2224,14 +2301,74 @@ const ProcurementSection = ({
                 )}
               </ModalHeader>
               <ModalBody className="pt-0">
-                <Input
-                  placeholder="ค้นหา Task..."
-                  value={editTaskSearch}
-                  onValueChange={setEditTaskSearch}
-                  isClearable
-                  size="sm"
-                  startContent={<Search size={14} />}
-                />
+                <div className="flex items-center gap-2">
+                  <Input
+                    placeholder="ค้นหา Task..."
+                    value={editTaskSearch}
+                    onValueChange={setEditTaskSearch}
+                    isClearable
+                    size="sm"
+                    startContent={<Search size={14} />}
+                    className="flex-1"
+                  />
+                  <Tooltip content="AI แนะนำ Task ที่เกี่ยวข้อง">
+                    <Button
+                      size="sm"
+                      variant="flat"
+                      color="secondary"
+                      startContent={<Sparkles size={14} />}
+                      onPress={handleEditAiSuggest}
+                      isLoading={isEditAiSuggesting}
+                    >
+                      AI แนะนำ
+                    </Button>
+                  </Tooltip>
+                </div>
+
+                {/* AI Suggestions */}
+                {editAiSuggestions.length > 0 && (
+                  <div className="bg-secondary-50/50 dark:bg-secondary-900/10 rounded-xl p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-secondary-600 uppercase">
+                      AI แนะนำ Task ที่เกี่ยวข้อง
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {editAiSuggestions.map((s) => {
+                        const task = tasks.find((t) => t.id === s.taskId);
+                        if (!task) return null;
+                        return (
+                          <div
+                            key={s.taskId}
+                            className="flex items-center justify-between bg-white dark:bg-zinc-800 rounded-lg p-2.5 border border-secondary-200 dark:border-secondary-800"
+                          >
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-medium truncate">
+                                {task.taskName || `Task #${s.taskId}`}
+                              </p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Chip size="sm" variant="flat" color="secondary" className="text-[10px]">
+                                  {Math.round(s.confidence * 100)}%
+                                </Chip>
+                                <span className="text-[10px] text-default-400 truncate">
+                                  {s.reason}
+                                </span>
+                              </div>
+                            </div>
+                            <Button
+                              isIconOnly
+                              size="sm"
+                              variant="flat"
+                              onPress={() =>
+                                setEditAiSuggestions((prev) => prev.filter((x) => x.taskId !== s.taskId))
+                              }
+                            >
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
 
                 {filteredEditTasks.length === 0 ? (
                   <p className="text-xs text-default-400 text-center py-8">
