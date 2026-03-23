@@ -18,6 +18,10 @@ import {
   Chip,
   Spinner,
   Tooltip,
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
 } from "@heroui/react";
 import {
   Plus,
@@ -32,6 +36,7 @@ import {
   Check,
   Store,
   History as HistoryIcon,
+  MoreVertical,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import type {
@@ -1436,39 +1441,31 @@ const ProcurementSection = ({
             );
           }
           return (
-            <div className="flex gap-1">
-              <Tooltip content="แก้ไข">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  onPress={() => startEdit(row.original)}
-                >
-                  <Pencil size={14} />
+            <Dropdown placement="bottom-end">
+              <DropdownTrigger>
+                <Button isIconOnly size="sm" variant="light">
+                  <MoreVertical size={16} />
                 </Button>
-              </Tooltip>
-              <Tooltip content="ประวัติ">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  onPress={() => setHistoryItem({ id: row.original.id, materialName: row.original.materialName })}
-                >
-                  <HistoryIcon size={14} />
-                </Button>
-              </Tooltip>
-              <Tooltip content="ลบ" color="danger">
-                <Button
-                  isIconOnly
-                  size="sm"
-                  variant="light"
-                  color="danger"
-                  onPress={() => handleDelete(row.original.id)}
-                >
-                  <Trash2 size={14} />
-                </Button>
-              </Tooltip>
-            </div>
+              </DropdownTrigger>
+              <DropdownMenu
+                aria-label="Actions"
+                onAction={(key) => {
+                  if (key === "edit") startEdit(row.original);
+                  if (key === "history") setHistoryItem({ id: row.original.id, materialName: row.original.materialName });
+                  if (key === "delete") handleDelete(row.original.id);
+                }}
+              >
+                <DropdownItem key="edit" startContent={<Pencil size={14} />}>
+                  แก้ไข
+                </DropdownItem>
+                <DropdownItem key="history" startContent={<HistoryIcon size={14} />}>
+                  ประวัติ
+                </DropdownItem>
+                <DropdownItem key="delete" startContent={<Trash2 size={14} />} className="text-danger" color="danger">
+                  ลบ
+                </DropdownItem>
+              </DropdownMenu>
+            </Dropdown>
           );
         },
       },

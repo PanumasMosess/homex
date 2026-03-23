@@ -167,7 +167,7 @@ const AiMaterialExtractor = ({
           startContent={<Sparkles size={16} />}
           isLoading={isExtracting}
         >
-          {isExtracting ? "AI กำลังวิเคราะห์..." : "AI อ่านเอกสาร"}
+          {isExtracting ? "AI กำลังวิเคราะห์..." : "AI อ่านเอกสาร (In Development)"}
         </Button>
       </div>
 
