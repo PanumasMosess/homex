@@ -1838,7 +1838,7 @@ const ProcurementSection = ({
                   className="text-center py-16 text-default-400"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <p className="font-medium">ยังไม่มีรายการวัสดุ</p>
+                    <p className="font-medium">ยังไม่มีรายการ</p>
                     <p className="text-xs">กด "เพิ่มรายการ" เพื่อเริ่มเพิ่มวัสดุ</p>
                   </div>
                 </td>
