@@ -161,7 +161,8 @@ const PurchaseOrderPanel = ({
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-bold flex items-center gap-2">
-            <FileText size={20} /> ใบสั่งซื้อ (Purchase Orders)
+            {/* <FileText size={20} /> ใบสั่งซื้อ Purchase Orders */}
+            <FileText size={20} /> ใบสั่งซื้อ (In Development)
           </h3>
           <p className="text-xs text-default-400">
             สร้างและจัดการใบสั่งซื้อจาก Supplier

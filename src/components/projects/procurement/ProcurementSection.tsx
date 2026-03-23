@@ -92,7 +92,7 @@ const GROUP_LABELS: Record<string, string> = {
   MAIN: "วัสดุหลัก",
   GENERAL: "ทั่วไป",
   MACHINERY: "เครื่องจักร",
-  OTHER: "อื่นๆ",
+  // OTHER: "อื่นๆ",
 };
 
 interface TempQuoteData {
@@ -1482,26 +1482,7 @@ const ProcurementSection = ({
         </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        {[
-          { label: "ทั้งหมด", value: summary.total, color: "bg-default-100" },
-          { label: "รอจัดซื้อ", value: summary.pending, color: "bg-default-100" },
-          { label: "กำลังจัดซื้อ", value: summary.purchasing, color: "bg-primary-50" },
-          { label: "กำลังนำส่ง", value: summary.delivering, color: "bg-secondary-50" },
-          { label: "ถึงแล้ว", value: summary.arrived, color: "bg-success-50" },
-        ].map((s) => (
-          <div
-            key={s.label}
-            className={`${s.color} rounded-xl p-3 text-center`}
-          >
-            <p className="text-[10px] uppercase text-default-400 font-bold">
-              {s.label}
-            </p>
-            <p className="text-lg font-bold">{s.value}</p>
-          </div>
-        ))}
-      </div>
+
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
@@ -1817,15 +1798,38 @@ const ProcurementSection = ({
         <span>
           แสดง {table.getRowModel().rows.length} จาก {items.length} รายการ
         </span>
-        <span>Double-click เพื่อแก้ไข</span>
       </div>
 
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+        {[
+          { label: "ทั้งหมด", value: summary.total, color: "bg-default-100" },
+          { label: "รอจัดซื้อ", value: summary.pending, color: "bg-default-100" },
+          { label: "กำลังจัดซื้อ", value: summary.purchasing, color: "bg-primary-50" },
+          { label: "กำลังนำส่ง", value: summary.delivering, color: "bg-secondary-50" },
+          { label: "ถึงแล้ว", value: summary.arrived, color: "bg-success-50" },
+        ].map((s) => (
+          <div
+            key={s.label}
+            className={`${s.color} rounded-xl p-3 text-center`}
+          >
+            <p className="text-[10px] uppercase text-default-400 font-bold">
+              {s.label}
+            </p>
+            <p className="text-lg font-bold">{s.value}</p>
+          </div>
+        ))}
+      </div>
+
+      <hr className="my-4" />
+      
       {/* Purchase Orders */}
       <PurchaseOrderPanel
         projectId={projectId}
         items={items}
         suppliers={suppliers}
       />
+
 
       {/* Task Link Dialog for New Rows */}
       <Modal

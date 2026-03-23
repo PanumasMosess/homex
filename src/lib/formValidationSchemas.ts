@@ -243,7 +243,7 @@ export type ContractorSchema = z.infer<typeof ContractorSchema_>;
 // =====================================
 
 export const PART_TYPES = ["EXT", "INT", "OTHER"] as const;
-export const MATERIAL_GROUPS = ["MAIN", "GENERAL", "MACHINERY", "OTHER"] as const;
+export const MATERIAL_GROUPS = ["MAIN", "GENERAL", "MACHINERY"] as const;
 export const PROCUREMENT_STATUSES = [
   "PENDING",
   "PURCHASING",
