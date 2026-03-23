@@ -1555,7 +1555,7 @@ const ProcurementSection = ({
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Input
-          placeholder="ค้นหาวัสดุ..."
+          placeholder="ค้นหา ชื่อรายการ วัสดุ ราคา..."
           value={globalFilter}
           onValueChange={setGlobalFilter}
           isClearable
