@@ -233,9 +233,9 @@ const TaskLinkDialog = ({
               )}
             </ModalBody>
             <ModalFooter className="justify-center">
-              <Button variant="flat" onPress={onModalClose}>
+              {/* <Button variant="flat" onPress={onModalClose}>
                 ยกเลิก
-              </Button>
+              </Button> */}
               <Button
                 color="primary"
                 startContent={<Link2 size={14} />}

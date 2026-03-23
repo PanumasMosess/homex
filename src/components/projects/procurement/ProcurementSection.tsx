@@ -1741,6 +1741,15 @@ const ProcurementSection = ({
                       />
                     </td>
                     <td className="px-2 py-1.5">
+                      <input
+                        type="text"
+                        placeholder="โน้ต"
+                        value={row.note}
+                        onChange={(e) => updateNewRow(idx, "note", e.target.value)}
+                        className="w-full px-2 py-1 text-xs bg-white dark:bg-zinc-800 border border-default-300 rounded-md"
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
                       <Button
                         size="sm"
                         variant="flat"
@@ -1905,9 +1914,8 @@ const ProcurementSection = ({
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {[
-          { label: "ทั้งหมด", value: summary.total, color: "bg-default-100" },
           { label: "รอจัดซื้อ", value: summary.pending, color: "bg-default-100" },
           { label: "กำลังจัดซื้อ", value: summary.purchasing, color: "bg-primary-50" },
           { label: "กำลังนำส่ง", value: summary.delivering, color: "bg-secondary-50" },

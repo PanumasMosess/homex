@@ -304,9 +304,9 @@ const EditQuoteDialog = ({
               )}
             </ModalBody>
             <ModalFooter className="justify-center">
-              <Button variant="flat" onPress={onModalClose}>
+              {/* <Button variant="flat" onPress={onModalClose}>
                 ปิด
-              </Button>
+              </Button> */}
             </ModalFooter>
           </>
         )}
