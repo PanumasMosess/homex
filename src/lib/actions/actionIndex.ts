@@ -130,6 +130,40 @@ export const sendbase64toS3DataVdo = async (
   }
 };
 
+export const uploadImageFormData = async (
+  formData: FormData,
+) => {
+  try {
+    const file = formData.get("file") as File;
+    const path = formData.get("path") as string;
+    if (!file) return { success: false, error: "ไม่พบไฟล์" };
+    if (!path) return { success: false, error: "ไม่พบ path" };
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    const ext = file.type.split("/")[1] || "png";
+    const randomBytes = crypto.randomBytes(16);
+    const key = `${path}/${randomBytes.toString("hex")}.${ext}`;
+
+    const command = new PutObjectCommand({
+      Bucket: process.env.S3_BUCKET!,
+      Key: key,
+      Body: buffer,
+      ContentType: file.type,
+      ACL: "public-read",
+    });
+
+    await s3Client.send(command);
+
+    const publicUrl = `https://sgp1.digitaloceanspaces.com/${process.env.S3_BUCKET}/${key}`;
+    return { success: true, url: publicUrl };
+  } catch (error) {
+    console.error("uploadImageFormData error:", error);
+    return { success: false, error: "อัปโหลดรูปไม่สำเร็จ" };
+  }
+};
+
 export const handleImageUpload = async (
   file: File,
   folder: string,

@@ -5,6 +5,22 @@ import { auth } from "@/auth";
 import { ActionState, CreateSupplierData } from "@/lib/type";
 
 /* ====================================================== */
+/* GET SUPPLIERS (active only)                            */
+/* ====================================================== */
+
+export async function getSuppliers(orgId: number) {
+  try {
+    return await prisma.supplier.findMany({
+      where: { organizationId: orgId, isActive: true },
+      orderBy: { supplierName: "asc" },
+      select: { id: true, supplierName: true, contactPerson: true },
+    });
+  } catch {
+    return [];
+  }
+}
+
+/* ====================================================== */
 /* CREATE SUPPLIER */
 /* ====================================================== */
 

@@ -237,3 +237,71 @@ export const ContractorSchema_ = z.object({
 });
 
 export type ContractorSchema = z.infer<typeof ContractorSchema_>;
+
+// =====================================
+// Procurement
+// =====================================
+
+export const PART_TYPES = ["EXT", "INT", "OTHER"] as const;
+export const MATERIAL_GROUPS = ["MAIN", "GENERAL", "MACHINERY", "OTHER"] as const;
+export const PROCUREMENT_STATUSES = [
+  "PENDING",
+  "PURCHASING",
+  "DELIVERING",
+  "ARRIVED",
+  "LOW_STOCK",
+  "OUT_OF_STOCK",
+] as const;
+
+export const ProcurementItemSchema_ = z.object({
+  id: z.number().optional(),
+
+  materialName: z
+    .string()
+    .min(1, { message: "กรุณากรอกชื่อวัสดุ" })
+    .max(255),
+
+  specification: z.string().optional(),
+
+  partType: z.enum(PART_TYPES).default("OTHER").optional(),
+
+  materialGroup: z.enum(MATERIAL_GROUPS).default("GENERAL").optional(),
+
+  unit: z.string().max(50).optional(),
+
+  quantity: z.coerce
+    .number({ invalid_type_error: "กรุณาระบุตัวเลข" })
+    .nonnegative("จำนวนต้องไม่ติดลบ")
+    .optional(),
+
+  status: z.enum(PROCUREMENT_STATUSES).default("PENDING").optional(),
+
+  expectedDate: z.string().optional(),
+  leadTimeDays: z.coerce.number().nonnegative().optional(),
+
+  alertEnabled: z.boolean().default(false).optional(),
+  alertDaysBefore: z.coerce.number().nonnegative().default(3).optional(),
+
+  note: z.string().optional(),
+  sortOrder: z.coerce.number().default(0).optional(),
+
+  projectId: z.coerce.number().min(1, "ต้องมี ID โครงการ"),
+  organizationId: z.coerce.number().min(1, "ต้องมี ID บริษัท"),
+});
+
+export type ProcurementItemSchema = z.infer<typeof ProcurementItemSchema_>;
+
+export const ProcurementSupplierQuoteSchema_ = z.object({
+  id: z.number().optional(),
+  procurementItemId: z.coerce.number().min(1, "ต้องมี ID รายการวัสดุ"),
+  supplierId: z.coerce.number().min(1, "กรุณาเลือก Supplier"),
+  unitPrice: z.coerce.number().nonnegative().optional(),
+  totalPrice: z.coerce.number().nonnegative().optional(),
+  quoteDate: z.string().optional(),
+  validUntil: z.string().optional(),
+  note: z.string().optional(),
+  fileUrl: z.string().optional(),
+  isSelected: z.boolean().default(false).optional(),
+});
+
+export type ProcurementSupplierQuoteSchema = z.infer<typeof ProcurementSupplierQuoteSchema_>;

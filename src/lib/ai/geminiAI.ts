@@ -295,6 +295,190 @@ export const generateSubtasksAI = async (prompt: string) => {
   }
 };
 
+export const generateMaterialPriceEstimate = async (
+  materialName: string,
+  specification: string,
+  unit: string,
+  quantity: number | null,
+) => {
+  const prompt = `วัสดุก่อสร้าง: "${materialName}"
+Specification: "${specification || "ไม่ระบุ"}"
+หน่วย: "${unit || "ไม่ระบุ"}"
+จำนวน: ${quantity ?? "ไม่ระบุ"}`;
+
+  try {
+    const result = await ai_gemini.models.generateContent({
+      model: model_version,
+      config: {
+        systemInstruction: `คุณคือผู้เชี่ยวชาญด้านวัสดุก่อสร้างและจัดซื้อในประเทศไทย
+        หน้าที่ของคุณคือประเมิน "ราคาต่อหน่วย" ของวัสดุก่อสร้างที่ได้รับ โดยแบ่งเป็น 3 ระดับ
+        เงื่อนไขการตอบกลับ:
+        - ประเมินราคาโดยอ้างอิงจากราคาตลาดวัสดุก่อสร้างในประเทศไทย
+        - ตอบกลับเป็น JSON Object เพียง 1 ก้อน
+        - วัตถุต้องมีฟิลด์เหล่านี้เท่านั้น:
+          1. "priceMin" (ตัวเลข ราคาต่อหน่วยระดับประหยัด/พอใช้ หน่วยบาท)
+          2. "priceMid" (ตัวเลข ราคาต่อหน่วยระดับกลาง/นิยม หน่วยบาท)
+          3. "priceMax" (ตัวเลข ราคาต่อหน่วยระดับ Premium/คุณภาพสูง หน่วยบาท)
+          4. "reason" (คำอธิบายสั้นๆ 1-2 บรรทัด)
+        - ห้ามมีข้อความนำหรือคำลงท้าย ห้ามครอบด้วย Markdown format`,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) return null;
+
+    try {
+      const data = JSON.parse(responseText);
+      return {
+        priceMin: Number(data.priceMin) || 0,
+        priceMid: Number(data.priceMid) || 0,
+        priceMax: Number(data.priceMax) || 0,
+        reason: data.reason || "",
+      };
+    } catch {
+      console.error("AI Price Parse Error:", responseText);
+      return null;
+    }
+  } catch (error) {
+    console.error("generateMaterialPriceEstimate error:", error);
+    return null;
+  }
+};
+
+export const extractMaterialsFromImage = async (
+  base64Data: string,
+  mimeType: string,
+) => {
+  try {
+    const result = await ai_gemini.models.generateContent({
+      model: model_version,
+      config: {
+        systemInstruction: `คุณคือผู้เชี่ยวชาญด้านวัสดุก่อสร้างและอ่านเอกสาร BOQ (Bill of Quantities)
+        หน้าที่ของคุณคือ วิเคราะห์รูปภาพหรือ PDF ที่ได้รับ แล้วแยกรายการวัสดุก่อสร้างออกมาให้ครบถ้วน
+        เงื่อนไขการตอบกลับ:
+        - ตอบกลับเป็น JSON Array ของวัตถุ
+        - แต่ละวัตถุต้องมีฟิลด์เหล่านี้:
+          1. "materialName" (string - ชื่อวัสดุ)
+          2. "specification" (string - รายละเอียด spec ถ้ามี)
+          3. "unit" (string - หน่วย เช่น m², m, pcs, kg, ชุด, ตัว)
+          4. "quantity" (number - จำนวน ถ้าอ่านได้)
+          5. "partType" (string - "EXT" หรือ "INT" หรือ "OTHER")
+          6. "materialGroup" (string - "MAIN" หรือ "GENERAL" หรือ "MACHINERY" หรือ "OTHER")
+          7. "note" (string - หมายเหตุถ้ามี)
+        - ถ้าอ่านจำนวนไม่ได้ ให้ใส่ null
+        - ถ้าไม่แน่ใจ partType/materialGroup ให้ใส่ "OTHER" / "GENERAL"
+        - ห้ามมีข้อความนำหรือคำลงท้าย ห้ามครอบด้วย Markdown format`,
+        temperature: 0.3,
+        responseMimeType: "application/json",
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: base64Data,
+                mimeType: mimeType,
+              },
+            },
+            { text: "วิเคราะห์รายการวัสดุก่อสร้างจากเอกสารนี้" },
+          ],
+        },
+      ],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) return null;
+
+    try {
+      const materials = JSON.parse(responseText);
+      if (!Array.isArray(materials)) return null;
+
+      return materials.map((m: any) => ({
+        materialName: m.materialName || "วัสดุไม่ระบุชื่อ",
+        specification: m.specification || "",
+        unit: m.unit || "",
+        quantity: m.quantity != null ? Number(m.quantity) : null,
+        partType: m.partType || "OTHER",
+        materialGroup: m.materialGroup || "GENERAL",
+        note: m.note || "",
+      }));
+    } catch {
+      console.error("AI Material Extract Parse Error:", responseText);
+      return null;
+    }
+  } catch (error) {
+    console.error("extractMaterialsFromImage error:", error);
+    return null;
+  }
+};
+
+export const suggestTasksForMaterial = async (
+  materialName: string,
+  specification: string,
+  taskList: { id: number; taskName: string | null; status: string }[],
+) => {
+  if (taskList.length === 0) return [];
+
+  const tasksText = taskList
+    .map((t) => `ID:${t.id} ชื่อ:"${t.taskName || "ไม่มีชื่อ"}" สถานะ:${t.status}`)
+    .join("\n");
+
+  const prompt = `วัสดุ: "${materialName}"
+Spec: "${specification || "ไม่ระบุ"}"
+
+รายการ Task ที่มีอยู่ในโครงการ:
+${tasksText}`;
+
+  try {
+    const result = await ai_gemini.models.generateContent({
+      model: model_version,
+      config: {
+        systemInstruction: `คุณคือผู้เชี่ยวชาญด้านงานก่อสร้างในประเทศไทย
+        หน้าที่ของคุณคือ วิเคราะห์ว่าวัสดุที่ได้รับ น่าจะเกี่ยวข้องกับ Task ใดบ้างในรายการ
+        เงื่อนไข:
+        - ตอบกลับเป็น JSON Array ของวัตถุ
+        - แต่ละวัตถุมี:
+          1. "taskId" (number - ID ของ Task ที่เกี่ยวข้อง)
+          2. "confidence" (number 0.0-1.0 - ระดับความมั่นใจ)
+          3. "reason" (string - เหตุผลสั้นๆ)
+        - เรียงจากความมั่นใจสูง → ต่ำ
+        - คืนเฉพาะ Task ที่เกี่ยวข้องจริงๆ (confidence >= 0.5)
+        - ถ้าไม่มี Task ที่เกี่ยวข้องเลย ให้คืน []
+        - ห้ามมีข้อความนำหรือคำลงท้าย ห้ามครอบด้วย Markdown`,
+        temperature: 0.3,
+        responseMimeType: "application/json",
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) return [];
+
+    try {
+      const suggestions = JSON.parse(responseText);
+      if (!Array.isArray(suggestions)) return [];
+
+      return suggestions
+        .filter((s: any) => s.taskId && s.confidence >= 0.5)
+        .map((s: any) => ({
+          taskId: Number(s.taskId),
+          confidence: Number(s.confidence) || 0.5,
+          reason: s.reason || "",
+        }));
+    } catch {
+      console.error("AI Task Suggest Parse Error:", responseText);
+      return [];
+    }
+  } catch (error) {
+    console.error("suggestTasksForMaterial error:", error);
+    return [];
+  }
+};
+
 export const generateTakeBudget_Durationday = async (prompt: string) => {
   try {
     const result = await ai_gemini.models.generateContent({
