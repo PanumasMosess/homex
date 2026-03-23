@@ -1436,7 +1436,7 @@ const ProcurementSection = ({
             );
           }
           return (
-            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="flex gap-1">
               <Tooltip content="แก้ไข">
                 <Button
                   isIconOnly
