@@ -42,6 +42,9 @@ model organization {
   contractors      contractor[]
   taskContractors  task_contractor[]
   feedPosts        feed_post[]
+  procurementItems procurement_item[]
+  purchaseOrders   purchase_order[]
+  notifications    notification[]
 }
 
 // =====================================
@@ -94,6 +97,11 @@ model user {
   feedComments feed_comment[]      @relation("feed_comment_user")
   feedCommentLikes feed_comment_like[] @relation("feed_comment_like_user")
   feedShares   feed_share[]        @relation("feed_share_user")
+  procurementItemsCreated procurement_item[]          @relation("procurement_item_creator")
+  procurementHistories    procurement_history[]       @relation("procurement_history_user")
+  procurementTaskConfirms procurement_task_link[]     @relation("procurement_task_confirmer")
+  purchaseOrdersCreated   purchase_order[]            @relation("purchase_order_creator")
+  notifications           notification[]              @relation("notification_user")
 }
 
 // =====================================
@@ -203,7 +211,9 @@ model project {
   taskDetails task_detail[] // งานย่อยทั้งหมดของโปรเจค
   files       project_file[] // ไฟล์แนบของโปรเจค
   imgs        project_img[] // รูปแนบของโปรเจค
-  feedPosts   feed_post[]
+  feedPosts        feed_post[]
+  procurementItems procurement_item[]
+  purchaseOrders   purchase_order[]
 }
 
 // =====================================
@@ -307,10 +317,11 @@ model task {
   createdById Int // คนสร้าง task
   creator     user @relation("task_creator", fields: [createdById], references: [id])
 
-  details         task_detail[] // ขั้นตอนย่อยของ task
-  taskUsers       task_user[]
-  taskContractors task_contractor[]
-  feedPosts       feed_post[]
+  details              task_detail[] // ขั้นตอนย่อยของ task
+  taskUsers            task_user[]
+  taskContractors      task_contractor[]
+  feedPosts            feed_post[]
+  procurementTaskLinks procurement_task_link[]
 }
 
 // =====================================
@@ -383,6 +394,8 @@ model supplier {
   supplierEmail   String?
   supplierAddress String?
   supplierDesc    String?
+  contactPerson   String? // ชื่อผู้ติดต่อ
+  taxId           String? // เลขประจำตัวผู้เสียภาษี
 
   isActive Boolean @default(true)
 
@@ -392,6 +405,9 @@ model supplier {
   // relations
   organizationId Int
   organization   organization @relation(fields: [organizationId], references: [id])
+
+  quotes         procurement_supplier_quote[]
+  purchaseOrders purchase_order[]
 }
 
 model contractor {
@@ -526,4 +542,194 @@ model feed_share {
 
   userId Int
   user   user @relation("feed_share_user", fields: [userId], references: [id])
+}
+
+// =====================================
+// ProcurementItem = รายการวัสดุจัดซื้อ
+// =====================================
+model procurement_item {
+  id Int @id @default(autoincrement())
+
+  materialName  String // ชื่อวัสดุ
+  specification String?  @db.Text // รายละเอียด spec
+  partType      String?  @default("OTHER") // EXT / INT / OTHER
+  materialGroup String?  @default("GENERAL") // MAIN / GENERAL / MACHINERY / OTHER
+  unit          String? // หน่วย เช่น m², m, pcs, kg
+  quantity      Decimal? @db.Decimal(12, 2) // จำนวน
+  status        String   @default("PENDING") // PENDING / PURCHASING / DELIVERING / ARRIVED / LOW_STOCK / OUT_OF_STOCK
+
+  expectedDate    DateTime? // วันที่คาดว่าของจะเข้า
+  leadTimeDays    Int? // ระยะเวลานำส่ง (วัน)
+  alertEnabled    Boolean   @default(false) // เปิด/ปิดแจ้งเตือน
+  alertDaysBefore Int?      @default(3) // แจ้งเตือนก่อนกี่วัน
+
+  // AI estimated prices (3 ระดับ)
+  aiEstimateMin Decimal? @db.Decimal(12, 2) // ราคาประหยัด
+  aiEstimateMid Decimal? @db.Decimal(12, 2) // ราคากลาง
+  aiEstimateMax Decimal? @db.Decimal(12, 2) // ราคา premium
+
+  note      String?  @db.Text
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id])
+
+  createdById Int
+  creator     user @relation("procurement_item_creator", fields: [createdById], references: [id])
+
+  images    procurement_item_image[]
+  quotes    procurement_supplier_quote[]
+  taskLinks procurement_task_link[]
+  histories procurement_history[]
+  poItems   purchase_order_item[]
+}
+
+// =====================================
+// ProcurementItemImage = รูปอ้างอิงวัสดุ (หลายรูปต่อ 1 รายการ)
+// =====================================
+model procurement_item_image {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String // URL รูป
+  caption   String? // คำอธิบายรูป
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  // ---------- relations ----------
+  procurementItemId Int
+  procurementItem   procurement_item @relation(fields: [procurementItemId], references: [id], onDelete: Cascade)
+}
+
+// =====================================
+// ProcurementSupplierQuote = ราคาจาก Supplier (1 รายการ : หลาย Supplier)
+// =====================================
+model procurement_supplier_quote {
+  id         Int      @id @default(autoincrement())
+  unitPrice  Decimal? @db.Decimal(12, 2) // ราคาต่อหน่วย
+  totalPrice Decimal? @db.Decimal(12, 2) // ราคารวม
+  quoteDate  DateTime? // วันที่เสนอราคา
+  validUntil DateTime? // ใบเสนอราคาหมดอายุ
+  note       String?  @db.Text
+  fileUrl    String? // แนบใบเสนอราคา (PDF/รูป)
+  isSelected Boolean  @default(false) // เลือกใช้ Supplier นี้หรือยัง
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  // ---------- relations ----------
+  procurementItemId Int
+  procurementItem   procurement_item @relation(fields: [procurementItemId], references: [id], onDelete: Cascade)
+
+  supplierId Int
+  supplier   supplier @relation(fields: [supplierId], references: [id])
+}
+
+// =====================================
+// ProcurementTaskLink = ผูกวัสดุ ↔ Task (M:N)
+// =====================================
+model procurement_task_link {
+  id           Int      @id @default(autoincrement())
+  linkedBy     String   @default("MANUAL") // MANUAL / AI_SUGGESTED
+  aiConfidence Float? // 0.0–1.0 (ถ้า AI แนะนำ)
+  confirmedAt  DateTime? // วันที่ยืนยัน (null = ยังไม่ยืนยัน)
+  createdAt    DateTime @default(now())
+
+  // ---------- relations ----------
+  procurementItemId Int
+  procurementItem   procurement_item @relation(fields: [procurementItemId], references: [id], onDelete: Cascade)
+
+  taskId Int
+  task   task @relation(fields: [taskId], references: [id])
+
+  confirmedByUserId Int?
+  confirmedByUser   user? @relation("procurement_task_confirmer", fields: [confirmedByUserId], references: [id])
+
+  @@unique([procurementItemId, taskId])
+}
+
+// =====================================
+// ProcurementHistory = Audit log การเปลี่ยนแปลง
+// =====================================
+model procurement_history {
+  id        Int      @id @default(autoincrement())
+  action    String // CREATED / STATUS_CHANGED / PRICE_UPDATED / SUPPLIER_CHANGED / QUANTITY_CHANGED / etc.
+  oldValue  String?  @db.Text // JSON string ค่าเดิม
+  newValue  String?  @db.Text // JSON string ค่าใหม่
+  changedAt DateTime @default(now())
+
+  // ---------- relations ----------
+  procurementItemId Int
+  procurementItem   procurement_item @relation(fields: [procurementItemId], references: [id], onDelete: Cascade)
+
+  changedByUserId Int
+  changedByUser   user @relation("procurement_history_user", fields: [changedByUserId], references: [id])
+}
+
+// =====================================
+// PurchaseOrder = ใบสั่งซื้อ (PO)
+// =====================================
+model purchase_order {
+  id          Int      @id @default(autoincrement())
+  poNumber    String   @unique // เลขที่ PO อัตโนมัติ (เช่น PO-2026-001)
+  status      String   @default("DRAFT") // DRAFT / APPROVED / SENT / RECEIVED / CANCELLED
+  totalAmount Decimal? @db.Decimal(14, 2) // ยอดรวม
+  note        String?  @db.Text
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id])
+
+  supplierId Int
+  supplier   supplier @relation(fields: [supplierId], references: [id])
+
+  createdById Int
+  creator     user @relation("purchase_order_creator", fields: [createdById], references: [id])
+
+  items purchase_order_item[]
+}
+
+// =====================================
+// PurchaseOrderItem = รายการใน PO
+// =====================================
+model purchase_order_item {
+  id         Int      @id @default(autoincrement())
+  quantity   Decimal? @db.Decimal(12, 2)
+  unitPrice  Decimal? @db.Decimal(12, 2)
+  totalPrice Decimal? @db.Decimal(14, 2)
+
+  // ---------- relations ----------
+  purchaseOrderId Int
+  purchaseOrder   purchase_order @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+
+  procurementItemId Int
+  procurementItem   procurement_item @relation(fields: [procurementItemId], references: [id])
+}
+
+// =====================================
+// Notification = แจ้งเตือน
+// =====================================
+model notification {
+  id        Int      @id @default(autoincrement())
+  type      String // MATERIAL_LATE / MATERIAL_ARRIVED / TASK_NOT_READY / PO_APPROVED / etc.
+  title     String
+  message   String?  @db.Text
+  linkUrl   String? // ลิงก์ไปหน้าที่เกี่ยวข้อง
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  userId Int
+  user   user @relation("notification_user", fields: [userId], references: [id])
 }
