@@ -1027,7 +1027,7 @@ const ProcurementSection = ({
       },
       {
         accessorKey: "materialName",
-        header: "ชื่อวัสดุ",
+        header: "ชื่อรายการ",
         size: 200,
         cell: ({ row }) => {
           const isEditing = editingRowId === row.original.id;
@@ -1527,9 +1527,9 @@ const ProcurementSection = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold">จัดซื้อวัสดุ</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">จัดซื้อ</h2>
           <p className="text-default-500 text-xs sm:text-sm">
-            จัดการรายการวัสดุและเปรียบเทียบราคา
+            จัดการรายการและเปรียบเทียบราคา
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
