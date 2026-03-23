@@ -177,6 +177,102 @@ export async function createManyProcurementItems(
 }
 
 /* ====================================================== */
+/* CREATE PROCUREMENT ITEM WITH RELATIONS (transaction)   */
+/* ====================================================== */
+
+interface CreateItemWithRelationsInput {
+  item: CreateProcurementItemData;
+  quotes: Omit<CreateSupplierQuoteData, "procurementItemId">[];
+  taskIds: number[];
+}
+
+export async function createProcurementItemWithRelations(
+  input: CreateItemWithRelationsInput,
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    const organizationId = Number(session?.user?.organizationId);
+    const userId = Number(session?.user?.id);
+
+    if (!organizationId || !userId) {
+      return { success: false, error: true, message: "ไม่พบข้อมูลผู้ใช้" };
+    }
+
+    const materialName = input.item.materialName?.trim();
+    if (!materialName) {
+      return { success: false, error: true, message: "กรุณากรอกชื่อวัสดุ" };
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const item = await tx.procurement_item.create({
+        data: {
+          materialName,
+          specification: input.item.specification?.trim() || null,
+          partType: input.item.partType || "OTHER",
+          materialGroup: input.item.materialGroup || "GENERAL",
+          unit: input.item.unit?.trim() || null,
+          quantity: input.item.quantity ?? null,
+          status: input.item.status || "PENDING",
+          expectedDate: input.item.expectedDate ? new Date(input.item.expectedDate) : null,
+          leadTimeDays: input.item.leadTimeDays ?? null,
+          alertEnabled: input.item.alertEnabled ?? false,
+          alertDaysBefore: input.item.alertDaysBefore ?? 3,
+          note: input.item.note?.trim() || null,
+          sortOrder: input.item.sortOrder ?? 0,
+          projectId: input.item.projectId,
+          organizationId,
+          createdById: userId,
+        },
+      });
+
+      await tx.procurement_history.create({
+        data: {
+          procurementItemId: item.id,
+          action: "CREATED",
+          newValue: JSON.stringify({ materialName, quantity: input.item.quantity }),
+          changedByUserId: userId,
+        },
+      });
+
+      if (input.quotes.length > 0) {
+        await tx.procurement_supplier_quote.createMany({
+          data: input.quotes.map((q) => ({
+            procurementItemId: item.id,
+            supplierId: q.supplierId,
+            unitPrice: q.unitPrice ?? null,
+            totalPrice: q.totalPrice ?? null,
+            quoteDate: q.quoteDate ? new Date(q.quoteDate) : null,
+            validUntil: q.validUntil ? new Date(q.validUntil) : null,
+            note: q.note?.trim() || null,
+            fileUrl: q.fileUrl || null,
+            isSelected: q.isSelected ?? false,
+          })),
+        });
+      }
+
+      if (input.taskIds.length > 0) {
+        await tx.procurement_task_link.createMany({
+          data: input.taskIds.map((taskId) => ({
+            procurementItemId: item.id,
+            taskId,
+            linkedBy: "MANUAL",
+            confirmedByUserId: userId,
+            confirmedAt: new Date(),
+          })),
+        });
+      }
+
+      return item;
+    });
+
+    return { success: true, error: false, data: { id: result.id } };
+  } catch (error) {
+    console.error("createProcurementItemWithRelations error:", error);
+    return { success: false, error: true, message: "ไม่สามารถสร้างรายการวัสดุได้" };
+  }
+}
+
+/* ====================================================== */
 /* UPDATE PROCUREMENT ITEM                                */
 /* ====================================================== */
 
@@ -593,7 +689,20 @@ export async function linkProcurementTask(
 ): Promise<ActionState> {
   try {
     const session = await auth();
+    const organizationId = Number(session?.user?.organizationId);
     const userId = Number(session?.user?.id);
+
+    if (!organizationId) {
+      return { success: false, error: true, message: "ไม่พบ organization" };
+    }
+
+    const item = await prisma.procurement_item.findFirst({
+      where: { id: procurementItemId, organizationId },
+    });
+
+    if (!item) {
+      return { success: false, error: true, message: "ไม่พบรายการวัสดุนี้" };
+    }
 
     await prisma.procurement_task_link.create({
       data: {
@@ -622,7 +731,21 @@ export async function confirmProcurementTaskLink(
 ): Promise<ActionState> {
   try {
     const session = await auth();
+    const organizationId = Number(session?.user?.organizationId);
     const userId = Number(session?.user?.id);
+
+    if (!organizationId) {
+      return { success: false, error: true, message: "ไม่พบ organization" };
+    }
+
+    const link = await prisma.procurement_task_link.findFirst({
+      where: { id: linkId },
+      include: { procurementItem: { select: { organizationId: true } } },
+    });
+
+    if (!link || link.procurementItem.organizationId !== organizationId) {
+      return { success: false, error: true, message: "ไม่พบ Task link นี้" };
+    }
 
     await prisma.procurement_task_link.update({
       where: { id: linkId },
@@ -640,6 +763,76 @@ export async function confirmProcurementTaskLink(
 }
 
 /* ====================================================== */
+/* TASK LINK — SYNC (diff-based batch update)             */
+/* ====================================================== */
+
+interface SyncTaskLinkEntry {
+  taskId: number;
+  linkedBy?: string;
+  aiConfidence?: number;
+}
+
+export async function syncProcurementTaskLinks(
+  procurementItemId: number,
+  desiredTasks: SyncTaskLinkEntry[],
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    const organizationId = Number(session?.user?.organizationId);
+    const userId = Number(session?.user?.id);
+
+    if (!organizationId) {
+      return { success: false, error: true, message: "ไม่พบ organization" };
+    }
+
+    const item = await prisma.procurement_item.findFirst({
+      where: { id: procurementItemId, organizationId },
+      include: { taskLinks: { select: { id: true, taskId: true } } },
+    });
+
+    if (!item) {
+      return { success: false, error: true, message: "ไม่พบรายการวัสดุนี้" };
+    }
+
+    const currentTaskIds = new Set(item.taskLinks.map((tl) => tl.taskId));
+    const desiredTaskIds = new Set(desiredTasks.map((t) => t.taskId));
+
+    const toRemove = item.taskLinks.filter((tl) => !desiredTaskIds.has(tl.taskId));
+    const toAdd = desiredTasks.filter((t) => !currentTaskIds.has(t.taskId));
+
+    if (toRemove.length === 0 && toAdd.length === 0) {
+      return { success: true, error: false };
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (toRemove.length > 0) {
+        await tx.procurement_task_link.deleteMany({
+          where: { id: { in: toRemove.map((tl) => tl.id) } },
+        });
+      }
+
+      if (toAdd.length > 0) {
+        await tx.procurement_task_link.createMany({
+          data: toAdd.map((t) => ({
+            procurementItemId,
+            taskId: t.taskId,
+            linkedBy: t.linkedBy || "MANUAL",
+            aiConfidence: t.aiConfidence ?? null,
+            confirmedByUserId: (t.linkedBy || "MANUAL") === "MANUAL" ? userId : null,
+            confirmedAt: (t.linkedBy || "MANUAL") === "MANUAL" ? new Date() : null,
+          })),
+        });
+      }
+    });
+
+    return { success: true, error: false };
+  } catch (error) {
+    console.error("syncProcurementTaskLinks error:", error);
+    return { success: false, error: true, message: "ไม่สามารถอัปเดต Task links ได้" };
+  }
+}
+
+/* ====================================================== */
 /* TASK LINK — DELETE                                     */
 /* ====================================================== */
 
@@ -647,6 +840,22 @@ export async function unlinkProcurementTask(
   linkId: number,
 ): Promise<ActionState> {
   try {
+    const session = await auth();
+    const organizationId = Number(session?.user?.organizationId);
+
+    if (!organizationId) {
+      return { success: false, error: true, message: "ไม่พบ organization" };
+    }
+
+    const link = await prisma.procurement_task_link.findFirst({
+      where: { id: linkId },
+      include: { procurementItem: { select: { organizationId: true } } },
+    });
+
+    if (!link || link.procurementItem.organizationId !== organizationId) {
+      return { success: false, error: true, message: "ไม่พบ Task link นี้" };
+    }
+
     await prisma.procurement_task_link.delete({ where: { id: linkId } });
     return { success: true, error: false };
   } catch (error) {

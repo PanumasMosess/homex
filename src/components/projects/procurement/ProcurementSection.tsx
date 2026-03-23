@@ -6,6 +6,7 @@ import {
   getCoreRowModel,
   getSortedRowModel,
   getFilteredRowModel,
+  getPaginationRowModel,
   flexRender,
   type ColumnDef,
   type SortingState,
@@ -17,11 +18,6 @@ import {
   Chip,
   Spinner,
   Tooltip,
-  Modal,
-  ModalContent,
-  ModalHeader,
-  ModalBody,
-  ModalFooter,
 } from "@heroui/react";
 import {
   Plus,
@@ -34,10 +30,8 @@ import {
   ImagePlus,
   Link2,
   Check,
-  CheckCircle2,
-  ImageIcon,
-  Calendar,
   Store,
+  History as HistoryIcon,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import type {
@@ -47,19 +41,10 @@ import type {
 } from "@/lib/type";
 import {
   getProcurementItems,
-  createProcurementItem,
-  createManyProcurementItems,
+  createProcurementItemWithRelations,
   updateProcurementItem,
   updateProcurementStatus,
   deleteProcurementItem,
-} from "@/lib/actions/actionProcurement";
-import {
-  PROCUREMENT_STATUSES,
-  PART_TYPES,
-  MATERIAL_GROUPS,
-} from "@/lib/formValidationSchemas";
-import { generateMaterialPriceEstimate, suggestTasksForMaterial } from "@/lib/ai/geminiAI";
-import {
   updateAiEstimates,
   addProcurementItemImage,
   deleteProcurementItemImage,
@@ -68,10 +53,22 @@ import {
   selectSupplierQuote,
   linkProcurementTask,
   unlinkProcurementTask,
+  syncProcurementTaskLinks,
 } from "@/lib/actions/actionProcurement";
+import {
+  PROCUREMENT_STATUSES,
+  PART_TYPES,
+  MATERIAL_GROUPS,
+} from "@/lib/formValidationSchemas";
+import { generateMaterialPriceEstimate, suggestTasksForMaterial } from "@/lib/ai/geminiAI";
 import { uploadImageFormData } from "@/lib/actions/actionIndex";
 import AiMaterialExtractor from "./AiMaterialExtractor";
 import PurchaseOrderPanel from "./PurchaseOrderPanel";
+import TaskLinkDialog from "./TaskLinkDialog";
+import NewRowQuoteDialog from "./NewRowQuoteDialog";
+import EditQuoteDialog from "./EditQuoteDialog";
+import DeleteConfirmModal from "./DeleteConfirmModal";
+import HistoryModal from "./HistoryModal";
 
 const STATUS_LABELS: Record<string, { label: string; color: "default" | "primary" | "secondary" | "success" | "warning" | "danger" }> = {
   PENDING: { label: "รอจัดซื้อ", color: "default" },
@@ -123,6 +120,19 @@ interface NewRowData {
   taskIds: number[];
 }
 
+interface EditingRowData {
+  materialName: string;
+  specification: string;
+  partType: string;
+  materialGroup: string;
+  unit: string;
+  quantity: string;
+  status: string;
+  expectedDate: string;
+  leadTimeDays: string;
+  note: string;
+}
+
 const EMPTY_NEW_ROW: NewRowData = {
   materialName: "",
   specification: "",
@@ -157,7 +167,7 @@ const ProcurementSection = ({
 
   // Inline edit state
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
-  const [editingData, setEditingData] = useState<Record<string, any>>({});
+  const [editingData, setEditingData] = useState<Partial<EditingRowData>>({});
 
   // New rows state (multi-row inline add)
   const [newRows, setNewRows] = useState<NewRowData[]>([]);
@@ -165,6 +175,12 @@ const ProcurementSection = ({
   // Filter state
   const [statusFilter, setStatusFilter] = useState<string>("ALL");
   const [groupFilter, setGroupFilter] = useState<string>("ALL");
+
+  // Delete confirmation modal
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "item" | "quote"; id: number; label: string } | null>(null);
+
+  // History modal
+  const [historyItem, setHistoryItem] = useState<{ id: number; materialName: string } | null>(null);
 
   // Inline image upload
   const [uploadingImageItemId, setUploadingImageItemId] = useState<number | null>(null);
@@ -361,11 +377,13 @@ const ProcurementSection = ({
     { taskId: number; confidence: number; reason: string }[]
   >([]);
   const [isEditAiSuggesting, setIsEditAiSuggesting] = useState(false);
+  const [editAiSuggestedTaskIds, setEditAiSuggestedTaskIds] = useState<Map<number, number>>(new Map());
 
   const openEditTaskDialog = (item: ProcurementItemData) => {
     setEditTaskIds(new Set(item.taskLinks.map((tl) => tl.taskId)));
     setEditTaskSearch("");
     setEditAiSuggestions([]);
+    setEditAiSuggestedTaskIds(new Map());
     setEditTaskItem(item);
   };
 
@@ -381,10 +399,15 @@ const ProcurementSection = ({
       );
       if (result.length > 0) {
         setEditAiSuggestions(result);
-        // Auto-select suggested tasks
+        // Auto-select suggested tasks & track AI origin
         setEditTaskIds((prev) => {
           const next = new Set(prev);
           result.forEach((s) => next.add(s.taskId));
+          return next;
+        });
+        setEditAiSuggestedTaskIds((prev) => {
+          const next = new Map(prev);
+          result.forEach((s) => next.set(s.taskId, s.confidence));
           return next;
         });
         toast.success(`AI แนะนำ ${result.length} Task`);
@@ -402,25 +425,21 @@ const ProcurementSection = ({
     if (!editTaskItem) return;
     setIsEditTaskPending(true);
     try {
-      const oldIds = new Set(editTaskItem.taskLinks.map((tl) => tl.taskId));
-      const newIds = editTaskIds;
+      const desiredTasks = Array.from(editTaskIds).map((tid) => {
+        const aiConfidence = editAiSuggestedTaskIds.get(tid);
+        return aiConfidence !== undefined
+          ? { taskId: tid, linkedBy: "AI_SUGGESTED" as const, aiConfidence }
+          : { taskId: tid, linkedBy: "MANUAL" as const };
+      });
 
-      // Unlink removed tasks
-      for (const tl of editTaskItem.taskLinks) {
-        if (!newIds.has(tl.taskId)) {
-          await unlinkProcurementTask(tl.id);
-        }
+      const res = await syncProcurementTaskLinks(editTaskItem.id, desiredTasks);
+      if (res.success) {
+        toast.success("อัปเดต Task สำเร็จ");
+        setEditTaskItem(null);
+        await loadItems();
+      } else {
+        toast.error(res.message || "อัปเดต Task ไม่สำเร็จ");
       }
-      // Link added tasks
-      for (const tid of newIds) {
-        if (!oldIds.has(tid)) {
-          await linkProcurementTask(editTaskItem.id, tid, "MANUAL");
-        }
-      }
-
-      toast.success("อัปเดต Task สำเร็จ");
-      setEditTaskItem(null);
-      await loadItems();
     } catch {
       toast.error("อัปเดต Task ไม่สำเร็จ");
     } finally {
@@ -479,9 +498,6 @@ const ProcurementSection = ({
         setEditQuoteForm({ supplierId: "", unitPrice: "", totalPrice: "", quoteDate: "", validUntil: "", note: "" });
         setIsEditAddingQuote(false);
         await loadItems();
-        // Refresh editQuoteItem with updated data
-        const refreshed = items.find((i) => i.id === editQuoteItem.id);
-        // items state may not be updated yet, so we'll use loadItems callback
       } else {
         toast.error(res.message || "เพิ่มไม่สำเร็จ");
       }
@@ -506,8 +522,11 @@ const ProcurementSection = ({
     }
   };
 
-  const handleEditDeleteQuote = async (quoteId: number) => {
-    if (!confirm("ต้องการลบใบเสนอราคานี้ใช่หรือไม่?")) return;
+  const handleEditDeleteQuote = (quoteId: number) => {
+    setDeleteTarget({ type: "quote", id: quoteId, label: "ใบเสนอราคานี้" });
+  };
+
+  const executeEditDeleteQuote = async (quoteId: number) => {
     setIsEditQuotePending(true);
     try {
       const res = await deleteSupplierQuote(quoteId);
@@ -549,7 +568,7 @@ const ProcurementSection = ({
     }
   };
 
-  const formatDate = (d: string | Date | null) => {
+  const formatDate = (d: string | Date | null | undefined) => {
     if (!d) return null;
     return new Date(d).toLocaleDateString("th-TH", { day: "2-digit", month: "short" });
   };
@@ -560,6 +579,7 @@ const ProcurementSection = ({
       const refreshed = items.find((i) => i.id === editQuoteItem.id);
       if (refreshed) setEditQuoteItem(refreshed);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items]);
 
   const triggerImageUpload = (itemId: number) => {
@@ -669,10 +689,10 @@ const ProcurementSection = ({
       partType: row.partType || "OTHER",
       materialGroup: row.materialGroup || "GENERAL",
       unit: row.unit || "",
-      quantity: row.quantity ?? "",
+      quantity: row.quantity != null ? String(row.quantity) : "",
       status: row.status,
       expectedDate: row.expectedDate ? row.expectedDate.split("T")[0] : "",
-      leadTimeDays: row.leadTimeDays ?? "",
+      leadTimeDays: row.leadTimeDays != null ? String(row.leadTimeDays) : "",
       note: row.note || "",
     });
   };
@@ -832,47 +852,39 @@ const ProcurementSection = ({
       let imageCount = 0;
 
       for (const row of validRows) {
-        const res = await createProcurementItem({
-          materialName: row.materialName.trim(),
-          specification: row.specification || undefined,
-          partType: row.partType,
-          materialGroup: row.materialGroup,
-          unit: row.unit || undefined,
-          quantity: row.quantity ? Number(row.quantity) : undefined,
-          expectedDate: row.expectedDate || undefined,
-          leadTimeDays: row.leadTimeDays ? Number(row.leadTimeDays) : undefined,
-          note: row.note || undefined,
-          projectId,
-          organizationId,
+        const res = await createProcurementItemWithRelations({
+          item: {
+            materialName: row.materialName.trim(),
+            specification: row.specification || undefined,
+            partType: row.partType,
+            materialGroup: row.materialGroup,
+            unit: row.unit || undefined,
+            quantity: row.quantity ? Number(row.quantity) : undefined,
+            expectedDate: row.expectedDate || undefined,
+            leadTimeDays: row.leadTimeDays ? Number(row.leadTimeDays) : undefined,
+            note: row.note || undefined,
+            projectId,
+            organizationId,
+          },
+          quotes: row.quotes.map((tq) => ({
+            supplierId: tq.supplierId,
+            unitPrice: tq.unitPrice ? Number(tq.unitPrice) : undefined,
+            totalPrice: tq.totalPrice ? Number(tq.totalPrice) : undefined,
+            quoteDate: tq.quoteDate || undefined,
+            validUntil: tq.validUntil || undefined,
+            note: tq.note || undefined,
+            isSelected: tq.isSelected,
+          })),
+          taskIds: row.taskIds,
         });
 
         if (res.success && res.data?.id) {
           savedCount++;
-          const newItemId = res.data.id;
 
-          // Upload pending images if any
+          // Upload pending images if any (cannot be batched — needs S3)
           if (row.pendingFiles.length > 0) {
-            await uploadPendingFiles(newItemId, row.pendingFiles);
+            await uploadPendingFiles(res.data.id, row.pendingFiles);
             imageCount += row.pendingFiles.length;
-          }
-
-          // Create supplier quotes
-          for (const tq of row.quotes) {
-            await createSupplierQuote({
-              procurementItemId: newItemId,
-              supplierId: tq.supplierId,
-              unitPrice: tq.unitPrice ? Number(tq.unitPrice) : undefined,
-              totalPrice: tq.totalPrice ? Number(tq.totalPrice) : undefined,
-              quoteDate: tq.quoteDate || undefined,
-              validUntil: tq.validUntil || undefined,
-              note: tq.note || undefined,
-              isSelected: tq.isSelected,
-            });
-          }
-
-          // Link tasks if selected
-          for (const tid of row.taskIds) {
-            await linkProcurementTask(newItemId, tid, "MANUAL");
           }
         }
       }
@@ -891,9 +903,12 @@ const ProcurementSection = ({
   };
 
   // --- Delete ---
-  const handleDelete = async (id: number) => {
+  const handleDelete = (id: number) => {
     const item = items.find((i) => i.id === id);
-    if (!confirm(`ต้องการลบ "${item?.materialName || "รายการนี้"}" ใช่หรือไม่?`)) return;
+    setDeleteTarget({ type: "item", id, label: item?.materialName || "รายการนี้" });
+  };
+
+  const executeDeleteItem = async (id: number) => {
     startTransition(async () => {
       const res = await deleteProcurementItem(id);
       if (res.success) {
@@ -929,7 +944,7 @@ const ProcurementSection = ({
     type = "text",
   }: {
     value: any;
-    field: string;
+    field: keyof EditingRowData;
     type?: string;
   }) => {
     if (editingRowId === null) return <span className="truncate">{value ?? "-"}</span>;
@@ -938,7 +953,7 @@ const ProcurementSection = ({
         type={type}
         value={editingData[field] ?? ""}
         onChange={(e) =>
-          setEditingData((prev: Record<string, any>) => ({ ...prev, [field]: e.target.value }))
+          setEditingData((prev) => ({ ...prev, [field]: e.target.value }))
         }
         className="w-full px-1.5 py-1 text-xs bg-default-100 dark:bg-zinc-800 border border-default-300 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
       />
@@ -1017,7 +1032,7 @@ const ProcurementSection = ({
                 type="text"
                 value={editingData.materialName ?? ""}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     materialName: e.target.value,
                   }))
@@ -1048,7 +1063,7 @@ const ProcurementSection = ({
                 type="text"
                 value={editingData.specification ?? ""}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     specification: e.target.value,
                   }))
@@ -1075,7 +1090,7 @@ const ProcurementSection = ({
               <select
                 value={editingData.partType ?? "OTHER"}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     partType: e.target.value,
                   }))
@@ -1108,7 +1123,7 @@ const ProcurementSection = ({
               <select
                 value={editingData.materialGroup ?? "GENERAL"}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     materialGroup: e.target.value,
                   }))
@@ -1142,7 +1157,7 @@ const ProcurementSection = ({
                 type="number"
                 value={editingData.quantity ?? ""}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     quantity: e.target.value,
                   }))
@@ -1170,7 +1185,7 @@ const ProcurementSection = ({
                 type="text"
                 value={editingData.unit ?? ""}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     unit: e.target.value,
                   }))
@@ -1223,7 +1238,7 @@ const ProcurementSection = ({
                 type="date"
                 value={editingData.expectedDate ?? ""}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     expectedDate: e.target.value,
                   }))
@@ -1233,10 +1248,16 @@ const ProcurementSection = ({
             );
           }
           const d = row.original.expectedDate;
+          const isOverdue =
+            d &&
+            new Date(d) < new Date() &&
+            !["ARRIVED", "LOW_STOCK", "OUT_OF_STOCK"].includes(row.original.status);
           return (
-            <span className="text-xs">
-              {d ? new Date(d).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }) : "-"}
-            </span>
+            <Tooltip content="เลยกำหนดส่งแล้ว" isDisabled={!isOverdue}>
+              <span className={`text-xs ${isOverdue ? "text-danger font-semibold" : ""}`}>
+                {d ? new Date(d).toLocaleDateString("th-TH", { day: "2-digit", month: "short", year: "2-digit" }) : "-"}
+              </span>
+            </Tooltip>
           );
         },
       },
@@ -1252,7 +1273,7 @@ const ProcurementSection = ({
                 type="number"
                 value={editingData.leadTimeDays ?? ""}
                 onChange={(e) =>
-                  setEditingData((prev: Record<string, any>) => ({
+                  setEditingData((prev) => ({
                     ...prev,
                     leadTimeDays: e.target.value,
                   }))
@@ -1263,6 +1284,37 @@ const ProcurementSection = ({
           }
           const lt = row.original.leadTimeDays;
           return <span className="text-xs">{lt != null ? `${lt} วัน` : "-"}</span>;
+        },
+      },
+      {
+        accessorKey: "note",
+        header: "โน้ต",
+        size: 120,
+        cell: ({ row }) => {
+          const isEditing = editingRowId === row.original.id;
+          if (isEditing) {
+            return (
+              <input
+                type="text"
+                value={editingData.note ?? ""}
+                onChange={(e) =>
+                  setEditingData((prev) => ({
+                    ...prev,
+                    note: e.target.value,
+                  }))
+                }
+                className="w-full px-1.5 py-1 text-xs bg-default-100 dark:bg-zinc-800 border border-default-300 rounded-md"
+              />
+            );
+          }
+          const note = row.original.note;
+          return (
+            <Tooltip content={note || "-"} isDisabled={!note}>
+              <span className="text-xs text-default-400 truncate block max-w-[110px]">
+                {note || "-"}
+              </span>
+            </Tooltip>
+          );
         },
       },
       {
@@ -1395,6 +1447,16 @@ const ProcurementSection = ({
                   <Pencil size={14} />
                 </Button>
               </Tooltip>
+              <Tooltip content="ประวัติ">
+                <Button
+                  isIconOnly
+                  size="sm"
+                  variant="light"
+                  onPress={() => setHistoryItem({ id: row.original.id, materialName: row.original.materialName })}
+                >
+                  <HistoryIcon size={14} />
+                </Button>
+              </Tooltip>
               <Tooltip content="ลบ" color="danger">
                 <Button
                   isIconOnly
@@ -1424,6 +1486,8 @@ const ProcurementSection = ({
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: { pagination: { pageSize: 20 } },
   });
 
   // --- Summary ---
@@ -1433,7 +1497,14 @@ const ProcurementSection = ({
     const purchasing = items.filter((i) => i.status === "PURCHASING").length;
     const delivering = items.filter((i) => i.status === "DELIVERING").length;
     const arrived = items.filter((i) => i.status === "ARRIVED").length;
-    return { total, pending, purchasing, delivering, arrived };
+    const now = new Date();
+    const overdue = items.filter(
+      (i) =>
+        i.expectedDate &&
+        new Date(i.expectedDate) < now &&
+        !["ARRIVED", "LOW_STOCK", "OUT_OF_STOCK"].includes(i.status),
+    ).length;
+    return { total, pending, purchasing, delivering, arrived, overdue };
   }, [items]);
 
   if (isLoading) {
@@ -1793,21 +1864,55 @@ const ProcurementSection = ({
         </table>
       </div>
 
-      {/* Footer info */}
-      <div className="flex items-center justify-between text-xs text-default-400 px-1">
+      {/* Pagination */}
+      <div className="flex items-center justify-between text-xs text-default-400 px-1 flex-wrap gap-2">
         <span>
-          แสดง {table.getRowModel().rows.length} จาก {items.length} รายการ
+          หน้า {table.getState().pagination.pageIndex + 1} / {table.getPageCount()} ({filteredItems.length} รายการ)
         </span>
+        <div className="flex items-center gap-1">
+          <select
+            value={table.getState().pagination.pageSize}
+            onChange={(e) => table.setPageSize(Number(e.target.value))}
+            className="px-1.5 py-0.5 text-xs bg-default-100 dark:bg-zinc-800 border border-default-300 rounded-md"
+          >
+            {[10, 20, 50, 100].map((size) => (
+              <option key={size} value={size}>
+                {size} / หน้า
+              </option>
+            ))}
+          </select>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="flat"
+            isDisabled={!table.getCanPreviousPage()}
+            onPress={() => table.previousPage()}
+            className="min-w-7 h-7"
+          >
+            ‹
+          </Button>
+          <Button
+            isIconOnly
+            size="sm"
+            variant="flat"
+            isDisabled={!table.getCanNextPage()}
+            onPress={() => table.nextPage()}
+            className="min-w-7 h-7"
+          >
+            ›
+          </Button>
+        </div>
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2">
         {[
           { label: "ทั้งหมด", value: summary.total, color: "bg-default-100" },
           { label: "รอจัดซื้อ", value: summary.pending, color: "bg-default-100" },
           { label: "กำลังจัดซื้อ", value: summary.purchasing, color: "bg-primary-50" },
           { label: "กำลังนำส่ง", value: summary.delivering, color: "bg-secondary-50" },
           { label: "ถึงแล้ว", value: summary.arrived, color: "bg-success-50" },
+          { label: "เลยกำหนด", value: summary.overdue, color: summary.overdue > 0 ? "bg-danger-50" : "bg-default-100" },
         ].map((s) => (
           <div
             key={s.label}
@@ -1832,886 +1937,129 @@ const ProcurementSection = ({
 
 
       {/* Task Link Dialog for New Rows */}
-      <Modal
+      <TaskLinkDialog
         isOpen={taskDialogRowIdx !== null}
-        onOpenChange={(open) => {
-          if (!open) setTaskDialogRowIdx(null);
+        onClose={() => setTaskDialogRowIdx(null)}
+        materialName={taskDialogRowIdx !== null ? newRows[taskDialogRowIdx]?.materialName || "" : ""}
+        specification={taskDialogRowIdx !== null ? newRows[taskDialogRowIdx]?.specification : ""}
+        selectedTaskIds={tempTaskIds}
+        onToggleTask={(taskId) => {
+          setTempTaskIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(taskId)) next.delete(taskId);
+            else next.add(taskId);
+            return next;
+          });
         }}
-        size="3xl"
-        scrollBehavior="inside"
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 pb-2">
-                <div className="flex items-center gap-2">
-                  <Link2 size={18} />
-                  <span>เลือก Task ที่ต้องการผูก</span>
-                  <Chip size="sm" variant="flat" color="primary" className="ml-2">
-                    เลือก {tempTaskIds.size}
-                  </Chip>
-                </div>
-                {taskDialogRowIdx !== null && newRows[taskDialogRowIdx] && (
-                  <p className="text-xs text-default-400 font-normal">
-                    {newRows[taskDialogRowIdx].materialName}
-                    {newRows[taskDialogRowIdx].specification ? ` | ${newRows[taskDialogRowIdx].specification}` : ""}
-                  </p>
-                )}
-              </ModalHeader>
-              <ModalBody className="pt-0">
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="ค้นหา Task..."
-                    value={taskDialogSearch}
-                    onValueChange={setTaskDialogSearch}
-                    isClearable
-                    size="sm"
-                    startContent={<Search size={14} />}
-                    className="flex-1"
-                  />
-                  <Tooltip content="AI แนะนำ Task ที่เกี่ยวข้อง">
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      color="secondary"
-                      startContent={<Sparkles size={14} />}
-                      onPress={handleNewRowAiSuggest}
-                      isLoading={isNewRowAiSuggesting}
-                    >
-                      AI แนะนำ
-                    </Button>
-                  </Tooltip>
-                </div>
+        filteredTasks={filteredDialogTasks}
+        allTasks={tasks}
+        searchValue={taskDialogSearch}
+        onSearchChange={setTaskDialogSearch}
+        aiSuggestions={newRowAiSuggestions}
+        onAiSuggest={handleNewRowAiSuggest}
+        isAiSuggesting={isNewRowAiSuggesting}
+        onDismissSuggestion={(taskId) =>
+          setNewRowAiSuggestions((prev) => prev.filter((x) => x.taskId !== taskId))
+        }
+        onConfirm={confirmTaskDialog}
+        formatDate={formatDate}
+      />
 
-                {/* AI Suggestions */}
-                {newRowAiSuggestions.length > 0 && (
-                  <div className="bg-secondary-50/50 dark:bg-secondary-900/10 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-secondary-600 uppercase">
-                      AI แนะนำ Task ที่เกี่ยวข้อง
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {newRowAiSuggestions.map((s) => {
-                        const task = tasks.find((t) => t.id === s.taskId);
-                        if (!task) return null;
-                        return (
-                          <div
-                            key={s.taskId}
-                            className="flex items-center justify-between bg-white dark:bg-zinc-800 rounded-lg p-2.5 border border-secondary-200 dark:border-secondary-800"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
-                                {task.taskName || `Task #${s.taskId}`}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Chip size="sm" variant="flat" color="secondary" className="text-[10px]">
-                                  {Math.round(s.confidence * 100)}%
-                                </Chip>
-                                <span className="text-[10px] text-default-400 truncate">
-                                  {s.reason}
-                                </span>
-                              </div>
-                            </div>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              onPress={() =>
-                                setNewRowAiSuggestions((prev) => prev.filter((x) => x.taskId !== s.taskId))
-                              }
-                            >
-                              <X size={14} />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {filteredDialogTasks.length === 0 ? (
-                  <p className="text-xs text-default-400 text-center py-8">
-                    {taskDialogSearch ? "ไม่พบ Task ที่ตรงกัน" : "ไม่มี Task"}
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[360px] overflow-y-auto pr-1">
-                    {filteredDialogTasks.map((task) => {
-                      const isSelected = tempTaskIds.has(task.id);
-                      return (
-                        <div
-                          key={task.id}
-                          onClick={() => {
-                            setTempTaskIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(task.id)) next.delete(task.id);
-                              else next.add(task.id);
-                              return next;
-                            });
-                          }}
-                          className={`
-                            relative cursor-pointer rounded-lg border-2 p-2.5 transition-all
-                            hover:shadow-sm
-                            ${isSelected
-                              ? "border-primary bg-primary-50 dark:bg-primary-900/20 shadow-sm"
-                              : "border-default-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-primary-300"
-                            }
-                          `}
-                        >
-                          {isSelected && (
-                            <div className="absolute top-2 right-2 z-10">
-                              <CheckCircle2 size={16} className="text-primary" />
-                            </div>
-                          )}
-                          <div className="flex items-start gap-2 pr-5">
-                            {task.coverImageUrl ? (
-                              <img
-                                src={task.coverImageUrl}
-                                alt=""
-                                className="w-10 h-10 rounded object-cover border border-default-200 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded bg-default-100 dark:bg-zinc-700 flex items-center justify-center shrink-0">
-                                <ImageIcon size={14} className="text-default-300" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium truncate leading-tight">
-                                {task.taskName || `Task #${task.id}`}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <Chip size="sm" variant="flat" className="text-[10px] h-4">
-                                  {task.status === "IN_PROGRESS" ? "กำลังทำ" : task.status === "COMPLETED" ? "เสร็จ" : "ยังไม่เริ่ม"}
-                                </Chip>
-                                {task.startPlanned && (
-                                  <span className="text-[10px] text-default-400 flex items-center gap-0.5">
-                                    <Calendar size={10} />
-                                    {formatDate(task.startPlanned)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </ModalBody>
-              <ModalFooter className="justify-center">
-                <Button variant="flat" onPress={onClose}>
-                  ยกเลิก
-                </Button>
-                <Button
-                  color="primary"
-                  startContent={<Link2 size={14} />}
-                  onPress={() => {
-                    confirmTaskDialog();
-                    onClose();
-                  }}
-                >
-                  ยืนยัน {tempTaskIds.size > 0 ? `(${tempTaskIds.size} Task)` : ""}
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
-
-      {/* Quote Dialog for New Rows (QuotePanel-like) */}
-      <Modal
+      {/* Quote Dialog for New Rows */}
+      <NewRowQuoteDialog
         isOpen={quoteDialogRowIdx !== null}
-        onOpenChange={(open) => {
-          if (!open) setQuoteDialogRowIdx(null);
-        }}
-        size="3xl"
-        scrollBehavior="inside"
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 pb-2">
-                <div className="flex items-center gap-2">
-                  <Store size={18} />
-                  <span>จัดการใบเสนอราคา</span>
-                  {tempQuotes.length > 0 && (
-                    <Chip size="sm" variant="flat" color="success" className="ml-2">
-                      {tempQuotes.length} รายการ
-                    </Chip>
-                  )}
-                </div>
-                {quoteDialogRowIdx !== null && (
-                  <p className="text-xs text-default-400 font-normal">
-                    {newRows[quoteDialogRowIdx]?.materialName}
-                    {newRows[quoteDialogRowIdx]?.specification ? ` | ${newRows[quoteDialogRowIdx].specification}` : ""}
-                    {newRows[quoteDialogRowIdx]?.quantity ? ` | ${newRows[quoteDialogRowIdx].quantity} ${newRows[quoteDialogRowIdx]?.unit || ""}` : ""}
-                  </p>
-                )}
-              </ModalHeader>
-              <ModalBody className="pt-0 space-y-3">
-                {/* AI Estimate */}
-                <div className="flex items-center justify-end gap-2">
-                  <Tooltip content="AI ประเมินราคากลาง">
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      color="secondary"
-                      startContent={<Sparkles size={14} />}
-                      onPress={handleDialogAiEstimate}
-                      isLoading={isDialogEstimating}
-                    >
-                      AI ราคากลาง
-                    </Button>
-                  </Tooltip>
-                </div>
-
-                {dialogAiEstimate && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-success-50 dark:bg-success-900/20 rounded-lg p-2 text-center">
-                      <p className="text-[10px] uppercase text-success-600 font-bold">ประหยัด</p>
-                      <p className="text-sm font-bold text-success-700">
-                        ฿{dialogAiEstimate.min.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-2 text-center">
-                      <p className="text-[10px] uppercase text-primary-600 font-bold">กลาง</p>
-                      <p className="text-sm font-bold text-primary-700">
-                        ฿{dialogAiEstimate.mid.toLocaleString()}
-                      </p>
-                    </div>
-                    <div className="bg-warning-50 dark:bg-warning-900/20 rounded-lg p-2 text-center">
-                      <p className="text-[10px] uppercase text-warning-600 font-bold">Premium</p>
-                      <p className="text-sm font-bold text-warning-700">
-                        ฿{dialogAiEstimate.max.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Quote Table */}
-                {tempQuotes.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-default-200 text-default-500">
-                          <th className="text-left py-2 px-2 font-bold">Supplier</th>
-                          <th className="text-right py-2 px-2 font-bold">ราคา/หน่วย</th>
-                          <th className="text-right py-2 px-2 font-bold">ราคารวม</th>
-                          <th className="text-center py-2 px-2 font-bold">วันเสนอราคา</th>
-                          <th className="text-center py-2 px-2 font-bold">หมดอายุ</th>
-                          <th className="text-left py-2 px-2 font-bold">โน้ต</th>
-                          <th className="text-center py-2 px-2 font-bold">เลือก</th>
-                          <th className="py-2 px-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {tempQuotes.map((q) => (
-                          <tr
-                            key={q.id}
-                            className={`border-b border-default-100 hover:bg-default-100/50 ${
-                              q.isSelected ? "bg-success-50/50 dark:bg-success-900/10" : ""
-                            }`}
-                          >
-                            <td className="py-2 px-2 font-medium">{q.supplierName}</td>
-                            <td className="py-2 px-2 text-right">
-                              {q.unitPrice ? `฿${Number(q.unitPrice).toLocaleString()}` : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-right">
-                              {q.totalPrice ? `฿${Number(q.totalPrice).toLocaleString()}` : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {q.quoteDate ? formatDate(q.quoteDate) : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {q.validUntil ? formatDate(q.validUntil) : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-default-400 max-w-[120px] truncate">
-                              {q.note || "-"}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {q.isSelected ? (
-                                <Chip size="sm" color="success" variant="flat" className="text-[10px]">
-                                  เลือกแล้ว
-                                </Chip>
-                              ) : (
-                                <Button
-                                  isIconOnly
-                                  size="sm"
-                                  variant="light"
-                                  color="success"
-                                  onPress={() => selectTempQuote(q.id)}
-                                >
-                                  <Check size={14} />
-                                </Button>
-                              )}
-                            </td>
-                            <td className="py-2 px-2">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="light"
-                                color="danger"
-                                onPress={() => deleteTempQuote(q.id)}
-                              >
-                                <Trash2 size={12} />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-xs text-default-400 text-center py-4">
-                    ยังไม่มีใบเสนอราคา
-                  </p>
-                )}
-
-                {/* Add New Quote Form */}
-                {isAddingQuote ? (
-                  <div className="bg-white dark:bg-zinc-800 rounded-lg p-3 border border-default-200 space-y-2">
-                    <p className="text-xs font-bold text-default-500 uppercase">เพิ่มใบเสนอราคาใหม่</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      <select
-                        value={newQuoteForm.supplierId}
-                        onChange={(e) => setNewQuoteForm((p) => ({ ...p, supplierId: e.target.value }))}
-                        className="col-span-2 sm:col-span-1 px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      >
-                        <option value="">-- เลือก Supplier --</option>
-                        {suppliers.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.supplierName}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        placeholder="ราคา/หน่วย"
-                        value={newQuoteForm.unitPrice}
-                        onChange={(e) => setNewQuoteForm((p) => ({ ...p, unitPrice: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      />
-                      <input
-                        type="number"
-                        placeholder="ราคารวม"
-                        value={newQuoteForm.totalPrice}
-                        onChange={(e) => setNewQuoteForm((p) => ({ ...p, totalPrice: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      />
-                      <input
-                        type="date"
-                        value={newQuoteForm.quoteDate}
-                        onChange={(e) => setNewQuoteForm((p) => ({ ...p, quoteDate: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                        title="วันเสนอราคา"
-                      />
-                      <input
-                        type="date"
-                        value={newQuoteForm.validUntil}
-                        onChange={(e) => setNewQuoteForm((p) => ({ ...p, validUntil: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                        title="หมดอายุ"
-                      />
-                      <input
-                        type="text"
-                        placeholder="โน้ต"
-                        value={newQuoteForm.note}
-                        onChange={(e) => setNewQuoteForm((p) => ({ ...p, note: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        onPress={() => setIsAddingQuote(false)}
-                      >
-                        ยกเลิก
-                      </Button>
-                      <Button
-                        size="sm"
-                        color="success"
-                        variant="flat"
-                        startContent={<Save size={14} />}
-                        onPress={addTempQuote}
-                      >
-                        เพิ่ม
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      color="primary"
-                      variant="flat"
-                      startContent={<Plus size={14} />}
-                      onPress={() => setIsAddingQuote(true)}
-                    >
-                      เพิ่ม Supplier
-                    </Button>
-                  </div>
-                )}
-              </ModalBody>
-              <ModalFooter className="justify-center">
-                <Button variant="flat" onPress={onClose}>
-                  ยกเลิก
-                </Button>
-                <Button
-                  color="success"
-                  startContent={<Store size={14} />}
-                  onPress={() => {
-                    confirmQuoteDialog();
-                    onClose();
-                  }}
-                >
-                  ยืนยัน
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        onClose={() => setQuoteDialogRowIdx(null)}
+        materialName={quoteDialogRowIdx !== null ? newRows[quoteDialogRowIdx]?.materialName || "" : ""}
+        specification={quoteDialogRowIdx !== null ? newRows[quoteDialogRowIdx]?.specification : ""}
+        quantity={quoteDialogRowIdx !== null ? newRows[quoteDialogRowIdx]?.quantity : ""}
+        unit={quoteDialogRowIdx !== null ? newRows[quoteDialogRowIdx]?.unit : ""}
+        quotes={tempQuotes}
+        suppliers={suppliers}
+        isAddingQuote={isAddingQuote}
+        onSetIsAddingQuote={setIsAddingQuote}
+        newQuoteForm={newQuoteForm}
+        onUpdateQuoteForm={(updates) => setNewQuoteForm((p) => ({ ...p, ...updates }))}
+        onAddQuote={addTempQuote}
+        onDeleteQuote={deleteTempQuote}
+        onSelectQuote={selectTempQuote}
+        aiEstimate={dialogAiEstimate}
+        isEstimating={isDialogEstimating}
+        onAiEstimate={handleDialogAiEstimate}
+        onConfirm={confirmQuoteDialog}
+        formatDate={formatDate}
+      />
 
       {/* Edit-mode Task Dialog (existing items) */}
-      <Modal
+      <TaskLinkDialog
         isOpen={editTaskItem !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditTaskItem(null);
+        onClose={() => setEditTaskItem(null)}
+        materialName={editTaskItem?.materialName || ""}
+        specification={editTaskItem?.specification}
+        selectedTaskIds={editTaskIds}
+        onToggleTask={(taskId) => {
+          setEditTaskIds((prev) => {
+            const next = new Set(prev);
+            if (next.has(taskId)) next.delete(taskId);
+            else next.add(taskId);
+            return next;
+          });
         }}
-        size="3xl"
-        scrollBehavior="inside"
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 pb-2">
-                <div className="flex items-center gap-2">
-                  <Link2 size={18} />
-                  <span>ผูก Task</span>
-                  <Chip size="sm" variant="flat" color="primary" className="ml-2">
-                    เลือก {editTaskIds.size}
-                  </Chip>
-                </div>
-                {editTaskItem && (
-                  <p className="text-xs text-default-400 font-normal">
-                    {editTaskItem.materialName}
-                    {editTaskItem.specification ? ` | ${editTaskItem.specification}` : ""}
-                  </p>
-                )}
-              </ModalHeader>
-              <ModalBody className="pt-0">
-                <div className="flex items-center gap-2">
-                  <Input
-                    placeholder="ค้นหา Task..."
-                    value={editTaskSearch}
-                    onValueChange={setEditTaskSearch}
-                    isClearable
-                    size="sm"
-                    startContent={<Search size={14} />}
-                    className="flex-1"
-                  />
-                  <Tooltip content="AI แนะนำ Task ที่เกี่ยวข้อง">
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      color="secondary"
-                      startContent={<Sparkles size={14} />}
-                      onPress={handleEditAiSuggest}
-                      isLoading={isEditAiSuggesting}
-                    >
-                      AI แนะนำ
-                    </Button>
-                  </Tooltip>
-                </div>
-
-                {/* AI Suggestions */}
-                {editAiSuggestions.length > 0 && (
-                  <div className="bg-secondary-50/50 dark:bg-secondary-900/10 rounded-xl p-3 space-y-2">
-                    <p className="text-[10px] font-bold text-secondary-600 uppercase">
-                      AI แนะนำ Task ที่เกี่ยวข้อง
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {editAiSuggestions.map((s) => {
-                        const task = tasks.find((t) => t.id === s.taskId);
-                        if (!task) return null;
-                        return (
-                          <div
-                            key={s.taskId}
-                            className="flex items-center justify-between bg-white dark:bg-zinc-800 rounded-lg p-2.5 border border-secondary-200 dark:border-secondary-800"
-                          >
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium truncate">
-                                {task.taskName || `Task #${s.taskId}`}
-                              </p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Chip size="sm" variant="flat" color="secondary" className="text-[10px]">
-                                  {Math.round(s.confidence * 100)}%
-                                </Chip>
-                                <span className="text-[10px] text-default-400 truncate">
-                                  {s.reason}
-                                </span>
-                              </div>
-                            </div>
-                            <Button
-                              isIconOnly
-                              size="sm"
-                              variant="flat"
-                              onPress={() =>
-                                setEditAiSuggestions((prev) => prev.filter((x) => x.taskId !== s.taskId))
-                              }
-                            >
-                              <X size={14} />
-                            </Button>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                )}
-
-                {filteredEditTasks.length === 0 ? (
-                  <p className="text-xs text-default-400 text-center py-8">
-                    {editTaskSearch ? "ไม่พบ Task ที่ตรงกัน" : "ไม่มี Task"}
-                  </p>
-                ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2 max-h-[360px] overflow-y-auto pr-1">
-                    {filteredEditTasks.map((task) => {
-                      const isSelected = editTaskIds.has(task.id);
-                      return (
-                        <div
-                          key={task.id}
-                          onClick={() => {
-                            setEditTaskIds((prev) => {
-                              const next = new Set(prev);
-                              if (next.has(task.id)) next.delete(task.id);
-                              else next.add(task.id);
-                              return next;
-                            });
-                          }}
-                          className={`
-                            relative cursor-pointer rounded-lg border-2 p-2.5 transition-all
-                            hover:shadow-sm
-                            ${isSelected
-                              ? "border-primary bg-primary-50 dark:bg-primary-900/20 shadow-sm"
-                              : "border-default-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:border-primary-300"
-                            }
-                          `}
-                        >
-                          {isSelected && (
-                            <div className="absolute top-2 right-2 z-10">
-                              <CheckCircle2 size={16} className="text-primary" />
-                            </div>
-                          )}
-                          <div className="flex items-start gap-2 pr-5">
-                            {task.coverImageUrl ? (
-                              <img
-                                src={task.coverImageUrl}
-                                alt=""
-                                className="w-10 h-10 rounded object-cover border border-default-200 shrink-0"
-                              />
-                            ) : (
-                              <div className="w-10 h-10 rounded bg-default-100 dark:bg-zinc-700 flex items-center justify-center shrink-0">
-                                <ImageIcon size={14} className="text-default-300" />
-                              </div>
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <p className="text-xs font-medium truncate leading-tight">
-                                {task.taskName || `Task #${task.id}`}
-                              </p>
-                              <div className="flex items-center gap-1.5 mt-1">
-                                <Chip size="sm" variant="flat" className="text-[10px] h-4">
-                                  {task.status === "IN_PROGRESS" ? "กำลังทำ" : task.status === "COMPLETED" ? "เสร็จ" : "ยังไม่เริ่ม"}
-                                </Chip>
-                                {task.startPlanned && (
-                                  <span className="text-[10px] text-default-400 flex items-center gap-0.5">
-                                    <Calendar size={10} />
-                                    {formatDate(task.startPlanned)}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </ModalBody>
-              <ModalFooter className="justify-center">
-                <Button variant="flat" onPress={onClose}>
-                  ยกเลิก
-                </Button>
-                <Button
-                  color="primary"
-                  startContent={<Link2 size={14} />}
-                  isLoading={isEditTaskPending}
-                  onPress={async () => {
-                    await confirmEditTaskDialog();
-                    onClose();
-                  }}
-                >
-                  ยืนยัน {editTaskIds.size > 0 ? `(${editTaskIds.size} Task)` : ""}
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+        filteredTasks={filteredEditTasks}
+        allTasks={tasks}
+        searchValue={editTaskSearch}
+        onSearchChange={setEditTaskSearch}
+        aiSuggestions={editAiSuggestions}
+        onAiSuggest={handleEditAiSuggest}
+        isAiSuggesting={isEditAiSuggesting}
+        onDismissSuggestion={(taskId) =>
+          setEditAiSuggestions((prev) => prev.filter((x) => x.taskId !== taskId))
+        }
+        onConfirm={confirmEditTaskDialog}
+        isConfirming={isEditTaskPending}
+        formatDate={formatDate}
+      />
 
       {/* Edit-mode Quote Dialog (existing items) */}
-      <Modal
-        isOpen={editQuoteItem !== null}
-        onOpenChange={(open) => {
-          if (!open) setEditQuoteItem(null);
+      <EditQuoteDialog
+        item={editQuoteItem}
+        onClose={() => setEditQuoteItem(null)}
+        suppliers={suppliers}
+        isAddingQuote={isEditAddingQuote}
+        onSetIsAddingQuote={setIsEditAddingQuote}
+        quoteForm={editQuoteForm}
+        onUpdateQuoteForm={(updates) => setEditQuoteForm((p) => ({ ...p, ...updates }))}
+        onAddQuote={handleEditAddQuote}
+        onDeleteQuote={handleEditDeleteQuote}
+        onSelectQuote={handleEditSelectQuote}
+        isPending={isEditQuotePending}
+        aiEstimate={editAiEstimate}
+        isEstimating={isEditEstimating}
+        onAiEstimate={handleEditAiEstimate}
+        formatDate={formatDate}
+      />
+
+      {/* History Modal */}
+      <HistoryModal
+        itemId={historyItem?.id ?? null}
+        materialName={historyItem?.materialName || ""}
+        onClose={() => setHistoryItem(null)}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        message={`ต้องการลบ "${deleteTarget?.label}" ใช่หรือไม่?`}
+        onConfirm={async () => {
+          if (!deleteTarget) return;
+          if (deleteTarget.type === "item") {
+            await executeDeleteItem(deleteTarget.id);
+          } else {
+            await executeEditDeleteQuote(deleteTarget.id);
+          }
+          setDeleteTarget(null);
         }}
-        size="3xl"
-        scrollBehavior="inside"
-        isDismissable={false}
-        isKeyboardDismissDisabled={true}
-      >
-        <ModalContent>
-          {(onClose) => (
-            <>
-              <ModalHeader className="flex flex-col gap-1 pb-2">
-                <div className="flex items-center gap-2">
-                  <Store size={18} />
-                  <span>จัดการใบเสนอราคา</span>
-                  {editQuoteItem && editQuoteItem.quotes.length > 0 && (
-                    <Chip size="sm" variant="flat" color="success" className="ml-2">
-                      {editQuoteItem.quotes.length} รายการ
-                    </Chip>
-                  )}
-                </div>
-                {editQuoteItem && (
-                  <p className="text-xs text-default-400 font-normal">
-                    {editQuoteItem.materialName}
-                    {editQuoteItem.specification ? ` | ${editQuoteItem.specification}` : ""}
-                    {editQuoteItem.quantity ? ` | ${editQuoteItem.quantity} ${editQuoteItem.unit || ""}` : ""}
-                  </p>
-                )}
-              </ModalHeader>
-              <ModalBody className="pt-0 space-y-3">
-                {/* AI Estimate */}
-                <div className="flex items-center justify-end gap-2">
-                  <Tooltip content="AI ประเมินราคากลาง">
-                    <Button
-                      size="sm"
-                      variant="flat"
-                      color="secondary"
-                      startContent={<Sparkles size={14} />}
-                      onPress={handleEditAiEstimate}
-                      isLoading={isEditEstimating}
-                    >
-                      AI ราคากลาง
-                    </Button>
-                  </Tooltip>
-                </div>
-
-                {/* Show AI or existing estimates */}
-                {(editAiEstimate || editQuoteItem?.aiEstimateMin || editQuoteItem?.aiEstimateMid || editQuoteItem?.aiEstimateMax) && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <div className="bg-success-50 dark:bg-success-900/20 rounded-lg p-2 text-center">
-                      <p className="text-[10px] uppercase text-success-600 font-bold">ประหยัด</p>
-                      <p className="text-sm font-bold text-success-700">
-                        ฿{(editAiEstimate?.min ?? editQuoteItem?.aiEstimateMin)?.toLocaleString() || "-"}
-                      </p>
-                    </div>
-                    <div className="bg-primary-50 dark:bg-primary-900/20 rounded-lg p-2 text-center">
-                      <p className="text-[10px] uppercase text-primary-600 font-bold">กลาง</p>
-                      <p className="text-sm font-bold text-primary-700">
-                        ฿{(editAiEstimate?.mid ?? editQuoteItem?.aiEstimateMid)?.toLocaleString() || "-"}
-                      </p>
-                    </div>
-                    <div className="bg-warning-50 dark:bg-warning-900/20 rounded-lg p-2 text-center">
-                      <p className="text-[10px] uppercase text-warning-600 font-bold">Premium</p>
-                      <p className="text-sm font-bold text-warning-700">
-                        ฿{(editAiEstimate?.max ?? editQuoteItem?.aiEstimateMax)?.toLocaleString() || "-"}
-                      </p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Quote Table */}
-                {editQuoteItem && editQuoteItem.quotes.length > 0 ? (
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-xs">
-                      <thead>
-                        <tr className="border-b border-default-200 text-default-500">
-                          <th className="text-left py-2 px-2 font-bold">Supplier</th>
-                          <th className="text-right py-2 px-2 font-bold">ราคา/หน่วย</th>
-                          <th className="text-right py-2 px-2 font-bold">ราคารวม</th>
-                          <th className="text-center py-2 px-2 font-bold">วันเสนอราคา</th>
-                          <th className="text-center py-2 px-2 font-bold">หมดอายุ</th>
-                          <th className="text-left py-2 px-2 font-bold">โน้ต</th>
-                          <th className="text-center py-2 px-2 font-bold">เลือก</th>
-                          <th className="py-2 px-2"></th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {editQuoteItem.quotes.map((q) => (
-                          <tr
-                            key={q.id}
-                            className={`border-b border-default-100 hover:bg-default-100/50 ${
-                              q.isSelected ? "bg-success-50/50 dark:bg-success-900/10" : ""
-                            }`}
-                          >
-                            <td className="py-2 px-2 font-medium">{q.supplier.supplierName}</td>
-                            <td className="py-2 px-2 text-right">
-                              {q.unitPrice != null ? `฿${Number(q.unitPrice).toLocaleString()}` : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-right">
-                              {q.totalPrice != null ? `฿${Number(q.totalPrice).toLocaleString()}` : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {q.quoteDate ? formatDate(q.quoteDate) : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {q.validUntil ? formatDate(q.validUntil) : "-"}
-                            </td>
-                            <td className="py-2 px-2 text-default-400 max-w-[120px] truncate">
-                              {q.note || "-"}
-                            </td>
-                            <td className="py-2 px-2 text-center">
-                              {q.isSelected ? (
-                                <Chip size="sm" color="success" variant="flat" className="text-[10px]">
-                                  เลือกแล้ว
-                                </Chip>
-                              ) : (
-                                <Button
-                                  isIconOnly
-                                  size="sm"
-                                  variant="light"
-                                  color="success"
-                                  onPress={() => handleEditSelectQuote(q.id)}
-                                  isLoading={isEditQuotePending}
-                                >
-                                  <Check size={14} />
-                                </Button>
-                              )}
-                            </td>
-                            <td className="py-2 px-2">
-                              <Button
-                                isIconOnly
-                                size="sm"
-                                variant="light"
-                                color="danger"
-                                onPress={() => handleEditDeleteQuote(q.id)}
-                              >
-                                <Trash2 size={12} />
-                              </Button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                ) : (
-                  <p className="text-xs text-default-400 text-center py-4">
-                    ยังไม่มีใบเสนอราคา
-                  </p>
-                )}
-
-                {/* Add New Quote Form */}
-                {isEditAddingQuote ? (
-                  <div className="bg-white dark:bg-zinc-800 rounded-lg p-3 border border-default-200 space-y-2">
-                    <p className="text-xs font-bold text-default-500 uppercase">เพิ่มใบเสนอราคาใหม่</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      <select
-                        value={editQuoteForm.supplierId}
-                        onChange={(e) => setEditQuoteForm((p) => ({ ...p, supplierId: e.target.value }))}
-                        className="col-span-2 sm:col-span-1 px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      >
-                        <option value="">-- เลือก Supplier --</option>
-                        {suppliers.map((s) => (
-                          <option key={s.id} value={s.id}>
-                            {s.supplierName}
-                          </option>
-                        ))}
-                      </select>
-                      <input
-                        type="number"
-                        placeholder="ราคา/หน่วย"
-                        value={editQuoteForm.unitPrice}
-                        onChange={(e) => setEditQuoteForm((p) => ({ ...p, unitPrice: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      />
-                      <input
-                        type="number"
-                        placeholder="ราคารวม"
-                        value={editQuoteForm.totalPrice}
-                        onChange={(e) => setEditQuoteForm((p) => ({ ...p, totalPrice: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      />
-                      <input
-                        type="date"
-                        value={editQuoteForm.quoteDate}
-                        onChange={(e) => setEditQuoteForm((p) => ({ ...p, quoteDate: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                        title="วันเสนอราคา"
-                      />
-                      <input
-                        type="date"
-                        value={editQuoteForm.validUntil}
-                        onChange={(e) => setEditQuoteForm((p) => ({ ...p, validUntil: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                        title="หมดอายุ"
-                      />
-                      <input
-                        type="text"
-                        placeholder="โน้ต"
-                        value={editQuoteForm.note}
-                        onChange={(e) => setEditQuoteForm((p) => ({ ...p, note: e.target.value }))}
-                        className="px-2 py-1.5 text-xs bg-default-100 dark:bg-zinc-700 border border-default-300 rounded-md"
-                      />
-                    </div>
-                    <div className="flex justify-end gap-2 pt-1">
-                      <Button
-                        size="sm"
-                        variant="flat"
-                        onPress={() => setIsEditAddingQuote(false)}
-                      >
-                        ยกเลิก
-                      </Button>
-                      <Button
-                        size="sm"
-                        color="success"
-                        variant="flat"
-                        startContent={<Save size={14} />}
-                        onPress={handleEditAddQuote}
-                        isLoading={isEditQuotePending}
-                      >
-                        เพิ่ม
-                      </Button>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex justify-end">
-                    <Button
-                      size="sm"
-                      color="primary"
-                      variant="flat"
-                      startContent={<Plus size={14} />}
-                      onPress={() => setIsEditAddingQuote(true)}
-                    >
-                      เพิ่ม Supplier
-                    </Button>
-                  </div>
-                )}
-              </ModalBody>
-              <ModalFooter className="justify-center">
-                <Button variant="flat" onPress={onClose}>
-                  ปิด
-                </Button>
-              </ModalFooter>
-            </>
-          )}
-        </ModalContent>
-      </Modal>
+      />
     </div>
   );
 };
