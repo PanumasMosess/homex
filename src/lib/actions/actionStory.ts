@@ -21,7 +21,19 @@ export async function createStory(
     const userId = session?.user?.id ? parseInt(session.user.id) : 0;
     if (!userId) return { success: false, error: true, message: "ไม่พบผู้ใช้" };
 
-    // 1. Upload video to S3
+    // 1. Validate file
+    const file = formData.get("file") as File | null;
+    if (!file) return { success: false, error: true, message: "ไม่พบไฟล์วิดีโอ" };
+
+    const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
+    if (file.size > MAX_SIZE) {
+      return { success: false, error: true, message: "ไฟล์วิดีโอต้องไม่เกิน 100 MB" };
+    }
+    if (!file.type.startsWith("video/")) {
+      return { success: false, error: true, message: "อนุญาตเฉพาะไฟล์วิดีโอเท่านั้น" };
+    }
+
+    // 2. Upload video to S3
     const uploadResult = await sendbase64toS3DataVdo(formData, "stories");
     if (!uploadResult.success || !uploadResult.url) {
       return { success: false, error: true, message: "อัปโหลดวิดีโอไม่สำเร็จ" };
@@ -76,11 +88,17 @@ async function processTranscriptInBackground(storyId: number, videoUrl: string) 
     const result = await transcribeVideoAudio(videoUrl);
 
     if (result) {
+      // Only auto-fill caption if user didn't provide one
+      const existing = await prisma.story.findUnique({
+        where: { id: storyId },
+        select: { caption: true },
+      });
+
       await prisma.story.update({
         where: { id: storyId },
         data: {
           transcript: result.transcript,
-          caption: result.summary || undefined, // auto-fill caption if empty
+          caption: existing?.caption ? undefined : (result.summary || undefined),
           isProcessing: false,
         },
       });
@@ -114,6 +132,12 @@ export async function getActiveStories(
     const currentUserId = session?.user?.id ? parseInt(session.user.id) : 0;
 
     const now = new Date();
+
+    // Cleanup: delete stories expired more than 48hrs ago (non-blocking)
+    const cleanupThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000);
+    prisma.story.deleteMany({
+      where: { organizationId, expiresAt: { lt: cleanupThreshold } },
+    }).catch(() => {});
 
     const stories = await prisma.story.findMany({
       where: {

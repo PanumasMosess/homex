@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Button, Textarea } from "@heroui/react";
-import { X, Upload, Loader2 } from "lucide-react";
+import { X, Upload } from "lucide-react";
 import type { StoryVideoPreviewProps } from "@/lib/type";
 
 export default function StoryVideoPreview({

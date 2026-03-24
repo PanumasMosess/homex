@@ -27,6 +27,8 @@ export default function StoryViewer({
   const [storyIdx, setStoryIdx] = useState(0);
   const [progress, setProgress] = useState(0);
   const [isMuted, setIsMuted] = useState(false);
+  const [videoError, setVideoError] = useState(false);
+  const [videoLoading, setVideoLoading] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
 
   const currentGroup = storyGroups[groupIdx];
@@ -86,9 +88,11 @@ export default function StoryViewer({
     };
   }, [currentStory?.id, handleNext]);
 
-  // Reset progress when story changes
+  // Reset state when story changes
   useEffect(() => {
     setProgress(0);
+    setVideoError(false);
+    setVideoLoading(true);
     const video = videoRef.current;
     if (video) {
       video.currentTime = 0;
@@ -218,13 +222,36 @@ export default function StoryViewer({
 
         {/* Video */}
         <video
+          key={currentStory.id}
           ref={videoRef}
           src={currentStory.videoUrl}
           className="w-full h-full object-contain"
           autoPlay
           playsInline
           muted={isMuted}
+          onLoadedData={() => setVideoLoading(false)}
+          onError={() => { setVideoError(true); setVideoLoading(false); }}
         />
+
+        {/* Video Loading */}
+        {videoLoading && !videoError && (
+          <div className="absolute inset-0 z-10 flex items-center justify-center">
+            <div className="w-10 h-10 border-3 border-white/30 border-t-white rounded-full animate-spin" />
+          </div>
+        )}
+
+        {/* Video Error */}
+        {videoError && (
+          <div className="absolute inset-0 z-10 flex flex-col items-center justify-center gap-2">
+            <p className="text-white/70 text-sm">ไม่สามารถโหลดวิดีโอได้</p>
+            <button
+              onClick={(e) => { e.stopPropagation(); handleNext(); }}
+              className="text-xs text-white/50 underline"
+            >
+              ข้ามไปเรื่องถัดไป
+            </button>
+          </div>
+        )}
 
         {/* Caption */}
         {currentStory.caption && (

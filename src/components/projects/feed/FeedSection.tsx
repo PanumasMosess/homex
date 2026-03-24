@@ -80,11 +80,16 @@ export default function FeedSection({
     recordInputRef.current?.click();
   };
 
+  const MAX_VIDEO_SIZE_MB = 100;
   const handleFileSelected = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("video/")) {
       toast.error("กรุณาเลือกไฟล์วิดีโอ");
+      return;
+    }
+    if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+      toast.error(`ไฟล์วิดีโอต้องไม่เกิน ${MAX_VIDEO_SIZE_MB} MB`);
       return;
     }
     setSelectedVideoFile(file);

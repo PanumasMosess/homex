@@ -747,6 +747,8 @@ model story {
   user   user @relation("story_author", fields: [userId], references: [id])
 
   views story_view[]
+
+  @@index([projectId, organizationId, expiresAt])
 }
 
 // =====================================
