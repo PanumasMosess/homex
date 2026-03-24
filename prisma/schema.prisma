@@ -42,6 +42,8 @@ model organization {
   contractors      contractor[]
   taskContractors  task_contractor[]
   feedPosts        feed_post[]
+  stories          story[]
+  storyViews       story_view[]     @relation("org_story_views")
   procurementItems procurement_item[]
   purchaseOrders   purchase_order[]
   notifications    notification[]
@@ -102,6 +104,8 @@ model user {
   procurementTaskConfirms procurement_task_link[]     @relation("procurement_task_confirmer")
   purchaseOrdersCreated   purchase_order[]            @relation("purchase_order_creator")
   notifications           notification[]              @relation("notification_user")
+  stories                 story[]                     @relation("story_author")
+  storyViews              story_view[]                @relation("story_viewer")
 }
 
 // =====================================
@@ -212,6 +216,7 @@ model project {
   files       project_file[] // ไฟล์แนบของโปรเจค
   imgs        project_img[] // รูปแนบของโปรเจค
   feedPosts        feed_post[]
+  stories          story[]
   procurementItems procurement_item[]
   purchaseOrders   purchase_order[]
 }
@@ -717,6 +722,54 @@ model purchase_order_item {
 // =====================================
 // Notification = แจ้งเตือน
 // =====================================
+// =====================================
+// Story = สตอรี่วิดีโอ (หมดอายุ 24 ชม.)
+// =====================================
+model story {
+  id           Int      @id @default(autoincrement())
+  videoUrl     String   @db.Text // URL วิดีโอบน S3
+  thumbnailUrl String?  @db.Text // URL thumbnail
+  caption      String?  @db.Text // แคปชัน (ผู้ใช้กรอกเอง หรือ AI เติมจาก transcript)
+  transcript   String?  @db.Text // ข้อความที่ AI ถอดจากเสียง (Speech-to-Text)
+  duration     Int?     // ความยาววิดีโอ (วินาที)
+  isProcessing Boolean  @default(true) // AI กำลังถอดเสียงอยู่หรือเปล่า
+  expiresAt    DateTime // เวลาหมดอายุ (createdAt + 24hr)
+  createdAt    DateTime @default(now())
+
+  // ---------- relations ----------
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id])
+
+  userId Int
+  user   user @relation("story_author", fields: [userId], references: [id])
+
+  views story_view[]
+
+  @@index([projectId, organizationId, expiresAt])
+}
+
+// =====================================
+// StoryView = บันทึกว่าใครดู Story ไปแล้ว
+// =====================================
+model story_view {
+  id        Int      @id @default(autoincrement())
+  viewedAt  DateTime @default(now())
+
+  storyId Int
+  story   story @relation(fields: [storyId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   user @relation("story_viewer", fields: [userId], references: [id])
+
+  organizationId Int
+  organization   organization @relation("org_story_views", fields: [organizationId], references: [id])
+
+  @@unique([storyId, userId])
+}
+
 model notification {
   id        Int      @id @default(autoincrement())
   type      String // MATERIAL_LATE / MATERIAL_ARRIVED / TASK_NOT_READY / PO_APPROVED / etc.

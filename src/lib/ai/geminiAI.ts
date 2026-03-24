@@ -479,6 +479,69 @@ ${tasksText}`;
   }
 };
 
+export const transcribeVideoAudio = async (videoUrl: string) => {
+  try {
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+      throw new Error(`ไม่สามารถโหลดวิดีโอได้: ${videoResponse.statusText}`);
+    }
+
+    const mimeType = videoResponse.headers.get("content-type") || "video/mp4";
+    const arrayBuffer = await videoResponse.arrayBuffer();
+    const videoBytesBase64 = Buffer.from(arrayBuffer).toString("base64");
+
+    const result = await ai_gemini.models.generateContent({
+      model: model_version,
+      config: {
+        systemInstruction: `คุณคือระบบถอดเสียงจากวิดีโอ (Speech-to-Text)
+        หน้าที่ของคุณคือ ฟังเสียงในวิดีโอที่ได้รับ แล้วถอดข้อความออกมาให้ครบถ้วน
+        เงื่อนไขการตอบกลับ:
+        - ตอบกลับเป็น JSON Object เพียง 1 ก้อน
+        - วัตถุต้องมีฟิลด์เหล่านี้:
+          1. "transcript" (string - ข้อความที่ถอดจากเสียงทั้งหมด ภาษาอะไรก็ตามที่พูด)
+          2. "language" (string - ภาษาหลักที่พูดในวิดีโอ เช่น "th", "en")
+          3. "summary" (string - สรุปเนื้อหาสั้นๆ 1-2 ประโยค)
+        - ถ้าไม่มีเสียงพูดในวิดีโอ ให้ใส่ transcript เป็น "" และ summary เป็น "ไม่มีเสียงพูดในวิดีโอ"
+        - ห้ามมีข้อความนำหรือคำลงท้าย ห้ามครอบด้วย Markdown format`,
+        temperature: 0.2,
+        responseMimeType: "application/json",
+      },
+      contents: [
+        {
+          role: "user",
+          parts: [
+            {
+              inlineData: {
+                data: videoBytesBase64,
+                mimeType: mimeType,
+              },
+            },
+            { text: "ถอดเสียงจากวิดีโอนี้" },
+          ],
+        },
+      ],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!responseText) return null;
+
+    try {
+      const data = JSON.parse(responseText);
+      return {
+        transcript: data.transcript || "",
+        language: data.language || "th",
+        summary: data.summary || "",
+      };
+    } catch {
+      console.error("AI Transcript Parse Error:", responseText);
+      return null;
+    }
+  } catch (error) {
+    console.error("transcribeVideoAudio error:", error);
+    return null;
+  }
+};
+
 export const generateTakeBudget_Durationday = async (prompt: string) => {
   try {
     const result = await ai_gemini.models.generateContent({
