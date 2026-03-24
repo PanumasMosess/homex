@@ -1027,7 +1027,7 @@ const ProcurementSection = ({
       },
       {
         accessorKey: "materialName",
-        header: "ชื่อวัสดุ",
+        header: "ชื่อรายการ",
         size: 200,
         cell: ({ row }) => {
           const isEditing = editingRowId === row.original.id;
@@ -1527,9 +1527,9 @@ const ProcurementSection = ({
       {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
-          <h2 className="text-xl sm:text-2xl font-bold">จัดซื้อวัสดุ</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">จัดซื้อ</h2>
           <p className="text-default-500 text-xs sm:text-sm">
-            จัดการรายการวัสดุและเปรียบเทียบราคา
+            จัดการรายการและเปรียบเทียบราคา
           </p>
         </div>
         <div className="flex gap-2 flex-wrap items-center">
@@ -1555,7 +1555,7 @@ const ProcurementSection = ({
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
         <Input
-          placeholder="ค้นหาวัสดุ..."
+          placeholder="ค้นหา ชื่อรายการ วัสดุ ราคา..."
           value={globalFilter}
           onValueChange={setGlobalFilter}
           isClearable
@@ -1838,7 +1838,7 @@ const ProcurementSection = ({
                   className="text-center py-16 text-default-400"
                 >
                   <div className="flex flex-col items-center gap-2">
-                    <p className="font-medium">ยังไม่มีรายการวัสดุ</p>
+                    <p className="font-medium">ยังไม่มีรายการ</p>
                     <p className="text-xs">กด "เพิ่มรายการ" เพื่อเริ่มเพิ่มวัสดุ</p>
                   </div>
                 </td>
