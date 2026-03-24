@@ -5,6 +5,35 @@ import { auth } from "@/auth";
 import { ActionState } from "@/lib/type";
 import { sendbase64toS3DataVdo } from "@/lib/actions/actionIndex";
 import { transcribeVideoAudio } from "@/lib/ai/geminiAI";
+import { videoConversionService } from "@/lib/videoConversionService";
+import fs from "fs/promises";
+import os from "os";
+import path from "path";
+
+/* ====================================================== */
+/* HELPER: Extract video duration (seconds) via ffprobe    */
+/* ====================================================== */
+
+async function getVideoDuration(file: File): Promise<number | null> {
+  let tempPath: string | null = null;
+  try {
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const ext = file.name.split(".").pop() || "mp4";
+    tempPath = path.join(os.tmpdir(), `story_probe_${Date.now()}.${ext}`);
+    await fs.writeFile(tempPath, buffer);
+
+    const metadata = await videoConversionService.getVideoMetadata(tempPath);
+    const duration = metadata?.format?.duration;
+    return duration ? Math.round(Number(duration)) : null;
+  } catch (error) {
+    console.warn("getVideoDuration failed:", error);
+    return null;
+  } finally {
+    if (tempPath) {
+      await fs.unlink(tempPath).catch(() => {});
+    }
+  }
+}
 
 /* ====================================================== */
 /* CREATE STORY                                            */
@@ -22,7 +51,7 @@ export async function createStory(
     if (!userId) return { success: false, error: true, message: "ไม่พบผู้ใช้" };
 
     // 1. Validate file
-    const file = formData.get("file") as File | null;
+    let file = formData.get("file") as File | null;
     if (!file) return { success: false, error: true, message: "ไม่พบไฟล์วิดีโอ" };
 
     const MAX_SIZE = 100 * 1024 * 1024; // 100 MB
@@ -33,19 +62,39 @@ export async function createStory(
       return { success: false, error: true, message: "อนุญาตเฉพาะไฟล์วิดีโอเท่านั้น" };
     }
 
-    // 2. Upload video to S3
-    const uploadResult = await sendbase64toS3DataVdo(formData, "stories");
+    // 2. Convert MOV → MP4 if needed (also compresses via libx264 crf 23)
+    const isMovFile = file.name.toLowerCase().endsWith(".mov") ||
+      file.type === "video/quicktime";
+    if (isMovFile) {
+      try {
+        console.log(`🎬 Converting MOV → MP4: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+        file = await videoConversionService.convertMovToMp4(file);
+        console.log(`✅ Converted: ${file.name} (${(file.size / 1024 / 1024).toFixed(1)} MB)`);
+      } catch (error) {
+        console.error("MOV conversion failed, uploading original:", error);
+        // Fall through — upload original file if conversion fails
+      }
+    }
+
+    // 3. Extract video duration
+    const duration = await getVideoDuration(file);
+
+    // 4. Upload video to S3
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+    const uploadResult = await sendbase64toS3DataVdo(uploadFormData, "stories");
     if (!uploadResult.success || !uploadResult.url) {
       return { success: false, error: true, message: "อัปโหลดวิดีโอไม่สำเร็จ" };
     }
 
-    // 2. Create story record (optimistic — show immediately)
+    // 5. Create story record (optimistic — show immediately)
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24hr
 
     const story = await prisma.story.create({
       data: {
         videoUrl: uploadResult.url,
         caption: caption || null,
+        duration,
         isProcessing: true,
         expiresAt,
         organizationId,
