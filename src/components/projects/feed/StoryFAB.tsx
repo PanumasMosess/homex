@@ -63,7 +63,7 @@ export default function StoryFAB({ onUploadVideo, onRecordVideo }: StoryFABProps
                   <Upload size={20} className="text-white" />
                 </div>
                 <span className="text-sm font-semibold text-default-700 whitespace-nowrap">
-                  อัปโหลด
+                  อัปโหลดวิดีโอ
                 </span>
               </motion.button>
             </>
