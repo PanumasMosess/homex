@@ -586,3 +586,63 @@ export interface CreateSupplierQuoteData {
   fileUrl?: string;
   isSelected?: boolean;
 }
+
+// =====================================
+// Story Types
+// =====================================
+
+export interface StoryUser {
+  id: number;
+  displayName: string | null;
+  avatarUrl: string | null;
+}
+
+export interface StoryData {
+  id: number;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  caption: string | null;
+  transcript: string | null;
+  duration: number | null;
+  isProcessing: boolean;
+  expiresAt: string;
+  createdAt: string;
+  user: StoryUser;
+  isViewed: boolean;
+}
+
+export interface StoryGroup {
+  user: StoryUser;
+  stories: StoryData[];
+  hasUnviewed: boolean;
+}
+
+export interface StoryBarProps {
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+  currentUserAvatar?: string | null;
+  currentUserName?: string | null;
+  onCreateStory: () => void;
+}
+
+export interface StoryViewerProps {
+  storyGroups: StoryGroup[];
+  initialGroupIndex: number;
+  currentUserId: number;
+  onClose: () => void;
+  onViewed: (storyId: number) => void;
+}
+
+export interface StoryFABProps {
+  onUploadVideo: () => void;
+  onRecordVideo: () => void;
+}
+
+export interface StoryVideoPreviewProps {
+  videoFile: File | null;
+  videoUrl: string | null;
+  onUpload: (caption: string) => void;
+  onCancel: () => void;
+  isUploading: boolean;
+}
