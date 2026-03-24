@@ -1,4 +1,4 @@
-// src/lib/service/videoThumbnailService.ts
+// src/lib/services/videoThumbnailService.ts
 import { spawn } from 'child_process'
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises'
 import path from 'path'
