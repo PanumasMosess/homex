@@ -44,7 +44,7 @@ export default function StoryFAB({ onUploadVideo, onRecordVideo }: StoryFABProps
                   <Video size={20} className="text-white" />
                 </div>
                 <span className="text-sm font-semibold text-default-700 whitespace-nowrap">
-                  อัดวิดีโอทันที
+                  ถ่าย
                 </span>
               </motion.button>
 
@@ -63,7 +63,7 @@ export default function StoryFAB({ onUploadVideo, onRecordVideo }: StoryFABProps
                   <Upload size={20} className="text-white" />
                 </div>
                 <span className="text-sm font-semibold text-default-700 whitespace-nowrap">
-                  อัปโหลดวิดีโอ
+                  อัปโหลด
                 </span>
               </motion.button>
             </>
