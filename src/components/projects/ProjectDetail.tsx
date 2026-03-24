@@ -67,9 +67,11 @@ import TaskActionButtons from "./TaskActionButtons";
 import DeleteSubtaskModal from "./DeleteSubtaskModal";
 import { getProjectMembers } from "@/lib/actions/actionTaskMember";
 import { getContractors } from "@/lib/actions/actionTaskContractor";
+import { getSuppliers } from "@/lib/actions/actionSupplier";
 import DocumentSection from "./DocumentSection";
 import FeedSection from "./feed/FeedSection";
 import DashboardCamera from "./camera/DashboardCamera";
+import ProcurementSection from "./procurement/ProcurementSection";
 
 const ProjectDetail = ({
   organizationId,
@@ -142,6 +144,7 @@ const ProjectDetail = ({
   const [projectMembers, setProjectMembers] = useState<any[]>([]);
   const lastLoadedMemberId = useRef<number | null>(null);
   const [contractors, setContractors] = useState<any[]>([]);
+  const [suppliersList, setSuppliersList] = useState<any[]>([]);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedQ(q), 300);
@@ -197,8 +200,12 @@ const ProjectDetail = ({
   useEffect(() => {
     if (organizationId) {
       const load = async () => {
-        const data = await getContractors(organizationId);
-        setContractors(data || []);
+        const [cData, sData] = await Promise.all([
+          getContractors(organizationId),
+          getSuppliers(organizationId),
+        ]);
+        setContractors(cData || []);
+        setSuppliersList(sData || []);
       };
       load();
     }
@@ -1038,10 +1045,8 @@ const ProjectDetail = ({
           />
         )}
 
-        {activeSection === "camera" && <DashboardCamera accessToken={tokenCamera} />}
-
         {/* Section อื่นๆ */}
-        {!["tasks", "documents", "feed", "camera"].includes(activeSection) && (
+        {!["tasks", "documents", "feed"].includes(activeSection) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
             <p className="text-default-400 font-bold uppercase tracking-widest">
               Coming Soon

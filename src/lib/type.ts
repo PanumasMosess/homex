@@ -86,6 +86,16 @@ export interface Task {
   durationDays?: number | null;
   budget: number | null;
   details?: Subtask[];
+  procurementTaskLinks?: {
+    id: number;
+    procurementItem: {
+      id: number;
+      materialName: string;
+      status: string;
+      expectedDate: Date | string | null;
+      alertDaysBefore: number | null;
+    };
+  }[];
 }
 
 export interface ProjectDetailProps {
@@ -133,6 +143,7 @@ export type ActionState = {
   error: boolean;
   message?: string;
   taskId?: number;
+  data?: any;
 };
 
 export interface CreateEmployeeData {
@@ -433,4 +444,145 @@ export interface EzvizCameraProps {
 
 export interface DashboardCameraProp {
   accessToken: string;
+}
+
+// =====================================
+// Procurement Types
+// =====================================
+
+export type ProcurementStatus =
+  | "PENDING"
+  | "PURCHASING"
+  | "DELIVERING"
+  | "ARRIVED"
+  | "LOW_STOCK"
+  | "OUT_OF_STOCK";
+
+export type PartType = "EXT" | "INT" | "OTHER";
+export type MaterialGroup = "MAIN" | "GENERAL" | "MACHINERY" | "OTHER";
+
+export type MaterialReadiness =
+  | "READY"
+  | "NOT_READY"
+  | "AT_RISK"
+  | "DELAYED";
+
+export interface ProcurementItemImage {
+  id: number;
+  imageUrl: string;
+  caption: string | null;
+  sortOrder: number;
+}
+
+export interface ProcurementSupplierQuote {
+  id: number;
+  unitPrice: number | null;
+  totalPrice: number | null;
+  quoteDate: string | null;
+  validUntil: string | null;
+  note: string | null;
+  fileUrl: string | null;
+  isSelected: boolean;
+  supplierId: number;
+  supplier: {
+    id: number;
+    supplierName: string;
+    contactPerson: string | null;
+  };
+}
+
+export interface ProcurementTaskLinkData {
+  id: number;
+  linkedBy: string;
+  aiConfidence: number | null;
+  confirmedAt: string | null;
+  taskId: number;
+  task: {
+    id: number;
+    taskName: string | null;
+    status: string;
+    startPlanned: string | Date | null;
+  };
+}
+
+export interface ProcurementItemData {
+  id: number;
+  materialName: string;
+  specification: string | null;
+  partType: string | null;
+  materialGroup: string | null;
+  unit: string | null;
+  quantity: number | null;
+  status: ProcurementStatus;
+  expectedDate: string | null;
+  leadTimeDays: number | null;
+  alertEnabled: boolean;
+  alertDaysBefore: number | null;
+  aiEstimateMin: number | null;
+  aiEstimateMid: number | null;
+  aiEstimateMax: number | null;
+  note: string | null;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+  projectId: number;
+  organizationId: number;
+  createdById: number;
+  images: ProcurementItemImage[];
+  quotes: ProcurementSupplierQuote[];
+  taskLinks: ProcurementTaskLinkData[];
+}
+
+export interface ProcurementSectionProps {
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+  suppliers: { id: number; supplierName: string }[];
+  tasks: { id: number; taskName: string | null; status: string; startPlanned: string | Date | null; coverImageUrl: string | null }[];
+}
+
+export interface CreateProcurementItemData {
+  materialName: string;
+  specification?: string;
+  partType?: string;
+  materialGroup?: string;
+  unit?: string;
+  quantity?: number;
+  status?: string;
+  expectedDate?: string;
+  leadTimeDays?: number;
+  alertEnabled?: boolean;
+  alertDaysBefore?: number;
+  note?: string;
+  sortOrder?: number;
+  projectId: number;
+  organizationId: number;
+}
+
+export interface UpdateProcurementItemData {
+  materialName?: string;
+  specification?: string;
+  partType?: string;
+  materialGroup?: string;
+  unit?: string;
+  quantity?: number;
+  status?: string;
+  expectedDate?: string;
+  leadTimeDays?: number;
+  alertEnabled?: boolean;
+  alertDaysBefore?: number;
+  note?: string;
+  sortOrder?: number;
+}
+
+export interface CreateSupplierQuoteData {
+  procurementItemId: number;
+  supplierId: number;
+  unitPrice?: number;
+  totalPrice?: number;
+  quoteDate?: string;
+  validUntil?: string;
+  note?: string;
+  fileUrl?: string;
+  isSelected?: boolean;
 }

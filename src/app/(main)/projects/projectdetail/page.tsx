@@ -68,6 +68,19 @@ const Page = async () => {
           sortOrder: "asc",
         },
       },
+      procurementTaskLinks: {
+        include: {
+          procurementItem: {
+            select: {
+              id: true,
+              materialName: true,
+              status: true,
+              expectedDate: true,
+              alertDaysBefore: true,
+            },
+          },
+        },
+      },
     },
   });
 
