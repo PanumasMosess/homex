@@ -53,6 +53,54 @@ export default function FeedSection({
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const recordInputRef = useRef<HTMLInputElement>(null);
 
+  // ─── Client-side thumbnail capture ───
+  const captureVideoThumbnail = useCallback(
+    (file: File): Promise<string | null> => {
+      return new Promise((resolve) => {
+        const video = document.createElement("video");
+        video.preload = "metadata";
+        video.muted = true;
+        video.playsInline = true;
+
+        const objectUrl = URL.createObjectURL(file);
+        video.src = objectUrl;
+
+        const cleanup = () => URL.revokeObjectURL(objectUrl);
+
+        video.onloadeddata = () => {
+          // Seek to 1 second (or 0 if video is shorter)
+          video.currentTime = Math.min(1, video.duration * 0.1);
+        };
+
+        video.onseeked = () => {
+          try {
+            const canvas = document.createElement("canvas");
+            canvas.width = Math.min(640, video.videoWidth);
+            canvas.height = Math.round(
+              canvas.width * (video.videoHeight / video.videoWidth),
+            );
+            const ctx = canvas.getContext("2d");
+            if (!ctx) { cleanup(); resolve(null); return; }
+
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+            cleanup();
+            resolve(dataUrl);
+          } catch {
+            cleanup();
+            resolve(null);
+          }
+        };
+
+        video.onerror = () => { cleanup(); resolve(null); };
+
+        // Timeout fallback
+        setTimeout(() => { cleanup(); resolve(null); }, 8000);
+      });
+    },
+    [],
+  );
+
   // ─── Story Logic ───
   const loadStories = useCallback(async () => {
     setStoriesLoading(true);
@@ -102,18 +150,67 @@ export default function FeedSection({
     if (!selectedVideoFile) return;
     setIsUploading(true);
     try {
-      const formData = new FormData();
-      formData.append("file", selectedVideoFile);
+      // Capture client-side thumbnail while uploading
+      const [thumbnailDataUrl, res] = await Promise.all([
+        captureVideoThumbnail(selectedVideoFile),
+        (async () => {
+          const fd = new FormData();
+          fd.append("file", selectedVideoFile);
+          return createStory(fd, projectId, organizationId, caption || undefined);
+        })(),
+      ]);
 
-      const res = await createStory(formData, projectId, organizationId, caption || undefined);
-      if (res.success) {
+      if (res.success && res.data) {
         toast.success("สร้างสตอรี่สำเร็จ!");
         setShowVideoPreview(false);
         setSelectedVideoFile(null);
-        // Reload stories
-        startTransition(() => {
-          loadStories();
+
+        // Immediately inject new story into storyGroups with client thumbnail
+        const newStory = {
+          id: res.data.id,
+          videoUrl: res.data.videoUrl,
+          thumbnailUrl: thumbnailDataUrl || res.data.thumbnailUrl || null,
+          caption: res.data.caption || caption || null,
+          transcript: null,
+          duration: res.data.duration || null,
+          isProcessing: true,
+          expiresAt: res.data.expiresAt,
+          createdAt: res.data.createdAt,
+          user: {
+            id: currentUserId,
+            displayName: currentUserName,
+            avatarUrl: currentUserAvatar,
+          },
+          isViewed: true,
+        };
+
+        setStoryGroups((prev) => {
+          // Check if current user already has a group
+          const existingIdx = prev.findIndex((g) => g.user.id === currentUserId);
+          if (existingIdx >= 0) {
+            // Append story to existing group
+            const updated = [...prev];
+            updated[existingIdx] = {
+              ...updated[existingIdx],
+              stories: [...updated[existingIdx].stories, newStory],
+            };
+            return updated;
+          }
+          // Create new group at the front
+          return [
+            {
+              user: { id: currentUserId, displayName: currentUserName, avatarUrl: currentUserAvatar },
+              stories: [newStory],
+              hasUnviewed: false,
+            },
+            ...prev,
+          ];
         });
+
+        // Reload from server in background (server thumbnail will replace client one)
+        setTimeout(() => {
+          startTransition(() => { loadStories(); });
+        }, 15000);
       } else {
         toast.error(res.message || "สร้างสตอรี่ไม่สำเร็จ");
       }
