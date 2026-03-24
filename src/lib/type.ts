@@ -103,6 +103,7 @@ export interface ProjectDetailProps {
   currentUserId: number;
   dataDetail: Task[];
   isSpadmin: any;
+  tokenCamera: string;
 }
 
 export interface CreateMainTaskProps {
@@ -409,7 +410,12 @@ export interface FeedCardProps {
   post: FeedPostData;
   currentUserId: number;
   onLikeToggle: (postId: number) => void;
-  onComment: (postId: number, content: string, parentId?: number, imageUrl?: string) => void;
+  onComment: (
+    postId: number,
+    content: string,
+    parentId?: number,
+    imageUrl?: string,
+  ) => void;
   onShare: (postId: number) => void;
   onLoadComments: (postId: number) => void;
   onLikeComment: (postId: number, commentId: number) => void;
@@ -419,10 +425,25 @@ export interface CommentSectionProps {
   postId: number;
   comments: FeedCommentData[];
   currentUserId: number;
-  onComment: (postId: number, content: string, parentId?: number, imageUrl?: string) => void;
+  onComment: (
+    postId: number,
+    content: string,
+    parentId?: number,
+    imageUrl?: string,
+  ) => void;
   onLikeComment: (postId: number, commentId: number) => void;
   totalComments: number;
   onLoadAll: () => void;
+}
+
+export interface EzvizCameraProps {
+  cameraId: string;
+  accessToken: string;
+  ezopenUrl: string;
+}
+
+export interface DashboardCameraProp {
+  accessToken: string;
 }
 
 // =====================================

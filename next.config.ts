@@ -27,7 +27,7 @@ const nextConfig: NextConfig = {
         hostname: "sgp1.digitaloceanspaces.com",
       },
     ],
-  }
+  },
 };
 
 export default nextConfig;
