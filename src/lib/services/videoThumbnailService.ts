@@ -1,6 +1,7 @@
 // src/lib/services/videoThumbnailService.ts
 import { spawn } from 'child_process'
 import { mkdir, readFile, unlink, writeFile } from 'fs/promises'
+import os from 'os'
 import path from 'path'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -33,13 +34,8 @@ export class VideoThumbnailService {
       // สร้างชื่อไฟล์ที่ไม่ซ้ำกันสำหรับ thumbnail
       const thumbnailFilename = `thumbnail-${uuidv4()}.jpg`
 
-      // สร้างโฟลเดอร์สำหรับเก็บ thumbnail ถ้ายังไม่มี
-      const uploadDir = path.join(
-        process.cwd(),
-        'public',
-        'uploads',
-        'thumbnails'
-      )
+      // ใช้ OS temp directory (เขียนได้ทั้ง local และ server)
+      const uploadDir = path.join(os.tmpdir(), 'thumbnails')
       await mkdir(uploadDir, { recursive: true })
 
       const thumbnailPath = path.join(uploadDir, thumbnailFilename)
@@ -67,8 +63,8 @@ export class VideoThumbnailService {
 
         ffmpeg.on('close', (code) => {
           if (code === 0) {
-            // สำเร็จ - ส่งคืน path ของ thumbnail
-            resolve(`/uploads/thumbnails/${thumbnailFilename}`)
+            // สำเร็จ - ส่งคืน absolute path ของ thumbnail
+            resolve(thumbnailPath)
           } else {
             reject(new Error(`ffmpeg process exited with code ${code}`))
           }
@@ -92,32 +88,22 @@ export class VideoThumbnailService {
     timeInSeconds: number = 1
   ): Promise<string> {
     try {
-      // ดาวน์โหลดวิดีโอไปยังโฟลเดอร์ชั่วคราว
-      const tempDir = path.join(process.cwd(), 'tmp')
-      await mkdir(tempDir, { recursive: true })
-
-      const tempVideoPath = path.join(tempDir, `video-${uuidv4()}.mp4`)
+      // ดาวน์โหลดวิดีโอไปยัง OS temp directory
+      const tempVideoPath = path.join(os.tmpdir(), `video-${uuidv4()}.mp4`)
 
       // ดาวน์โหลดวิดีโอ
       const videoResponse = await fetch(videoUrl)
       const videoBuffer = Buffer.from(await videoResponse.arrayBuffer())
       await writeFile(tempVideoPath, videoBuffer)
 
-      // สร้าง thumbnail
-      const localThumbnailPath = await this.generateThumbnailFromVideo(
+      // สร้าง thumbnail (returns absolute path in os.tmpdir())
+      const thumbnailAbsPath = await this.generateThumbnailFromVideo(
         tempVideoPath,
         timeInSeconds
       )
 
-      // อัปโหลด thumbnail ไป S3
-      const thumbnailFullPath = path.join(
-        process.cwd(),
-        'public',
-        localThumbnailPath
-      )
-
-      // อ่านไฟล์ thumbnail แทนที่จะใช้ fetch
-      const thumbnailBuffer = await readFile(thumbnailFullPath)
+      // อ่านไฟล์ thumbnail
+      const thumbnailBuffer = await readFile(thumbnailAbsPath)
 
       // สร้าง File object จาก Buffer
       const thumbnailFile = new File(
@@ -131,7 +117,7 @@ export class VideoThumbnailService {
       // ลบไฟล์ชั่วคราว
       try {
         await unlink(tempVideoPath)
-        await unlink(thumbnailFullPath)
+        await unlink(thumbnailAbsPath)
       } catch (cleanupError) {
         console.warn('Failed to clean up temporary files:', cleanupError)
       }
@@ -177,30 +163,20 @@ export class VideoThumbnailService {
     timeInSeconds: number = 1
   ): Promise<string> {
     try {
-      // บันทึกไฟล์วิดีโอไปยังโฟลเดอร์ชั่วคราว
-      const tempDir = path.join(process.cwd(), 'tmp')
-      await mkdir(tempDir, { recursive: true })
-
-      const tempVideoPath = path.join(tempDir, `video-${uuidv4()}.mp4`)
+      // บันทึกไฟล์วิดีโอไปยัง OS temp directory
+      const tempVideoPath = path.join(os.tmpdir(), `video-${uuidv4()}.mp4`)
 
       const videoBuffer = Buffer.from(await videoFile.arrayBuffer())
       await writeFile(tempVideoPath, videoBuffer)
 
-      // สร้าง thumbnail
-      const localThumbnailPath = await this.generateThumbnailFromVideo(
+      // สร้าง thumbnail (returns absolute path in os.tmpdir())
+      const thumbnailAbsPath = await this.generateThumbnailFromVideo(
         tempVideoPath,
         timeInSeconds
       )
 
-      // อัปโหลด thumbnail ไป S3
-      const thumbnailFullPath = path.join(
-        process.cwd(),
-        'public',
-        localThumbnailPath
-      )
-
-      // อ่านไฟล์ thumbnail แทนที่จะใช้ fetch
-      const thumbnailBuffer = await readFile(thumbnailFullPath)
+      // อ่านไฟล์ thumbnail
+      const thumbnailBuffer = await readFile(thumbnailAbsPath)
 
       // สร้าง File object จาก Buffer
       const thumbnailFile = new File(
@@ -214,7 +190,7 @@ export class VideoThumbnailService {
       // ลบไฟล์ชั่วคราว
       try {
         await unlink(tempVideoPath)
-        await unlink(thumbnailFullPath)
+        await unlink(thumbnailAbsPath)
       } catch (cleanupError) {
         console.warn('Failed to clean up temporary files:', cleanupError)
       }
