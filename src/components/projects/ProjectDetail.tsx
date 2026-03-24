@@ -78,7 +78,7 @@ const ProjectDetail = ({
   currentUserId,
   dataDetail,
   isSpadmin,
-  tokenCamera
+  tokenCamera,
 }: ProjectDetailProps) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -1045,8 +1045,30 @@ const ProjectDetail = ({
           />
         )}
 
+        {activeSection === "purchasing" && (
+          <ProcurementSection
+            projectId={Number(projectInfo.id)}
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+            suppliers={suppliersList}
+            tasks={tasks.map((t: any) => ({
+              id: t.id,
+              taskName: t.taskName,
+              status: t.status,
+              startPlanned: t.startPlanned,
+              coverImageUrl: t.coverImageUrl || null,
+            }))}
+          />
+        )}
+
+         {activeSection === "camera" && (
+          <DashboardCamera accessToken={tokenCamera} />
+        )}
+
         {/* Section อื่นๆ */}
-        {!["tasks", "documents", "feed"].includes(activeSection) && (
+        {!["tasks", "documents", "feed", "purchasing", "camera"].includes(
+          activeSection,
+        ) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
             <p className="text-default-400 font-bold uppercase tracking-widest">
               Coming Soon
