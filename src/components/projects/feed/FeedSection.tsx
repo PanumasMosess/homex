@@ -5,7 +5,7 @@ import { Spinner } from "@heroui/react";
 import { toast } from "react-toastify";
 import { useSession } from "next-auth/react";
 import { AnimatePresence } from "framer-motion";
-import type { FeedSectionProps, FeedPostData, StoryGroup } from "@/lib/type";
+import type { FeedSectionProps, FeedPostData, StoryGroup, CreateStoryResponse } from "@/lib/type";
 import FeedCard from "./FeedCard";
 import StoryBar from "./StoryBar";
 import StoryFAB from "./StoryFAB";
@@ -24,6 +24,7 @@ import {
   createStory,
   markStoryViewed,
 } from "@/lib/actions/actionStory";
+import { captureVideoThumbnail } from "@/lib/captureVideoThumbnail";
 
 export default function FeedSection({
   projectId,
@@ -52,54 +53,6 @@ export default function FeedSection({
   const [isUploading, setIsUploading] = useState(false);
   const uploadInputRef = useRef<HTMLInputElement>(null);
   const recordInputRef = useRef<HTMLInputElement>(null);
-
-  // ─── Client-side thumbnail capture ───
-  const captureVideoThumbnail = useCallback(
-    (file: File): Promise<string | null> => {
-      return new Promise((resolve) => {
-        const video = document.createElement("video");
-        video.preload = "metadata";
-        video.muted = true;
-        video.playsInline = true;
-
-        const objectUrl = URL.createObjectURL(file);
-        video.src = objectUrl;
-
-        const cleanup = () => URL.revokeObjectURL(objectUrl);
-
-        video.onloadeddata = () => {
-          // Seek to 1 second (or 0 if video is shorter)
-          video.currentTime = Math.min(1, video.duration * 0.1);
-        };
-
-        video.onseeked = () => {
-          try {
-            const canvas = document.createElement("canvas");
-            canvas.width = Math.min(640, video.videoWidth);
-            canvas.height = Math.round(
-              canvas.width * (video.videoHeight / video.videoWidth),
-            );
-            const ctx = canvas.getContext("2d");
-            if (!ctx) { cleanup(); resolve(null); return; }
-
-            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
-            cleanup();
-            resolve(dataUrl);
-          } catch {
-            cleanup();
-            resolve(null);
-          }
-        };
-
-        video.onerror = () => { cleanup(); resolve(null); };
-
-        // Timeout fallback
-        setTimeout(() => { cleanup(); resolve(null); }, 8000);
-      });
-    },
-    [],
-  );
 
   // ─── Story Logic ───
   const loadStories = useCallback(async () => {
@@ -161,21 +114,22 @@ export default function FeedSection({
       ]);
 
       if (res.success && res.data) {
+        const storyData = res.data as CreateStoryResponse;
         toast.success("สร้างสตอรี่สำเร็จ!");
         setShowVideoPreview(false);
         setSelectedVideoFile(null);
 
         // Immediately inject new story into storyGroups with client thumbnail
         const newStory = {
-          id: res.data.id,
-          videoUrl: res.data.videoUrl,
-          thumbnailUrl: thumbnailDataUrl || res.data.thumbnailUrl || null,
-          caption: res.data.caption || caption || null,
+          id: storyData.id,
+          videoUrl: storyData.videoUrl,
+          thumbnailUrl: thumbnailDataUrl || storyData.thumbnailUrl || null,
+          caption: storyData.caption || caption || null,
           transcript: null,
-          duration: res.data.duration || null,
+          duration: storyData.duration || null,
           isProcessing: true,
-          expiresAt: res.data.expiresAt,
-          createdAt: res.data.createdAt,
+          expiresAt: storyData.expiresAt,
+          createdAt: storyData.createdAt,
           user: {
             id: currentUserId,
             displayName: currentUserName,
@@ -412,8 +366,6 @@ export default function FeedSection({
         {/* Story Bar */}
         <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-default-200 dark:border-zinc-800 p-2">
           <StoryBar
-            projectId={projectId}
-            organizationId={organizationId}
             currentUserId={currentUserId}
             currentUserAvatar={currentUserAvatar}
             currentUserName={currentUserName}

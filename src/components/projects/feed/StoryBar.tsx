@@ -3,7 +3,7 @@
 import { useRef, useState, useEffect, useCallback } from "react";
 import { Avatar } from "@heroui/react";
 import { Plus, ChevronLeft, ChevronRight } from "lucide-react";
-import type { StoryGroup, StoryBarProps } from "@/lib/type";
+import type { StoryBarProps } from "@/lib/type";
 
 const CARD_W = 128;
 const CARD_H = 200;
@@ -28,11 +28,7 @@ export default function StoryBar({
   onOpenViewer,
   storyGroups,
   loading,
-}: StoryBarProps & {
-  onOpenViewer: (groupIndex: number) => void;
-  storyGroups: StoryGroup[];
-  loading: boolean;
-}) {
+}: StoryBarProps) {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);

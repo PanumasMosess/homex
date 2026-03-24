@@ -15,11 +15,9 @@ import path from "path";
 /* HELPER: Extract video duration (seconds) via ffprobe    */
 /* ====================================================== */
 
-async function getVideoDuration(file: File): Promise<number | null> {
+async function getVideoDuration(buffer: Buffer, ext: string): Promise<number | null> {
   let tempPath: string | null = null;
   try {
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const ext = file.name.split(".").pop() || "mp4";
     tempPath = path.join(os.tmpdir(), `story_probe_${Date.now()}.${ext}`);
     await fs.writeFile(tempPath, buffer);
 
@@ -77,18 +75,31 @@ export async function createStory(
       }
     }
 
-    // 3. Extract video duration
-    const duration = await getVideoDuration(file);
+    // 3. Read file buffer once (reused for duration + upload)
+    const fileBuffer = Buffer.from(await file.arrayBuffer());
+    const fileExt = file.name.split(".").pop() || "mp4";
 
-    // 4. Upload video to S3
+    // 4. Extract video duration + enforce max 60 seconds
+    const duration = await getVideoDuration(fileBuffer, fileExt);
+    const MAX_DURATION_SEC = 60;
+    if (duration && duration > MAX_DURATION_SEC) {
+      return {
+        success: false,
+        error: true,
+        message: `วิดีโอต้องไม่ยาวเกิน ${MAX_DURATION_SEC} วินาที (วิดีโอนี้ยาว ${duration} วินาที)`,
+      };
+    }
+
+    // 5. Upload video to S3
+    const uploadFile = new File([fileBuffer], file.name, { type: file.type });
     const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
+    uploadFormData.append("file", uploadFile);
     const uploadResult = await sendbase64toS3DataVdo(uploadFormData, "stories");
     if (!uploadResult.success || !uploadResult.url) {
       return { success: false, error: true, message: "อัปโหลดวิดีโอไม่สำเร็จ" };
     }
 
-    // 5. Create story record (optimistic — show immediately)
+    // 6. Create story record (optimistic — show immediately)
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // +24hr
 
     const story = await prisma.story.create({
@@ -134,8 +145,19 @@ export async function createStory(
 /* ====================================================== */
 
 async function processStoryInBackground(storyId: number, videoUrl: string) {
+  // Download video once — reuse for thumbnail (avoids double download)
+  let videoFile: File | null = null;
+  try {
+    const res = await fetch(videoUrl);
+    const buf = Buffer.from(await res.arrayBuffer());
+    const contentType = res.headers.get("content-type") || "video/mp4";
+    videoFile = new File([buf], `story_${storyId}.mp4`, { type: contentType });
+  } catch (error) {
+    console.warn(`⚠️ Story #${storyId} video download failed:`, error);
+  }
+
   const [thumbnailResult, transcriptResult] = await Promise.allSettled([
-    generateThumbnail(storyId, videoUrl),
+    videoFile ? generateThumbnail(storyId, videoFile) : Promise.resolve(),
     generateTranscript(storyId, videoUrl),
   ]);
 
@@ -153,12 +175,12 @@ async function processStoryInBackground(storyId: number, videoUrl: string) {
   }).catch(() => {});
 }
 
-/* ── Thumbnail generation ── */
+/* ── Thumbnail generation (from File, no re-download) ── */
 
-async function generateThumbnail(storyId: number, videoUrl: string) {
+async function generateThumbnail(storyId: number, videoFile: File) {
   try {
-    const thumbnailUrl = await videoThumbnailService.generateAndUploadThumbnailFromUrl(
-      videoUrl,
+    const thumbnailUrl = await videoThumbnailService.generateAndUploadThumbnail(
+      videoFile,
       1, // capture frame at 1 second
     );
 
@@ -172,7 +194,7 @@ async function generateThumbnail(storyId: number, videoUrl: string) {
   }
 }
 
-/* ── AI transcript generation ── */
+/* ── AI transcript generation (uses URL — Gemini needs to ingest video) ── */
 
 async function generateTranscript(storyId: number, videoUrl: string) {
   try {
@@ -214,12 +236,6 @@ export async function getActiveStories(
     const currentUserId = session?.user?.id ? parseInt(session.user.id) : 0;
 
     const now = new Date();
-
-    // Cleanup: delete stories expired more than 48hrs ago (non-blocking)
-    const cleanupThreshold = new Date(now.getTime() - 48 * 60 * 60 * 1000);
-    prisma.story.deleteMany({
-      where: { organizationId, expiresAt: { lt: cleanupThreshold } },
-    }).catch(() => {});
 
     const stories = await prisma.story.findMany({
       where: {

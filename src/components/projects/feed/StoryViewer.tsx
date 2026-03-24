@@ -63,7 +63,7 @@ export default function StoryViewer({
     if (currentStory && !currentStory.isViewed) {
       onViewed(currentStory.id);
     }
-  }, [currentStory?.id]);
+  }, [currentStory?.id, onViewed]);
 
   // Progress bar & auto-advance
   useEffect(() => {
@@ -197,7 +197,6 @@ export default function StoryViewer({
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsMuted((v) => !v);
-                  if (videoRef.current) videoRef.current.muted = !isMuted;
                 }}
                 className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
               >

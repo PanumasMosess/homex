@@ -617,13 +617,26 @@ export interface StoryGroup {
   hasUnviewed: boolean;
 }
 
+export interface CreateStoryResponse {
+  id: number;
+  videoUrl: string;
+  thumbnailUrl: string | null;
+  caption: string | null;
+  transcript: string | null;
+  duration: number | null;
+  isProcessing: boolean;
+  expiresAt: string;
+  createdAt: string;
+}
+
 export interface StoryBarProps {
-  projectId: number;
-  organizationId: number;
   currentUserId: number;
   currentUserAvatar?: string | null;
   currentUserName?: string | null;
   onCreateStory: () => void;
+  onOpenViewer: (groupIndex: number) => void;
+  storyGroups: StoryGroup[];
+  loading: boolean;
 }
 
 export interface StoryViewerProps {
