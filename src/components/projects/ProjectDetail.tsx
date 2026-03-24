@@ -1061,12 +1061,14 @@ const ProjectDetail = ({
           />
         )}
 
-         {activeSection === "camera" && (
+         {/* {activeSection === "camera" && (
           <DashboardCamera accessToken={tokenCamera} />
         )}
 
+        , "camera" */}
+
         {/* Section อื่นๆ */}
-        {!["tasks", "documents", "feed", "purchasing", "camera"].includes(
+        {!["tasks", "documents", "feed", "purchasing"].includes(
           activeSection,
         ) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
