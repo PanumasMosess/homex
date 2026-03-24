@@ -70,6 +70,7 @@ import { getContractors } from "@/lib/actions/actionTaskContractor";
 import { getSuppliers } from "@/lib/actions/actionSupplier";
 import DocumentSection from "./DocumentSection";
 import FeedSection from "./feed/FeedSection";
+import DashboardCamera from "./camera/DashboardCamera";
 import ProcurementSection from "./procurement/ProcurementSection";
 
 const ProjectDetail = ({
@@ -77,6 +78,7 @@ const ProjectDetail = ({
   currentUserId,
   dataDetail,
   isSpadmin,
+  tokenCamera,
 }: ProjectDetailProps) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -391,10 +393,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                ...t,
-                status: taskToUpdate.status,
-                progressPercent: taskToUpdate.progressPercent,
-              }
+                  ...t,
+                  status: taskToUpdate.status,
+                  progressPercent: taskToUpdate.progressPercent,
+                }
               : t,
           ),
         );
@@ -733,10 +735,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-              ...t,
-              details: updatedDetails,
-              progressPercent: newProgress,
-            }
+                ...t,
+                details: updatedDetails,
+                progressPercent: newProgress,
+              }
             : t,
         ),
       );
@@ -816,7 +818,7 @@ const ProjectDetail = ({
                   budgetSummary.expenses > projectInfo.budget
                     ? "text-danger"
                     : "text-warning"
-                  }`}
+                }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -1059,8 +1061,14 @@ const ProjectDetail = ({
           />
         )}
 
+         {activeSection === "camera" && (
+          <DashboardCamera accessToken={tokenCamera} />
+        )}
+
         {/* Section อื่นๆ */}
-        {!["tasks", "documents", "feed", "purchasing"].includes(activeSection) && (
+        {!["tasks", "documents", "feed", "purchasing", "camera"].includes(
+          activeSection,
+        ) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
             <p className="text-default-400 font-bold uppercase tracking-widest">
               Coming Soon
