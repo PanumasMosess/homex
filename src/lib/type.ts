@@ -440,6 +440,7 @@ export interface EzvizCameraProps {
   cameraId: string;
   accessToken: string;
   ezopenUrl: string;
+  areaDomain?: string;
 }
 
 export interface DashboardCameraProp {
@@ -461,11 +462,7 @@ export type ProcurementStatus =
 export type PartType = "EXT" | "INT" | "OTHER";
 export type MaterialGroup = "MAIN" | "GENERAL" | "MACHINERY" | "OTHER";
 
-export type MaterialReadiness =
-  | "READY"
-  | "NOT_READY"
-  | "AT_RISK"
-  | "DELAYED";
+export type MaterialReadiness = "READY" | "NOT_READY" | "AT_RISK" | "DELAYED";
 
 export interface ProcurementItemImage {
   id: number;
@@ -538,7 +535,13 @@ export interface ProcurementSectionProps {
   organizationId: number;
   currentUserId: number;
   suppliers: { id: number; supplierName: string }[];
-  tasks: { id: number; taskName: string | null; status: string; startPlanned: string | Date | null; coverImageUrl: string | null }[];
+  tasks: {
+    id: number;
+    taskName: string | null;
+    status: string;
+    startPlanned: string | Date | null;
+    coverImageUrl: string | null;
+  }[];
 }
 
 export interface CreateProcurementItemData {

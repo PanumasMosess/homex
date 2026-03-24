@@ -747,6 +747,17 @@ const ProjectDetail = ({
     }
   };
 
+  const handleTabChange = (newSection: string) => {
+    if (activeSection === "camera" && newSection !== "camera") {
+      window.dispatchEvent(new Event("force-stop-camera"));
+      setTimeout(() => {
+        setActiveSection(newSection);
+      }, 300);
+    } else {
+      setActiveSection(newSection);
+    }
+  };
+
   const isOwner =
     selected && Number(selected.createdById) === Number(currentUserId);
   const spadmin = isSpadmin === "Spadmin";
@@ -884,7 +895,7 @@ const ProjectDetail = ({
           ].map((item) => (
             <Button
               key={item.id}
-              onPress={() => setActiveSection(item.id)}
+              onPress={() => handleTabChange(item.id)}
               variant={activeSection === item.id ? "solid" : "light"}
               color={activeSection === item.id ? "primary" : "default"}
               size="md"
@@ -1061,14 +1072,12 @@ const ProjectDetail = ({
           />
         )}
 
-         {/* {activeSection === "camera" && (
+        {activeSection === "camera" && (
           <DashboardCamera accessToken={tokenCamera} />
         )}
 
-        , "camera" */}
-
         {/* Section อื่นๆ */}
-        {!["tasks", "documents", "feed", "purchasing"].includes(
+        {!["tasks", "documents", "feed", "purchasing", "camera"].includes(
           activeSection,
         ) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
