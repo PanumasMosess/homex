@@ -6,6 +6,7 @@ import { ActionState } from "@/lib/type";
 import { sendbase64toS3DataVdo } from "@/lib/actions/actionIndex";
 import { transcribeVideoAudio } from "@/lib/ai/geminiAI";
 import { videoConversionService } from "@/lib/videoConversionService";
+import { videoThumbnailService } from "@/lib/videoThumbnailService";
 import fs from "fs/promises";
 import os from "os";
 import path from "path";
@@ -103,8 +104,8 @@ export async function createStory(
       },
     });
 
-    // 3. Trigger AI transcript in background (non-blocking)
-    processTranscriptInBackground(story.id, uploadResult.url);
+    // 6. Trigger thumbnail + AI transcript in background (non-blocking)
+    processStoryInBackground(story.id, uploadResult.url);
 
     return {
       success: true,
@@ -129,10 +130,51 @@ export async function createStory(
 }
 
 /* ====================================================== */
-/* BACKGROUND: AI TRANSCRIPT PROCESSING                    */
+/* BACKGROUND: THUMBNAIL + AI TRANSCRIPT (parallel)        */
 /* ====================================================== */
 
-async function processTranscriptInBackground(storyId: number, videoUrl: string) {
+async function processStoryInBackground(storyId: number, videoUrl: string) {
+  const [thumbnailResult, transcriptResult] = await Promise.allSettled([
+    generateThumbnail(storyId, videoUrl),
+    generateTranscript(storyId, videoUrl),
+  ]);
+
+  if (thumbnailResult.status === "rejected") {
+    console.error(`❌ Story #${storyId} thumbnail error:`, thumbnailResult.reason);
+  }
+  if (transcriptResult.status === "rejected") {
+    console.error(`❌ Story #${storyId} transcript error:`, transcriptResult.reason);
+  }
+
+  // Mark processing as done regardless of individual results
+  await prisma.story.update({
+    where: { id: storyId },
+    data: { isProcessing: false },
+  }).catch(() => {});
+}
+
+/* ── Thumbnail generation ── */
+
+async function generateThumbnail(storyId: number, videoUrl: string) {
+  try {
+    const thumbnailUrl = await videoThumbnailService.generateAndUploadThumbnailFromUrl(
+      videoUrl,
+      1, // capture frame at 1 second
+    );
+
+    await prisma.story.update({
+      where: { id: storyId },
+      data: { thumbnailUrl },
+    });
+    console.log(`🖼️ Story #${storyId} thumbnail generated`);
+  } catch (error) {
+    console.warn(`⚠️ Story #${storyId} thumbnail failed:`, error);
+  }
+}
+
+/* ── AI transcript generation ── */
+
+async function generateTranscript(storyId: number, videoUrl: string) {
   try {
     const result = await transcribeVideoAudio(videoUrl);
 
@@ -148,23 +190,14 @@ async function processTranscriptInBackground(storyId: number, videoUrl: string) 
         data: {
           transcript: result.transcript,
           caption: existing?.caption ? undefined : (result.summary || undefined),
-          isProcessing: false,
         },
       });
       console.log(`✅ Story #${storyId} transcript completed`);
     } else {
-      await prisma.story.update({
-        where: { id: storyId },
-        data: { isProcessing: false },
-      });
       console.warn(`⚠️ Story #${storyId} transcript returned null`);
     }
   } catch (error) {
     console.error(`❌ Story #${storyId} transcript error:`, error);
-    await prisma.story.update({
-      where: { id: storyId },
-      data: { isProcessing: false },
-    }).catch(() => {});
   }
 }
 

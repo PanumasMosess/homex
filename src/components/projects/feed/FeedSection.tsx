@@ -313,7 +313,7 @@ export default function FeedSection({
 
       <div className="max-w-2xl mx-auto space-y-4">
         {/* Story Bar */}
-        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-default-200 dark:border-zinc-800 p-3">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm border border-default-200 dark:border-zinc-800 p-2">
           <StoryBar
             projectId={projectId}
             organizationId={organizationId}
