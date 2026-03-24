@@ -171,6 +171,8 @@ const ProcurementSection = ({
   // Inline edit state
   const [editingRowId, setEditingRowId] = useState<number | null>(null);
   const [editingData, setEditingData] = useState<Partial<EditingRowData>>({});
+  const editingDataRef = useRef<Partial<EditingRowData>>({});
+  editingDataRef.current = editingData;
 
   // New rows state (multi-row inline add)
   const [newRows, setNewRows] = useState<NewRowData[]>([]);
@@ -707,18 +709,19 @@ const ProcurementSection = ({
 
   const saveEdit = async () => {
     if (!editingRowId) return;
+    const data = editingDataRef.current;
     startTransition(async () => {
       const res = await updateProcurementItem(editingRowId, {
-        materialName: editingData.materialName,
-        specification: editingData.specification || undefined,
-        partType: editingData.partType,
-        materialGroup: editingData.materialGroup,
-        unit: editingData.unit || undefined,
-        quantity: editingData.quantity ? Number(editingData.quantity) : undefined,
-        status: editingData.status,
-        expectedDate: editingData.expectedDate || undefined,
-        leadTimeDays: editingData.leadTimeDays ? Number(editingData.leadTimeDays) : undefined,
-        note: editingData.note || undefined,
+        materialName: data.materialName,
+        specification: data.specification || undefined,
+        partType: data.partType,
+        materialGroup: data.materialGroup,
+        unit: data.unit || undefined,
+        quantity: data.quantity ? Number(data.quantity) : undefined,
+        status: data.status,
+        expectedDate: data.expectedDate || undefined,
+        leadTimeDays: data.leadTimeDays ? Number(data.leadTimeDays) : undefined,
+        note: data.note || undefined,
       });
 
       if (res.success) {
@@ -1033,7 +1036,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="text"
-                value={editingData.materialName ?? ""}
+                value={editingDataRef.current.materialName ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1064,7 +1067,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="text"
-                value={editingData.specification ?? ""}
+                value={editingDataRef.current.specification ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1091,7 +1094,7 @@ const ProcurementSection = ({
           if (isEditing) {
             return (
               <select
-                value={editingData.partType ?? "OTHER"}
+                value={editingDataRef.current.partType ?? "OTHER"}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1124,7 +1127,7 @@ const ProcurementSection = ({
           if (isEditing) {
             return (
               <select
-                value={editingData.materialGroup ?? "GENERAL"}
+                value={editingDataRef.current.materialGroup ?? "GENERAL"}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1158,7 +1161,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="number"
-                value={editingData.quantity ?? ""}
+                value={editingDataRef.current.quantity ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1186,7 +1189,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="text"
-                value={editingData.unit ?? ""}
+                value={editingDataRef.current.unit ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1239,7 +1242,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="date"
-                value={editingData.expectedDate ?? ""}
+                value={editingDataRef.current.expectedDate ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1274,7 +1277,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="number"
-                value={editingData.leadTimeDays ?? ""}
+                value={editingDataRef.current.leadTimeDays ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1299,7 +1302,7 @@ const ProcurementSection = ({
             return (
               <input
                 type="text"
-                value={editingData.note ?? ""}
+                value={editingDataRef.current.note ?? ""}
                 onChange={(e) =>
                   setEditingData((prev) => ({
                     ...prev,
@@ -1468,7 +1471,7 @@ const ProcurementSection = ({
         },
       },
     ],
-    [editingRowId, editingData, isPending, uploadingImageItemId],
+    [editingRowId, isPending, uploadingImageItemId],
   );
 
   const table = useReactTable({
