@@ -103,7 +103,6 @@ export interface ProjectDetailProps {
   currentUserId: number;
   dataDetail: Task[];
   isSpadmin: any;
-  tokenCamera: string;
 }
 
 export interface CreateMainTaskProps {
@@ -444,7 +443,10 @@ export interface EzvizCameraProps {
 }
 
 export interface DashboardCameraProp {
-  accessToken: string;
+  accessToken?: string;
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
 }
 
 // =====================================
