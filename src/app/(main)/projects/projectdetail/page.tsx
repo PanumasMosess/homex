@@ -13,7 +13,6 @@ const Page = async () => {
   const currentUserId = session?.user?.id ? parseInt(session.user.id) : 0;
   const organizationId = session?.user.organizationId ?? 0;
   const isSpadmin = session?.user?.positionName ?? "";
-  const tokenCamera = process.env.CAMERA_ACCESSTOKEN || "";
 
   const mainTasks = await prisma.task.findMany({
     where: {
@@ -98,7 +97,6 @@ const Page = async () => {
       currentUserId={currentUserId}
       dataDetail={formattedTasks}
       isSpadmin={isSpadmin}
-      tokenCamera={tokenCamera}
     />
   );
 };

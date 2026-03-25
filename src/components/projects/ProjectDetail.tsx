@@ -78,7 +78,6 @@ const ProjectDetail = ({
   currentUserId,
   dataDetail,
   isSpadmin,
-  tokenCamera,
 }: ProjectDetailProps) => {
   const router = useRouter();
   const { isOpen, onOpen, onOpenChange } = useDisclosure();
@@ -1073,7 +1072,11 @@ const ProjectDetail = ({
         )}
 
         {activeSection === "camera" && (
-          <DashboardCamera accessToken={tokenCamera} />
+          <DashboardCamera
+            projectId={Number(projectInfo.id)}
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+          />
         )}
 
         {/* Section อื่นๆ */}
