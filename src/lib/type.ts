@@ -664,3 +664,38 @@ export interface StoryVideoPreviewProps {
   onCancel: () => void;
   isUploading: boolean;
 }
+
+export type CreateCameraInput = {
+  id?: number;
+  cameraName: string;
+  cameraSN: string;
+  cameraLocation?: string;
+  status: string;
+  organizationId: number;
+  projectId: number;
+  userId: number;
+};
+
+export type UpdateCameraInput = {
+  cameraName?: string;
+  cameraSN?: string;
+  cameraLocation?: string;
+  status?: string;
+};
+
+
+export type UpdateCameraFormProps = {
+  camera: any;
+  isOpen: boolean;
+  onOpenChange: (isOpen: boolean) => void;
+  projectId: number;
+  onSuccess: (updatedCamera: any) => void;
+};
+
+export type DeleteCameraModalProps = {
+  camera: any;
+  isOpen: boolean;
+  isDeleting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+};
