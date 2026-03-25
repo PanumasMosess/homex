@@ -7,7 +7,7 @@ import {
   Chip,
   Spinner,
 } from "@heroui/react";
-import { MapPin, VideoOff } from "lucide-react";
+import { MapPin, Trash2, VideoOff } from "lucide-react";
 import EzvizCamera from "./EzvizCamera";
 
 import { getCameraCredentials } from "@/lib/camera/cameraGetToken";
@@ -15,9 +15,11 @@ import { getCameraCredentials } from "@/lib/camera/cameraGetToken";
 const LiveCameraCard = ({
   camera,
   onEdit,
+  onDelete,
 }: {
   camera: any;
   onEdit?: (cam: any) => void;
+  onDelete?: (cam: any) => void;
 }) => {
   const [liveToken, setLiveToken] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
@@ -116,16 +118,6 @@ const LiveCameraCard = ({
               >
                 ลองใหม่
               </Button>
-              {onEdit && (
-                <Button
-                  size="sm"
-                  variant="bordered"
-                  className="h-7 text-[10px] border-zinc-700 text-zinc-400 hover:text-white"
-                  onPress={() => onEdit(camera)}
-                >
-                  แก้ไข SN
-                </Button>
-              )}
             </div>
           </div>
         ) : liveToken && liveUrl ? (
@@ -157,6 +149,29 @@ const LiveCameraCard = ({
               {camera.id || "N/A"}
             </p>
           </div>
+          {onEdit && (
+            <Button
+              size="sm"
+              variant="bordered"
+              className="h-7 text-[10px] border-zinc-700 text-zinc-400 hover:text-white"
+              onPress={() => onEdit(camera)}
+            >
+              แก้ไข SN
+            </Button>
+          )}
+
+          {onDelete && (
+            <Button
+              isIconOnly
+              size="sm"
+              variant="light"
+              color="danger"
+              className="text-zinc-500 hover:text-danger min-w-0 w-8 h-8 rounded-full"
+              onPress={() => onDelete(camera)}
+            >
+              <Trash2 size={16} />
+            </Button>
+          )}
         </div>
       </CardFooter>
     </Card>
