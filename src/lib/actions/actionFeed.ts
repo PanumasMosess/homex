@@ -320,3 +320,18 @@ export async function sharePost(feedPostId: number): Promise<ActionState> {
     return { success: false, error: true, message: "ไม่สามารถแชร์ได้" };
   }
 }
+
+export async function deleteSubtaskFeed(params: {
+  subtaskId: number;
+}) {
+  try {
+    await prisma.feed_post.deleteMany({
+      where: {
+        subtaskId: params.subtaskId,
+        feedType: "SUBTASK_COMPLETED",
+      },
+    });
+  } catch (error) {
+    console.error("Delete Feed Post Error:", error);
+  }
+}

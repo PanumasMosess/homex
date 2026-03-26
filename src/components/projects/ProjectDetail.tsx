@@ -392,10 +392,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                  ...t,
-                  status: taskToUpdate.status,
-                  progressPercent: taskToUpdate.progressPercent,
-                }
+                ...t,
+                status: taskToUpdate.status,
+                progressPercent: taskToUpdate.progressPercent,
+              }
               : t,
           ),
         );
@@ -645,16 +645,45 @@ const ProjectDetail = ({
   const handleToggleSubtask = async (
     subtaskId: number,
     currentStatus: boolean,
+    imageUrl?: string,
   ) => {
     if (!selected) return;
     setUpdatingSubtaskId(subtaskId);
     try {
       const newStatus = !currentStatus;
-      const res = await toggleSubtaskStatus(subtaskId, newStatus);
+
+      const currentSubtask = selected.details.find(
+        (sub: any) => sub.id === subtaskId,
+      );
+      // 👉 ถ้าเป็น "ยกเลิก"
+      if (currentStatus && currentSubtask?.imageUrl) {
+        try {
+          const urlObj = new URL(currentSubtask.imageUrl);
+          let fileKey = urlObj.pathname.substring(1);
+          if (fileKey.startsWith("homex/")) {
+            fileKey = fileKey.replace("homex/", "");
+          }
+          await deleteFileS3(fileKey);
+        } catch (err) {
+          console.warn("ลบรูปไม่สำเร็จ", err);
+        }
+      }
+
+      const res = await toggleSubtaskStatus(subtaskId, newStatus, imageUrl);
       if (!res.success) throw new Error(res.error || "อัปเดตไม่สำเร็จ");
 
       const updatedDetails = (selected.details || []).map((sub: any) =>
-        sub.id === subtaskId ? { ...sub, status: newStatus } : sub,
+        sub.id === subtaskId
+          ? {
+            ...sub,
+            status: newStatus,
+            ...(newStatus
+              ? imageUrl
+                ? { imageUrl }
+                : {}
+              : { imageUrl: null }),
+          }
+          : sub,
       );
 
       const newProgress = calculateTaskProgress(updatedDetails);
@@ -734,10 +763,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-                ...t,
-                details: updatedDetails,
-                progressPercent: newProgress,
-              }
+              ...t,
+              details: updatedDetails,
+              progressPercent: newProgress,
+            }
             : t,
         ),
       );
@@ -828,7 +857,7 @@ const ProjectDetail = ({
                   budgetSummary.expenses > projectInfo.budget
                     ? "text-danger"
                     : "text-warning"
-                }`}
+                  }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -1083,12 +1112,12 @@ const ProjectDetail = ({
         {!["tasks", "documents", "feed", "purchasing", "camera"].includes(
           activeSection,
         ) && (
-          <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
-            <p className="text-default-400 font-bold uppercase tracking-widest">
-              Coming Soon
-            </p>
-          </div>
-        )}
+            <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
+              <p className="text-default-400 font-bold uppercase tracking-widest">
+                Coming Soon
+              </p>
+            </div>
+          )}
       </div>
 
       {/* --- MODAL (จัดกึ่งกลางเป๊ะสำหรับ iPhone 14) --- */}

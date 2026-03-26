@@ -194,7 +194,7 @@ export interface SubtaskItemProps {
   startEditSubtask: (subtask: any) => void;
   setEditingSubtaskId: (id: number | null) => void;
   handleSaveSubtaskEdit: () => void;
-  handleToggleSubtask: (id: number, status: boolean) => void;
+  handleToggleSubtask: (id: number, status: boolean, imageUrl?: string,) => void;
   handleDeleteSubtask: (id: number) => void;
   canManage?: boolean;
 }
