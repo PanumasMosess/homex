@@ -1,3 +1,4 @@
+"use client";
 import {
   Modal,
   ModalContent,
@@ -7,7 +8,7 @@ import {
   Button,
   Input,
 } from "@heroui/react";
-import { UploadCloud, FileCheck, MapPin } from "lucide-react"; 
+import { UploadCloud, FileCheck, MapPin } from "lucide-react";
 
 export default function AddPointModal({
   isOpen,
@@ -16,22 +17,25 @@ export default function AddPointModal({
   newPointData,
   setNewPointData,
   handleSavePoint,
-  point360File, 
-  setPoint360File, 
-  isSavingPoint, 
+  point360File,
+  setPoint360File,
+  isSavingPoint,
 }: any) {
   return (
     <Modal
       isOpen={isOpen}
-      onOpenChange={(open) => {
-        if (!open && !isSavingPoint) {
+      onOpenChange={(isOpenValue) => {
+        if (!isOpenValue && !isSavingPoint) {
           setTempPoint(null);
-          setPoint360File(null); // เคลียร์ไฟล์เวลาปิดหน้าต่าง
+          setPoint360File(null);
+          setNewPointData({ title: "", location: "", thumbnail: "" });
         }
-        onOpenChange(open);
+        onOpenChange(isOpenValue);
       }}
       backdrop="opaque"
-      isDismissable={!isSavingPoint} // ล็อกการปิดหน้าต่างตอนกำลังเซฟ
+      isDismissable={false}
+      isKeyboardDismissDisabled={true}
+      hideCloseButton={isSavingPoint}
     >
       <ModalContent className="bg-zinc-900 text-white border border-white/10 shadow-2xl">
         {(onClose) => (
@@ -68,7 +72,7 @@ export default function AddPointModal({
                 }}
               />
 
-              {/* 🌟 กล่องอัปโหลดรูป 360 สวยๆ */}
+              {/* กล่องอัปโหลดรูป 360 สวยๆ */}
               <div className="space-y-3 pt-4 border-t border-white/5">
                 <label className="text-sm font-medium text-zinc-300">
                   ภาพ 360 องศา (Equirectangular)
@@ -87,7 +91,6 @@ export default function AddPointModal({
                     `}
                   >
                     {point360File ? (
-                      // เลือกไฟล์แล้ว
                       <div className="flex flex-col items-center space-y-2 text-primary">
                         <FileCheck
                           size={36}
@@ -101,7 +104,6 @@ export default function AddPointModal({
                         </span>
                       </div>
                     ) : (
-                      // ยังไม่ได้เลือกไฟล์
                       <div className="flex flex-col items-center space-y-2 text-zinc-400 group-hover:text-primary transition-colors">
                         <UploadCloud size={36} />
                         <span className="text-sm font-medium text-zinc-300">

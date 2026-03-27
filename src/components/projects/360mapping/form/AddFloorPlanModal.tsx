@@ -1,3 +1,4 @@
+"use client";
 import {
   Modal,
   ModalContent,
@@ -22,9 +23,17 @@ export default function AddFloorPlanModal({
   return (
     <Modal
       isOpen={isOpen}
-      onOpenChange={onOpenChange}
+      onOpenChange={(isOpenValue) => {
+        if (!isOpenValue && !isSaving) {
+          setNewFloorPlan({ name: "", imageUrl: "" });
+          setFloorPlanFile(null);
+        }
+        onOpenChange(isOpenValue);
+      }}
       backdrop="blur"
-      isDismissable={!isSaving}
+      isDismissable={false}
+      isKeyboardDismissDisabled={true}
+      hideCloseButton={isSaving}
     >
       <ModalContent className="bg-zinc-900 text-white">
         {(onClose) => (
@@ -40,6 +49,9 @@ export default function AddFloorPlanModal({
                   setNewFloorPlan({ ...newFloorPlan, name: v })
                 }
                 isDisabled={isSaving}
+                classNames={{
+                  inputWrapper: "border-zinc-700 hover:border-zinc-600",
+                }}
               />
 
               <div className="space-y-2">
@@ -53,8 +65,8 @@ export default function AddFloorPlanModal({
                     className={`flex flex-col items-center justify-center w-full h-32 px-4 border-2 border-dashed rounded-xl cursor-pointer transition-all duration-200
                       ${
                         floorPlanFile
-                          ? "border-primary/50 bg-primary/5" 
-                          : "border-zinc-700 bg-zinc-800/50 hover:border-primary/50 hover:bg-zinc-800" 
+                          ? "border-primary/50 bg-primary/5"
+                          : "border-zinc-700 bg-zinc-800/50 hover:border-primary/50 hover:bg-zinc-800"
                       }
                       ${isSaving ? "opacity-50 cursor-not-allowed pointer-events-none" : ""}
                     `}
@@ -113,6 +125,7 @@ export default function AddFloorPlanModal({
                 onPress={handleSaveFloorPlan}
                 isDisabled={!newFloorPlan.name || !floorPlanFile || isSaving}
                 isLoading={isSaving}
+                className="font-bold shadow-lg"
               >
                 อัปโหลดและบันทึก
               </Button>

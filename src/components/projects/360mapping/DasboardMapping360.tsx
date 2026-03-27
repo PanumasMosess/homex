@@ -9,6 +9,7 @@ import {
   CardBody,
   CardFooter,
   Tooltip,
+  Spinner,
 } from "@heroui/react";
 import { toast } from "react-toastify";
 import FloorPlanModal from "./FloorPlanModal";
@@ -17,6 +18,7 @@ import AddFloorPlanModal from "./form/AddFloorPlanModal";
 import AddPointModal from "./form/AddPointModal";
 import { DashboardCameraProp } from "@/lib/type";
 import {
+  addPointVersion,
   createFloorPlan,
   createPoint360Action,
   deleteFloorPlanAction,
@@ -24,9 +26,13 @@ import {
   getFloorPlansByProject,
 } from "@/lib/actions/actiom360";
 import { useRouter } from "next/navigation";
-import { handleImageUpload } from "@/lib/actions/actionIndex";
+import {
+  handleImageUpload,
+  uploadImageFormData,
+} from "@/lib/actions/actionIndex";
 import DeleteFloorPlanModal from "./DeleteFloorPlanModal";
 import DeletePointModal from "./DeletePointModal";
+import AddHistoryModal from "./form/AddHistoryModal";
 
 const DasboardMapping360 = ({
   projectId,
@@ -70,6 +76,12 @@ const DasboardMapping360 = ({
   const [isSavingPoint, setIsSavingPoint] = useState(false);
   const [pointToDelete, setPointToDelete] = useState<any>(null);
   const [isDeletingPoint, setIsDeletingPoint] = useState(false);
+  const [pointToUpdateHistory, setPointToUpdateHistory] = useState<any>(null);
+  const {
+    isOpen: isAddHistoryOpen,
+    onOpen: onAddHistoryOpen,
+    onOpenChange: onAddHistoryChange,
+  } = useDisclosure();
 
   const handleSaveFloorPlan = async () => {
     if (!newFloorPlan.name || !floorPlanFile) {
@@ -163,7 +175,7 @@ const DasboardMapping360 = ({
 
     setIsSavingPoint(true);
     try {
-      const s3Url = await handleImageUpload(point360File, "360mapping/points");
+      const s3Url = await handleImageUpload(point360File, "360mapping/history");
       const res = await createPoint360Action({
         title: newPointData.title,
         location: newPointData.location || "ไม่ระบุตำแหน่ง",
@@ -210,35 +222,114 @@ const DasboardMapping360 = ({
 
     setIsDeletingPoint(true);
     try {
+      const imageFallback =
+        pointToDelete.thumbnail ||
+        (pointToDelete.histories?.length > 0
+          ? pointToDelete.histories[0].imageUrl
+          : "");
+
       const res = await deletePoint360Action(
         pointToDelete.id,
-        pointToDelete.thumbnail,
+        imageFallback,
         Number(projectId),
       );
 
       if (res.success) {
+        // 1. กรองจุดที่ถูกลบออก
         const updatedPoints = selectedFloorPlan.points.filter(
           (p: any) => p.id !== pointToDelete.id,
         );
 
+        // 2. อัปเดตข้อมูลในแผนที่ทั้งหมด
         const updatedPlans = floorPlans.map((fp) =>
           fp.id === selectedFloorPlan.id
             ? { ...fp, points: updatedPoints }
             : fp,
         );
 
+        // 3. เซ็ต State ให้ UI รีเฟรชทันที
         setFloorPlans(updatedPlans as any);
         setSelectedFloorPlan({ ...selectedFloorPlan, points: updatedPoints });
-
-        setPointToDelete(null); 
-        toast.success("ลบจุดสำเร็จ!");
+        setPointToDelete(null);
+        toast.success("ลบจุดและรูปภาพทั้งหมดสำเร็จ!");
       } else {
-        toast.error(res.error || "เกิดข้อผิดพลาด");
+        toast.error(res.error || "เกิดข้อผิดพลาดในการลบ");
       }
     } catch (error) {
-      toast.error("ลบข้อมูลล้มเหลว");
+      console.error("Delete Point Error:", error);
+      toast.error("ลบข้อมูลล้มเหลว โปรดลองอีกครั้ง");
     } finally {
       setIsDeletingPoint(false);
+    }
+  };
+
+  const handleAddNewHistory = (point: any) => {
+    setPointToUpdateHistory(point);
+    onAddHistoryOpen();
+  };
+
+  const handleSaveNewVersion = async () => {
+    if (!point360File || !pointToUpdateHistory) return;
+
+    setIsSavingPoint(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", point360File);
+      formData.append("path", "360mapping/history");
+
+      const uploadRes = await uploadImageFormData(formData);
+
+      if (!uploadRes.success || !uploadRes.url) {
+        throw new Error(uploadRes.error || "อัปโหลดรูปภาพล้มเหลว");
+      }
+
+      const res = await addPointVersion({
+        pointId: pointToUpdateHistory.id,
+        imageUrl: uploadRes.url,
+        projectId: Number(projectId),
+      });
+
+      if (res.success) {
+        const updatedPlans = floorPlans.map((fp) => {
+          const updatedPoints = fp.points.map((p: any) => {
+            if (p.id === pointToUpdateHistory.id) {
+              return {
+                ...p,
+                histories: [res.data, ...(p.histories || [])],
+              };
+            }
+            return p;
+          });
+          return { ...fp, points: updatedPoints };
+        });
+
+        setFloorPlans(updatedPlans as any);
+
+        if (selectedFloorPlan) {
+          const activePlan = updatedPlans.find(
+            (fp) => fp.id === selectedFloorPlan.id,
+          );
+          setSelectedFloorPlan(activePlan);
+        }
+
+        if (selectedMedia && selectedMedia.id === pointToUpdateHistory.id) {
+          setSelectedMedia((prev: any) => ({
+            ...prev,
+            histories: [res.data, ...(prev.histories || [])],
+          }));
+        }
+        setPoint360File(null);
+        setPointToUpdateHistory(null);
+        onAddHistoryChange();
+        toast.success("บันทึกรูปภาพเวอร์ชันใหม่สำเร็จ!");
+      }
+    } catch (error: any) {
+      console.error("Upload Error:", error);
+      toast.error(
+        error.message || "อัปโหลดล้มเหลว (ตรวจสอบขนาดไฟล์และอินเทอร์เน็ต)",
+      );
+    } finally {
+      setIsSavingPoint(false);
     }
   };
 
@@ -287,14 +378,22 @@ const DasboardMapping360 = ({
           เพิ่มแปลนพื้นใหม่
         </Button>
       </div>
-
-      {floorPlans.length === 0 ? (
+      {isLoading ? (
+        <div className="w-full py-32 flex flex-col items-center justify-center space-y-4">
+          <Spinner
+            size="lg"
+            color="primary"
+            labelColor="primary"
+            label="กำลังโหลดข้อมูลแปลนพื้น..."
+          />
+        </div>
+      ) : floorPlans.length === 0 ? (
         <div className="col-span-full py-32 flex flex-col items-center justify-center border-2 border-dashed border-zinc-700/50 rounded-3xl text-zinc-500 bg-zinc-900/30">
           <Layers size={48} strokeWidth={1} className="mb-4 opacity-50" />
           <p className="font-medium">ยังไม่มีแปลนพื้นในระบบ</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-in fade-in duration-500">
           {floorPlans.map((plan) => (
             <Card
               key={plan.id}
@@ -308,12 +407,10 @@ const DasboardMapping360 = ({
                   alt={plan.name}
                   className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-500 group-hover:scale-105"
                 />
-
                 <div className="absolute top-3 right-3 bg-black/60 backdrop-blur-md px-2 py-1 rounded text-xs font-bold shadow-lg flex items-center gap-1">
                   <Camera size={14} className="text-primary" />{" "}
                   {plan.points?.length || 0} จุด
                 </div>
-
                 <Tooltip
                   content="ลบแปลนพื้นนี้"
                   color="danger"
@@ -331,7 +428,6 @@ const DasboardMapping360 = ({
                   </div>
                 </Tooltip>
               </CardBody>
-
               <CardFooter className="px-4 py-4 bg-zinc-800/80 border-t border-white/5 flex flex-col items-start">
                 <h3 className="font-bold text-sm sm:text-base truncate w-full text-zinc-100 group-hover:text-primary transition-colors">
                   {plan.name}
@@ -355,14 +451,14 @@ const DasboardMapping360 = ({
         handleMapClick={handleMapClick}
         setSelectedMedia={setSelectedMedia}
         tempPoint={tempPoint}
-        point360File={point360File}
-        setPoint360File={setPoint360File}
         handleDeletePoint={handleDeletePoint}
+        handleAddNewHistory={handleAddNewHistory}
       />
 
       <Viewer360Modal
         selectedMedia={selectedMedia}
         onClose={() => setSelectedMedia(null)}
+        handleAddNewHistory={handleAddNewHistory}
       />
 
       <AddFloorPlanModal
@@ -389,6 +485,19 @@ const DasboardMapping360 = ({
         point360File={point360File}
         setPoint360File={setPoint360File}
         isSavingPoint={isSavingPoint}
+      />
+
+      <AddHistoryModal
+        isOpen={isAddHistoryOpen}
+        onOpenChange={(open: boolean) => {
+          if (!open) setPoint360File(null);
+          onAddHistoryChange();
+        }}
+        pointToUpdateHistory={pointToUpdateHistory}
+        point360File={point360File}
+        setPoint360File={setPoint360File}
+        isSaving={isSavingPoint}
+        onSave={handleSaveNewVersion}
       />
 
       <DeleteFloorPlanModal

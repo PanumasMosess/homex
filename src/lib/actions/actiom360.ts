@@ -1,7 +1,6 @@
 "use server";
 
 import prisma from "@/lib/prisma";
-import { error } from "console";
 import { deleteFileS3 } from "./actionIndex";
 
 export async function getFloorPlansByProject(
@@ -15,7 +14,13 @@ export async function getFloorPlansByProject(
         organizationId: Number(organizationId),
       },
       include: {
-        points: true,
+        points: {
+          include: {
+            histories: {
+              orderBy: { createdAt: "desc" },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",
@@ -67,14 +72,56 @@ export async function deleteFloorPlanAction(
   projectId: number,
 ) {
   try {
-    if (imageUrl) {
-      const urlObj = new URL(imageUrl);
-      let fileKey = urlObj.pathname.substring(1);
-      if (fileKey.startsWith("homex/")) {
-        fileKey = fileKey.replace("homex/", "");
-      }
-      await deleteFileS3(fileKey);
+    const floorPlan = await prisma.floorPlan.findUnique({
+      where: { id: floorPlanId },
+      include: {
+        points: {
+          include: {
+            histories: true,
+          },
+        },
+      },
+    });
+
+    if (!floorPlan) {
+      return { success: false, error: "ไม่พบแปลนพื้นนี้ในระบบ" };
     }
+
+    const urlsToDelete: string[] = [];
+
+    if (floorPlan.imageUrl) urlsToDelete.push(floorPlan.imageUrl);
+    if (imageUrl && !urlsToDelete.includes(imageUrl))
+      urlsToDelete.push(imageUrl);
+
+    floorPlan.points.forEach((point: any) => {
+      if (point.thumbnail && !urlsToDelete.includes(point.thumbnail)) {
+        urlsToDelete.push(point.thumbnail);
+      }
+
+      point.histories.forEach((history: any) => {
+        if (history.imageUrl && !urlsToDelete.includes(history.imageUrl)) {
+          urlsToDelete.push(history.imageUrl);
+        }
+      });
+    });
+
+    const deletePromises = urlsToDelete.map(async (url: string) => {
+      try {
+        const urlObj = new URL(url);
+        let fileKey = urlObj.pathname.substring(1);
+
+        if (fileKey.startsWith("homex/")) {
+          fileKey = fileKey.replace("homex/", "");
+        }
+
+        await deleteFileS3(fileKey);
+      } catch (s3Error) {
+        console.error(`❌ Failed to delete S3 file: ${url}`, s3Error);
+      }
+    });
+
+    await Promise.all(deletePromises);
+
     await prisma.floorPlan.delete({
       where: { id: floorPlanId },
     });
@@ -104,7 +151,29 @@ export async function createPoint360Action(data: {
   userId: number;
 }) {
   try {
-    const newPoint = await prisma.point360.create({ data });
+    const newPoint = await prisma.point360.create({
+      data: {
+        title: data.title,
+        location: data.location,
+        x: data.x,
+        y: data.y,
+        floorPlanId: data.floorPlanId,
+        histories: {
+          create: [
+            {
+              imageUrl: data.thumbnail,
+            },
+          ],
+        },
+        organizationId: data.organizationId,
+        projectId: data.projectId,
+        userId: data.userId,
+      },
+      include: {
+        histories: true,
+      },
+    });
+
     return { success: true, data: newPoint };
   } catch (error: any) {
     console.error("❌ Create Point Error:", error);
@@ -121,19 +190,62 @@ export async function deletePoint360Action(
   projectId: number,
 ) {
   try {
-    // 🚀 ลบไฟล์ใน S3 ก่อน
-    if (thumbnail) {
-      const urlObj = new URL(thumbnail);
-      const s3Key = urlObj.pathname.substring(1);
-      await deleteFileS3(s3Key);
+    const point = await prisma.point360.findUnique({
+      where: { id: pointId },
+      include: { histories: true },
+    });
+
+    if (!point) {
+      return { success: false, error: "ไม่พบจุด 360° นี้ในระบบ" };
     }
 
-    // 🚀 ลบข้อมูลใน Database
+    const urlsToDelete = point.histories.map((h: any) => h.imageUrl);
+    if (thumbnail && !urlsToDelete.includes(thumbnail)) {
+      urlsToDelete.push(thumbnail);
+    }
+
+    const deletePromises = urlsToDelete.map(async (url: string) => {
+      if (url) {
+        try {
+          const urlObj = new URL(url);
+          let fileKey = urlObj.pathname.substring(1);
+          if (fileKey.startsWith("homex/")) {
+            fileKey = fileKey.replace("homex/", "");
+          }
+
+          await deleteFileS3(fileKey);
+        } catch (s3Error) {
+          console.error(`❌ Failed to delete S3 file: ${url}`, s3Error);
+        }
+      }
+    });
+
+    await Promise.all(deletePromises);
+
     await prisma.point360.delete({ where: { id: pointId } });
 
     return { success: true };
   } catch (error: any) {
     console.error("❌ Delete Point Error:", error);
     return { success: false, error: "ลบจุด 360 ไม่สำเร็จ" };
+  }
+}
+
+export async function addPointVersion(data: {
+  pointId: number;
+  imageUrl: string;
+  projectId: number;
+}) {
+  try {
+    const newVersion = await prisma.point360History.create({
+      data: {
+        imageUrl: data.imageUrl,
+        pointId: data.pointId,
+      },
+    });
+
+    return { success: true, data: newVersion };
+  } catch (error) {
+    return { success: false, error: "เพิ่มเวอร์ชันรูปภาพไม่สำเร็จ" };
   }
 }
