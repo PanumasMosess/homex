@@ -9,6 +9,7 @@ import {
   Cctv,
   Banknote,
   Rss,
+  View,
 } from "lucide-react";
 
 import {
@@ -72,6 +73,7 @@ import DocumentSection from "./DocumentSection";
 import FeedSection from "./feed/FeedSection";
 import DashboardCamera from "./camera/DashboardCamera";
 import ProcurementSection from "./procurement/ProcurementSection";
+import DasboardMapping360 from "./360mapping/DasboardMapping360";
 
 const ProjectDetail = ({
   organizationId,
@@ -920,6 +922,7 @@ const ProjectDetail = ({
             },
             { id: "documents", label: "เอกสาร", icon: <FileText size={18} /> },
             { id: "camera", label: "กล้อง", icon: <Cctv size={18} /> },
+            { id: "360mapping", label: "360°", icon: <View size={18} /> },
           ].map((item) => (
             <Button
               key={item.id}
@@ -1108,16 +1111,29 @@ const ProjectDetail = ({
           />
         )}
 
+        {activeSection === "360mapping" && (
+          <DasboardMapping360
+            projectId={Number(projectInfo.id)}
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+          />
+        )}
+
         {/* Section อื่นๆ */}
-        {!["tasks", "documents", "feed", "purchasing", "camera"].includes(
-          activeSection,
-        ) && (
-            <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
-              <p className="text-default-400 font-bold uppercase tracking-widest">
-                Coming Soon
-              </p>
-            </div>
-          )}
+        {![
+          "tasks",
+          "documents",
+          "feed",
+          "purchasing",
+          "camera",
+          "360mapping",
+        ].includes(activeSection) && (
+          <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
+            <p className="text-default-400 font-bold uppercase tracking-widest">
+              Coming Soon
+            </p>
+          </div>
+        )}
       </div>
 
       {/* --- MODAL (จัดกึ่งกลางเป๊ะสำหรับ iPhone 14) --- */}

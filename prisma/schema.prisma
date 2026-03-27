@@ -48,6 +48,8 @@ model organization {
   purchaseOrders   purchase_order[]
   notifications    notification[]
   cameras          camera[]
+  floorPlans       FloorPlan[]
+  point360s        Point360[]
 }
 
 // =====================================
@@ -108,6 +110,8 @@ model user {
   stories                 story[]                 @relation("story_author")
   storyViews              story_view[]            @relation("story_viewer")
   cameras                 camera[]
+  floorPlans              FloorPlan[]
+  point360s               Point360[]
 }
 
 // =====================================
@@ -222,6 +226,8 @@ model project {
   procurementItems procurement_item[]
   purchaseOrders   purchase_order[]
   cameras          camera[]
+  floorPlans       FloorPlan[]
+  point360s        Point360[]
 }
 
 // =====================================
@@ -805,6 +811,56 @@ model camera {
 
   projectId Int
   project   project @relation(fields: [projectId], references: [id])
+
+  userId Int
+  user   user @relation(fields: [userId], references: [id])
+}
+
+// ==========================================
+// 1. ตารางเก็บข้อมูลแปลนพื้น (Floor Plan)
+// ==========================================
+model FloorPlan {
+  id        Int      @id @default(autoincrement())
+  name      String // ชื่อแปลน เช่น "แปลนชั้น 1 โซน A"
+  imageUrl  String // URL รูปภาพแปลน
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  userId Int
+  user   user @relation(fields: [userId], references: [id])
+
+  points Point360[]
+}
+
+// ==========================================
+// 2. ตารางเก็บข้อมูลจุดปักหมุด 360 องศา (Point 360)
+// ==========================================
+model Point360 {
+  id        Int      @id @default(autoincrement())
+  title     String // ชื่อจุด เช่น "โถงทางเข้าหลัก"
+  location  String? // รายละเอียด/ตำแหน่ง เช่น "โซน A"
+  thumbnail String // URL ของรูปภาพ/วิดีโอ 360 องศา
+  x         Float // พิกัดแกน X บนรูปแปลน (เก็บเป็น % เช่น 35.5)
+  y         Float // พิกัดแกน Y บนรูปแปลน (เก็บเป็น % เช่น 60.2)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // 🌟 [ความสัมพันธ์หลัก] จุดนี้อยู่บนแปลนพื้นไหน
+  floorPlanId Int
+  floorPlan   FloorPlan @relation(fields: [floorPlanId], references: [id], onDelete: Cascade)
+
+  // 🌟 [เพิ่มใหม่] เพื่อระบุว่าจุดนี้เป็นของใคร ง่ายต่อการ Filter และเช็คสิทธิ์
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  projectId Int
+  project   project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   userId Int
   user   user @relation(fields: [userId], references: [id])
