@@ -845,7 +845,6 @@ model Point360 {
   id        Int      @id @default(autoincrement())
   title     String // ชื่อจุด เช่น "โถงทางเข้าหลัก"
   location  String? // รายละเอียด/ตำแหน่ง เช่น "โซน A"
-  thumbnail String // URL ของรูปภาพ/วิดีโอ 360 องศา
   x         Float // พิกัดแกน X บนรูปแปลน (เก็บเป็น % เช่น 35.5)
   y         Float // พิกัดแกน Y บนรูปแปลน (เก็บเป็น % เช่น 60.2)
   createdAt DateTime @default(now())
@@ -864,4 +863,14 @@ model Point360 {
 
   userId Int
   user   user @relation(fields: [userId], references: [id])
+
+  histories Point360History[]
+}
+
+model Point360History {
+  id        Int      @id @default(autoincrement())
+  imageUrl  String
+  pointId   Int
+  point     Point360 @relation(fields: [pointId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
 }

@@ -4,11 +4,10 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
-  GetObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
-import { KEYUTIL, KJUR, stob64, hextorstr } from "jsrsasign";
+
 
 const s3Client = new S3Client({
   endpoint: process.env.ENDPOINT!,
@@ -41,8 +40,8 @@ export const getPresignedUrl = async (
   fileFolder: string,
 ) => {
   try {
-    if (fileSize > 10 * 1024 * 1024) {
-      return { success: false, error: "File size must be less than 10MB" };
+    if (fileSize > 200 * 1024 * 1024) {
+      return { success: false, error: "File size must be less than 200MB" };
     }
 
     const randomBytes = crypto.randomBytes(16);
