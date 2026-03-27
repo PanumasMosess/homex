@@ -273,6 +273,7 @@ export type SectionType =
   | "purchasing"
   | "documents"
   | "camera"
+  | "360mapping"
   | "feed"
   | (string & {});
 
