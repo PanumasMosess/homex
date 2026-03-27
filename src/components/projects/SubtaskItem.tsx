@@ -1,6 +1,8 @@
 import { SubtaskItemProps } from "@/lib/type";
 import { Button, Checkbox, Input, Spinner, Textarea } from "@heroui/react";
 import { Clock, Pencil, Trash2 } from "lucide-react";
+import UploadSubtaskImage from "./forms/uploadSubtaskImage";
+import { useState } from "react";
 
 const SubtaskItem = ({
   subtask: s,
@@ -16,6 +18,9 @@ const SubtaskItem = ({
   handleDeleteSubtask,
   canManage,
 }: SubtaskItemProps) => {
+
+  const [openUpload, setOpenUpload] = useState(false);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
   return (
     <div className="border-b border-default-100 dark:border-zinc-800/50 pb-4 mb-3 last:border-0 last:mb-0">
       {editingSubtaskId === s.id ? (
@@ -135,9 +140,16 @@ const SubtaskItem = ({
                 <Checkbox
                   isSelected={!!s.status}
                   isDisabled={!canManage}
-                  onValueChange={() =>
-                    canManage && handleToggleSubtask(s.id, !!s.status)
-                  }
+                  onValueChange={() => {
+                    if (!canManage) return;
+                    const wasDone = !!s.status;
+                    if (wasDone) {
+                      handleToggleSubtask(s.id, wasDone);
+                      return;
+                    }
+                    setSelectedId(s.id);
+                    setOpenUpload(true);
+                  }}
                 />
               )}
             </div>
@@ -145,9 +157,19 @@ const SubtaskItem = ({
             {/* ข้อมูลงานย่อย */}
             <div
               className="flex flex-col flex-1 pr-2 cursor-pointer"
-              onClick={() =>
-                !updatingSubtaskId && handleToggleSubtask(s.id, !!s.status)
-              }
+              // onClick={() =>
+              //   !updatingSubtaskId && handleToggleSubtask(s.id, !!s.status)
+              // }
+              onClick={() => {
+                if (updatingSubtaskId || !canManage) return;
+                const wasDone = !!s.status;
+                if (wasDone) {
+                  handleToggleSubtask(s.id, wasDone);
+                  return;
+                }
+                setSelectedId(s.id);
+                setOpenUpload(true);
+              }}
             >
               <span
                 className={`text-sm font-semibold ${!!s.status ? "line-through text-default-400" : "text-foreground"}`}
@@ -211,6 +233,16 @@ const SubtaskItem = ({
           )}
         </div>
       )}
+      <UploadSubtaskImage
+        isOpen={openUpload}
+        onClose={() => setOpenUpload(false)}
+        subtaskId={selectedId}
+        onSuccess={(imageUrl) => {
+          if (selectedId) {
+            handleToggleSubtask(selectedId, false, imageUrl);
+          }
+        }}
+      />
     </div>
   );
 };

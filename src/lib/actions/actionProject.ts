@@ -9,7 +9,7 @@ import {
 import { calcDurationDays } from "../setting_data";
 
 import { ActionState } from "@/lib/type";
-import { createFeedPost } from "./actionFeed";
+import { createFeedPost, deleteSubtaskFeed } from "./actionFeed";
 import { auth } from "@/auth";
 
 export async function createProject(
@@ -487,11 +487,15 @@ export async function createSubTask(data: any) {
 export async function toggleSubtaskStatus(
   subtaskId: number,
   newStatus: boolean,
+  imageUrl?: string,
 ) {
   try {
     const detail = await prisma.task_detail.update({
       where: { id: subtaskId },
-      data: { status: newStatus },
+      data: {
+        status: newStatus,
+        ...(newStatus ? (imageUrl ? { imageUrl } : {}) : { imageUrl: null }),
+      },
       include: { task: { select: { id: true, coverImageUrl: true } } },
     });
 
@@ -508,9 +512,13 @@ export async function toggleSubtaskStatus(
           userId: feedUserId,
           taskId: detail.taskId,
           subtaskId: detail.id,
-          imageUrl: detail.task?.coverImageUrl || undefined,
+          imageUrl: detail.imageUrl || undefined,
         });
       }
+    } else {
+      await deleteSubtaskFeed({
+        subtaskId: detail.id,
+      });
     }
 
     return { success: true };
