@@ -8,7 +8,7 @@ export async function getFloorPlansByProject(
   organizationId: number,
 ) {
   try {
-    const floorPlans = await prisma.floorPlan.findMany({
+    const floorPlans = await prisma.floorplan.findMany({
       where: {
         projectId: Number(projectId),
         organizationId: Number(organizationId),
@@ -46,7 +46,7 @@ export async function createFloorPlan(data: {
   userId: number;
 }) {
   try {
-    const newFloorPlan = await prisma.floorPlan.create({
+    const newFloorPlan = await prisma.floorplan.create({
       data: {
         name: data.name,
         imageUrl: data.imageUrl,
@@ -72,7 +72,7 @@ export async function deleteFloorPlanAction(
   projectId: number,
 ) {
   try {
-    const floorPlan = await prisma.floorPlan.findUnique({
+    const floorPlan = await prisma.floorplan.findUnique({
       where: { id: floorPlanId },
       include: {
         points: {
@@ -122,7 +122,7 @@ export async function deleteFloorPlanAction(
 
     await Promise.all(deletePromises);
 
-    await prisma.floorPlan.delete({
+    await prisma.floorplan.delete({
       where: { id: floorPlanId },
     });
 
@@ -237,7 +237,7 @@ export async function addPointVersion(data: {
   projectId: number;
 }) {
   try {
-    const newVersion = await prisma.point360History.create({
+    const newVersion = await prisma.point360history.create({
       data: {
         imageUrl: data.imageUrl,
         pointId: data.pointId,
