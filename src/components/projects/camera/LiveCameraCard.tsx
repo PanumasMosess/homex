@@ -121,7 +121,7 @@ const LiveCameraCard = ({
             </div>
           </div>
         ) : liveToken && liveUrl ? (
-          <div className="w-full h-full relative">
+          <div className="w-full h-full relative overflow-hidden">
             <EzvizCamera
               key={`${camera.id}-${liveToken.substring(0, 10)}`}
               accessToken={liveToken}
