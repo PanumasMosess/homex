@@ -9,8 +9,9 @@ import {
   ModalFooter,
   Button,
   Input,
+  Progress,
 } from "@heroui/react";
-import { ClipboardList, Sparkles } from "lucide-react";
+import { ClipboardList, Sparkles, Check, Loader2 } from "lucide-react";
 import Image from "next/image";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
@@ -30,8 +31,19 @@ const CreateTaskV2Modal = ({
   const router = useRouter();
   const [taskName, setTaskName] = useState("");
   const [isCreating, setIsCreating] = useState(false);
-  const [step, setStep] = useState("");
+  const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [isPending, startTransition] = useTransition();
+
+  const AI_STEPS = [
+    { label: "สร้างรูปภาพปกงาน" },
+    { label: "บันทึกข้อมูลงานลงระบบ" },
+    { label: "AI วิเคราะห์งบประมาณ & ระยะเวลา" },
+    { label: "AI ประเมินความเสี่ยง" },
+    { label: "บันทึกผลวิเคราะห์ AI" },
+    { label: "สร้าง Checklist ขั้นตอนการทำงาน" },
+  ];
+
+  const aiProgress = currentStepIndex < 0 ? 0 : Math.min(Math.round(((currentStepIndex + 1) / AI_STEPS.length) * 100), 100);
 
   const handleCreate = async () => {
     if (!taskName.trim()) {
@@ -40,14 +52,14 @@ const CreateTaskV2Modal = ({
     }
 
     setIsCreating(true);
+    setCurrentStepIndex(0);
 
     try {
-      // Step 1: Generate cover image
-      setStep("กำลังสร้างรูปภาพ...");
+      // Step 0: Generate cover image
       const imgRes = await generationImage(taskName);
 
-      // Step 2: Create task in DB
-      setStep("กำลังบันทึกงาน...");
+      // Step 1: Create task in DB
+      setCurrentStepIndex(1);
       const taskRes = await createTaskV2(
         taskName,
         projectId,
@@ -59,18 +71,21 @@ const CreateTaskV2Modal = ({
         throw new Error(taskRes.message || "สร้างงานไม่สำเร็จ");
       }
 
-      // Step 3: AI Analysis
-      setStep("AI กำลังวิเคราะห์งาน...");
+      // Step 2: AI Analysis (budget & duration)
+      setCurrentStepIndex(2);
       const aiData = await generateTaskV2Analysis(taskName);
+
+      // Step 3: AI risk assessment (part of same call, visual step)
+      setCurrentStepIndex(3);
 
       if (aiData) {
         // Step 4: Save AI data
-        setStep("กำลังบันทึกข้อมูล AI...");
+        setCurrentStepIndex(4);
         await saveTaskV2AiData(taskRes.taskId, aiData);
 
         // Step 5: Create checklist as subtasks
         if (aiData.checklist && aiData.checklist.length > 0) {
-          setStep("กำลังสร้าง Checklist...");
+          setCurrentStepIndex(5);
           await createV2ChecklistAsSubtasks(
             taskRes.taskId,
             projectId,
@@ -80,6 +95,7 @@ const CreateTaskV2Modal = ({
         }
       }
 
+      setCurrentStepIndex(AI_STEPS.length);
       toast.success("สร้างงานและวิเคราะห์ข้อมูล AI สำเร็จ!");
 
       startTransition(() => {
@@ -87,20 +103,20 @@ const CreateTaskV2Modal = ({
       });
 
       setTaskName("");
-      setStep("");
+      setCurrentStepIndex(-1);
       onOpenChange(false);
     } catch (error: any) {
       toast.error(error.message || "เกิดข้อผิดพลาดในการสร้างงาน");
     } finally {
       setIsCreating(false);
-      setStep("");
+      setCurrentStepIndex(-1);
     }
   };
 
   const handleClose = () => {
     if (isCreating) return;
     setTaskName("");
-    setStep("");
+    setCurrentStepIndex(-1);
     onOpenChange(false);
   };
 
@@ -139,49 +155,106 @@ const CreateTaskV2Modal = ({
                 />
               </div>
               <h2 className="text-lg sm:text-xl font-bold gradientText text-center">
-                สร้าง Task
+                {isCreating ? "AI กำลังวิเคราะห์งาน" : "สร้าง Task"}
               </h2>
               <p className="text-default-400 text-xs font-normal text-center">
-                ใส่ชื่องาน → AI วิเคราะห์ข้อมูลให้อัตโนมัติ (CODE: {projectCode})
+                {isCreating ? "กรุณาอย่าปิดหน้าต่างนี้" : `ใส่ชื่องาน → AI วิเคราะห์ข้อมูลให้อัตโนมัติ (CODE: ${projectCode})`}
               </p>
-              <hr className="w-full border-default-100" />
             </ModalHeader>
 
             <ModalBody>
-              <Input
-                isRequired
-                label="ชื่องาน"
-                placeholder="เช่น งานทำหลังคา Metalsheet 0.40 พร้อม PU 50 มม. 334.00 ตร.ม."
-                labelPlacement="outside"
-                variant="bordered"
-                value={taskName}
-                onValueChange={setTaskName}
-                isDisabled={isBusy}
-                startContent={
-                  <ClipboardList className="text-default-400" size={18} />
-                }
-                classNames={{
-                  input: "text-sm",
-                }}
-              />
+              {!isCreating ? (
+                <>
+                  <Input
+                    isRequired
+                    label="ชื่องาน"
+                    placeholder="เช่น งานทำหลังคา Metalsheet 0.40 พร้อม PU 50 มม. 334.00 ตร.ม."
+                    labelPlacement="outside"
+                    variant="bordered"
+                    value={taskName}
+                    onValueChange={setTaskName}
+                    isDisabled={isBusy}
+                    startContent={
+                      <ClipboardList className="text-default-400" size={18} />
+                    }
+                    classNames={{
+                      input: "text-sm",
+                    }}
+                  />
 
-              {step && (
-                <div className="flex items-center gap-3 p-3 bg-violet-50 dark:bg-violet-900/20 rounded-xl border border-violet-100 dark:border-violet-500/20 animate-pulse">
-                  <Sparkles className="text-violet-500 animate-spin" size={18} />
-                  <p className="text-sm text-violet-600 dark:text-violet-400 font-medium">
-                    {step}
-                  </p>
+                  <div className="p-3 bg-default-50 dark:bg-zinc-800/50 rounded-xl text-xs text-default-500 space-y-1">
+                    <p className="font-semibold text-default-600">AI จะวิเคราะห์ให้อัตโนมัติ:</p>
+                    <p>• ประเมินงบประมาณ (ค่าวัสดุ / ค่าแรง / ค่าเครื่องจักร)</p>
+                    <p>• ระยะเวลาดำเนินงาน</p>
+                    <p>• ความเสี่ยงและแนวทางป้องกัน</p>
+                    <p>• Checklist ขั้นตอนการทำงาน</p>
+                    <p>• รายการวัสดุสำหรับจัดซื้อ</p>
+                  </div>
+                </>
+              ) : (
+                <div className="flex flex-col items-center space-y-5 py-4">
+                  {/* Progress bar */}
+                  <div className="w-full max-w-xs space-y-2">
+                    <div className="flex justify-between text-xs">
+                      <span className="text-default-400">กำลังดำเนินการ...</span>
+                      <span className="font-bold text-primary">{aiProgress}%</span>
+                    </div>
+                    <Progress value={aiProgress} color="primary" size="sm" />
+                  </div>
+
+                  {/* Step list */}
+                  <div className="w-full max-w-xs space-y-2">
+                    {AI_STEPS.map((s, i) => {
+                      const isDone = currentStepIndex > i;
+                      const isActive = currentStepIndex === i;
+                      if (currentStepIndex < i) return null;
+
+                      return (
+                        <div
+                          key={i}
+                          className="flex items-center gap-2.5 animate-in fade-in slide-in-from-left-2"
+                          style={{ animationDuration: "300ms" }}
+                        >
+                          {isDone ? (
+                            <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                              <Check size={12} className="text-success" />
+                            </div>
+                          ) : isActive ? (
+                            <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                              <Loader2 size={14} className="text-primary animate-spin" />
+                            </div>
+                          ) : null}
+                          <span
+                            className={`text-xs ${
+                              isDone
+                                ? "text-success"
+                                : isActive
+                                ? "text-primary font-medium"
+                                : "text-default-400"
+                            }`}
+                          >
+                            {s.label}
+                          </span>
+                        </div>
+                      );
+                    })}
+
+                    {currentStepIndex >= AI_STEPS.length && (
+                      <div
+                        className="flex items-center gap-2.5 animate-in fade-in slide-in-from-left-2"
+                        style={{ animationDuration: "300ms" }}
+                      >
+                        <div className="w-5 h-5 rounded-full bg-success/20 flex items-center justify-center shrink-0">
+                          <Check size={12} className="text-success" />
+                        </div>
+                        <span className="text-xs font-medium text-success">
+                          ดำเนินการเสร็จสิ้น!
+                        </span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
-
-              <div className="p-3 bg-default-50 dark:bg-zinc-800/50 rounded-xl text-xs text-default-500 space-y-1">
-                <p className="font-semibold text-default-600">AI จะวิเคราะห์ให้อัตโนมัติ:</p>
-                <p>• ประเมินงบประมาณ (ค่าวัสดุ / ค่าแรง / ค่าเครื่องจักร)</p>
-                <p>• ระยะเวลาดำเนินงาน</p>
-                <p>• ความเสี่ยงและแนวทางป้องกัน</p>
-                <p>• Checklist ขั้นตอนการทำงาน</p>
-                <p>• รายการวัสดุสำหรับจัดซื้อ</p>
-              </div>
             </ModalBody>
 
             <ModalFooter className="flex flex-col-reverse sm:flex-row gap-3">
@@ -194,15 +267,17 @@ const CreateTaskV2Modal = ({
               >
                 ยกเลิก
               </Button> */}
-              <Button
-                color="primary"
-                radius="full"
-                className="w-full h-12 sm:h-10 font-medium bg-black text-white dark:bg-white dark:text-black shadow-lg"
-                isLoading={isBusy}
-                onPress={handleCreate}
-              >
-                {isBusy ? step || "กำลังสร้าง..." : "สร้าง Task"}
-              </Button>
+              {!isCreating && (
+                <Button
+                  color="primary"
+                  radius="full"
+                  className="w-full h-12 sm:h-10 font-medium bg-black text-white dark:bg-white dark:text-black shadow-lg"
+                  isLoading={isBusy}
+                  onPress={handleCreate}
+                >
+                  สร้าง Task
+                </Button>
+              )}
             </ModalFooter>
           </>
         )}
