@@ -11,6 +11,7 @@ import {
   Input,
 } from "@heroui/react";
 import { ClipboardList, Sparkles } from "lucide-react";
+import Image from "next/image";
 import { toast } from "react-toastify";
 import { useRouter } from "next/navigation";
 import type { CreateTaskV2ModalProps } from "@/lib/type";
@@ -127,18 +128,23 @@ const CreateTaskV2Modal = ({
       <ModalContent>
         {() => (
           <>
-            <ModalHeader className="flex flex-row items-center gap-3">
-              <div className="p-2.5 bg-violet-50 dark:bg-violet-900/20 rounded-xl shrink-0 border border-violet-100 dark:border-violet-500/20">
-                <Sparkles className="text-violet-500" size={24} />
+            <ModalHeader className="flex flex-col items-center gap-4 pb-4">
+              <div className="flex justify-center">
+                <Image
+                  src="/logo.png"
+                  alt="HomeX"
+                  width={120}
+                  height={40}
+                  className="object-contain"
+                />
               </div>
-              <div className="flex flex-col">
-                <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                  สร้าง Task (AI)
-                </h2>
-                <p className="text-default-400 text-xs font-normal">
-                  ใส่ชื่องาน → AI วิเคราะห์ข้อมูลให้อัตโนมัติ (CODE: {projectCode})
-                </p>
-              </div>
+              <h2 className="text-lg sm:text-xl font-bold gradientText text-center">
+                สร้าง Task
+              </h2>
+              <p className="text-default-400 text-xs font-normal text-center">
+                ใส่ชื่องาน → AI วิเคราะห์ข้อมูลให้อัตโนมัติ (CODE: {projectCode})
+              </p>
+              <hr className="w-full border-default-100" />
             </ModalHeader>
 
             <ModalBody>
@@ -174,7 +180,7 @@ const CreateTaskV2Modal = ({
                 <p>• ระยะเวลาดำเนินงาน</p>
                 <p>• ความเสี่ยงและแนวทางป้องกัน</p>
                 <p>• Checklist ขั้นตอนการทำงาน</p>
-                <p>• รายการวัสดุสำหรับจัดซื้อ (Draft PR)</p>
+                <p>• รายการวัสดุสำหรับจัดซื้อ</p>
               </div>
             </ModalBody>
 
