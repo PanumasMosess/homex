@@ -68,6 +68,21 @@ export async function addMaterialToProcurement(params: {
 }
 
 /* ====================================================== */
+/* GET ADDED MATERIAL NAMES for a task                    */
+/* ====================================================== */
+export async function getAddedMaterialNames(taskId: number): Promise<string[]> {
+  try {
+    const items = await prisma.procurement_suggestion.findMany({
+      where: { taskId },
+      select: { materialName: true },
+    });
+    return items.map((i) => i.materialName);
+  } catch {
+    return [];
+  }
+}
+
+/* ====================================================== */
 /* GET PROCUREMENT SUGGESTIONS for a project              */
 /* ====================================================== */
 export async function getProcurementSuggestions(projectId: number) {

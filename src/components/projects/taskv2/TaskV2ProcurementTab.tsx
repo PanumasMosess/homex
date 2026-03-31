@@ -1,30 +1,40 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button, Chip } from "@heroui/react";
 import { ShoppingCart, Plus, Check } from "lucide-react";
 import type { TaskV2Material } from "@/lib/type";
 import { toast } from "react-toastify";
+import { getAddedMaterialNames } from "@/lib/actions/actionProcurementSuggestion";
 
 interface TaskV2ProcurementTabProps {
   materials: TaskV2Material[];
+  taskId?: number;
   onAddToProcurement?: (material: TaskV2Material) => Promise<boolean>;
 }
 
 const TaskV2ProcurementTab = ({
   materials,
+  taskId,
   onAddToProcurement,
 }: TaskV2ProcurementTabProps) => {
-  const [addedIndices, setAddedIndices] = useState<Set<number>>(new Set());
+  const [addedNames, setAddedNames] = useState<Set<string>>(new Set());
   const [loadingIndex, setLoadingIndex] = useState<number | null>(null);
 
+  useEffect(() => {
+    if (!taskId) return;
+    getAddedMaterialNames(taskId).then((names) => {
+      setAddedNames(new Set(names));
+    });
+  }, [taskId]);
+
   const handleAdd = async (mat: TaskV2Material, index: number) => {
-    if (!onAddToProcurement || addedIndices.has(index)) return;
+    if (!onAddToProcurement || addedNames.has(mat.spec)) return;
     setLoadingIndex(index);
     try {
       const ok = await onAddToProcurement(mat);
       if (ok) {
-        setAddedIndices((prev) => new Set(prev).add(index));
+        setAddedNames((prev) => new Set(prev).add(mat.spec));
         toast.success(`เพิ่ม "${mat.spec}" ไปที่จัดซื้อแล้ว`);
       }
     } finally {
@@ -69,7 +79,7 @@ const TaskV2ProcurementTab = ({
           </thead>
           <tbody>
             {materials.map((mat, i) => {
-              const isAdded = addedIndices.has(i);
+              const isAdded = addedNames.has(mat.spec);
               const isLoading = loadingIndex === i;
               return (
                 <tr
@@ -91,7 +101,7 @@ const TaskV2ProcurementTab = ({
                   <td className="p-3 text-center">
                     {isAdded ? (
                       <Chip size="sm" color="success" variant="flat" startContent={<Check size={12} />}>
-                        เพิ่มแล้ว
+                        ถูกเพิ่มลงจัดซื้อแล้ว
                       </Chip>
                     ) : (
                       <Button

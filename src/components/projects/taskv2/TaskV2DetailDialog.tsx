@@ -205,6 +205,7 @@ const TaskV2DetailDialog = ({
                   {activeTab === "prpo" && (
                     <TaskV2ProcurementTab
                       materials={aiData.materials}
+                      taskId={task?.id}
                       onAddToProcurement={onAddToProcurement}
                     />
                   )}
