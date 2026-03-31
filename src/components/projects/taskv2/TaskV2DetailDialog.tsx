@@ -155,7 +155,7 @@ const TaskV2DetailDialog = ({
                 <Progress
                   value={task.progressPercent || 0}
                   color="primary"
-                  size="sm"
+                  size="md"
                   className="w-full"
                 />
               </div>
