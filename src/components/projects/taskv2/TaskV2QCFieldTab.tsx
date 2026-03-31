@@ -73,11 +73,10 @@ const SortableChecklistItem = ({
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-3 rounded-xl border transition-all group ${
-        item.checked
-          ? "bg-success/5 border-success/30"
-          : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700"
-      }`}
+      className={`flex items-center gap-2 p-3 rounded-xl border transition-all group ${item.checked
+        ? "bg-success/5 border-success/30"
+        : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700"
+        }`}
     >
       {/* Drag handle */}
       <button
@@ -133,11 +132,10 @@ const SortableChecklistItem = ({
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <div className="flex-1 min-w-0 space-y-0.5">
             <p
-              className={`text-sm font-medium leading-tight cursor-pointer ${
-                item.checked
-                  ? "line-through text-zinc-500"
-                  : "text-zinc-200"
-              }`}
+              className={`text-sm font-medium leading-tight cursor-pointer ${item.checked
+                ? "line-through text-zinc-500"
+                : "text-zinc-200"
+                }`}
               onClick={() => onToggle(index)}
             >
               {item.name}
@@ -290,18 +288,27 @@ const TaskV2QCFieldTab = ({
             <div className="flex gap-2">
               <span className="text-primary font-bold shrink-0">1.</span>
               <p>
-                <strong className="text-zinc-200">จัดลำดับงาน:</strong>{" "}
-                ลากไอคอน <GripVertical size={12} className="inline text-zinc-500" /> เพื่อจัดเรียงลำดับขั้นตอนการทำงานตามความสำคัญ
+                <strong className="text-zinc-200">1. ส่งเข้าแอปมือถือโฟร์แมน:</strong>{" "}
+                ข้อมูล Step-by-Step ที่ AI สร้างขึ้น จะถูกส่งไปเป็น Checklist ในแอปพลิเคชันมือถือของโฟร์แมนหน้าไซต์งาน (จำลองหน้าจอด้านซ้าย)
               </p>
             </div>
 
             <div className="flex gap-2">
               <span className="text-primary font-bold shrink-0">2.</span>
               <p>
-                <strong className="text-zinc-200">แก้ไขชื่อ:</strong>{" "}
-                คลิกไอคอน <Pencil size={12} className="inline text-zinc-500" /> ที่แต่ละรายการ เพื่อแก้ไขชื่อขั้นตอน
+                <strong className="text-zinc-200">อัปเดตแบบ Real-time:</strong>{" "}
+                เมื่อโฟร์แมนทำงานเสร็จในแต่ละขั้น และกด ติ๊กถูก ระบบจะรู้ทันทีว่างานนี้มีความคืบหน้า (Progress) ไปแล้วกี่เปอร์เซ็นต์
               </p>
             </div>
+
+            <div className="flex gap-2">
+              <span className="text-primary font-bold shrink-0">2.</span>
+              <p>
+                <strong className="text-zinc-200">สะท้อนกลับมาที่ :</strong>{" "}
+                3. Dashboard: เปอร์เซ็นต์ความคืบหน้า (เช่น 40%, 75%) จะวิ่งกลับมาแสดงที่ หลอด Progress Bar สีฟ้า ในหน้า Dashboard ของ Project Manager ด้านบนสุดแบบอัตโนมัติ โดยที่ PM ไม่ต้องโทรไปถาม หรือไม่ต้องให้โฟร์แมนพิมพ์รายงานยาวๆ
+              </p>
+            </div>
+
 
             <div className="flex gap-2">
               <span className="text-primary font-bold shrink-0">3.</span>
@@ -311,19 +318,19 @@ const TaskV2QCFieldTab = ({
                 เมื่อทำงานเสร็จในแต่ละขั้นตอน Progress จะอัปเดตอัตโนมัติ
               </p>
             </div>
+
+            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-2">
+              <div className="flex items-center gap-2 text-warning">
+                <p className="font-bold text-xs">💡 ลองเล่นดูสิ: </p>
+              </div>
+              <p className="text-xs text-zinc-400 leading-relaxed">
+                ลองคลิกติ๊กถูกที่ Checklist ในหน้าจอมือถือจำลองด้านซ้าย แล้วสังเกตหลอดความคืบหน้า (Progress Bar) ด้านบนสุดของหน้าจอว่าเปลี่ยนไปอย่างไร
+              </p>
+            </div>
           </div>
         </div>
 
-        <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-2">
-          <div className="flex items-center gap-2 text-warning">
-            <Lightbulb size={16} />
-            <p className="font-bold text-xs">เคล็ดลับ</p>
-          </div>
-          <p className="text-xs text-zinc-400 leading-relaxed">
-            ลากรายการเพื่อจัดลำดับใหม่ ระบบจะบันทึกอัตโนมัติ
-            หรือคลิกไอคอนดินสอเพื่อแก้ไขชื่อรายการย่อย
-          </p>
-        </div>
+
       </div>
     </div>
   );
