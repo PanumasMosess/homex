@@ -197,7 +197,7 @@ const CreateTaskV2Modal = ({
               <Button
                 color="primary"
                 radius="full"
-                className="w-full sm:w-auto h-12 sm:h-10 font-medium bg-black text-white dark:bg-white dark:text-black shadow-lg"
+                className="w-full h-12 sm:h-10 font-medium bg-black text-white dark:bg-white dark:text-black shadow-lg"
                 isLoading={isBusy}
                 onPress={handleCreate}
               >
