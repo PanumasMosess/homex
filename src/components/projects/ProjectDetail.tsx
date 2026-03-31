@@ -925,7 +925,7 @@ const ProjectDetail = ({
             { id: "documents", label: "เอกสาร", icon: <FileText size={18} /> },
             { id: "camera", label: "กล้อง", icon: <Cctv size={18} /> },
             { id: "360mapping", label: "360°", icon: <View size={18} /> },
-            { id: "taskv2", label: "งาน V2", icon: <Sparkles size={18} /> },
+            { id: "taskv2", label: <span>งาน <span className="ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary text-white leading-none">New</span></span>, icon: <Sparkles size={18} /> },
           ].map((item) => (
             <Button
               key={item.id}

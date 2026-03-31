@@ -133,7 +133,7 @@ const CreateTaskV2Modal = ({
               </div>
               <div className="flex flex-col">
                 <h2 className="text-lg sm:text-xl font-bold text-foreground">
-                  สร้าง Task V2 (AI)
+                  สร้าง Task (AI)
                 </h2>
                 <p className="text-default-400 text-xs font-normal">
                   ใส่ชื่องาน → AI วิเคราะห์ข้อมูลให้อัตโนมัติ (CODE: {projectCode})
@@ -179,7 +179,7 @@ const CreateTaskV2Modal = ({
             </ModalBody>
 
             <ModalFooter className="flex flex-col-reverse sm:flex-row gap-3">
-              <Button
+              {/* <Button
                 variant="light"
                 color="danger"
                 radius="full"
@@ -187,7 +187,7 @@ const CreateTaskV2Modal = ({
                 isDisabled={isBusy}
               >
                 ยกเลิก
-              </Button>
+              </Button> */}
               <Button
                 color="primary"
                 radius="full"

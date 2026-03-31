@@ -370,7 +370,7 @@ const TaskV2Section = ({
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="w-full min-w-0">
-          <h2 className="text-xl sm:text-2xl font-bold">Tasks V2</h2>
+          <h2 className="text-xl sm:text-2xl font-bold">Tasks</h2>
           <p className="text-default-500 text-xs sm:text-sm">
             ติดตามรายการงาน (AI-Powered)
           </p>
