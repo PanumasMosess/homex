@@ -72,7 +72,9 @@ const TaskV2Section = ({
   // Build aiData from task fields directly (no server call needed)
   const aiData = useMemo((): TaskV2AIResponse | null => {
     if (!selected) return null;
-    if (!selected.estimatedBudget && !selected.aiRisks) return null;
+    const hasAiFields = selected.estimatedBudget || selected.aiRisks;
+    const hasDetails = (selected.details || []).length > 0;
+    if (!hasAiFields && !hasDetails) return null;
 
     let risks = [];
     try { risks = selected.aiRisks ? JSON.parse(selected.aiRisks) : []; } catch { risks = []; }

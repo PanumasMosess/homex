@@ -7,7 +7,6 @@ import {
   ModalBody,
   Chip,
   Progress,
-  Spinner,
 } from "@heroui/react";
 import {
   FileText,
@@ -185,10 +184,16 @@ const TaskV2DetailDialog = ({
             {/* ===== TAB CONTENT ===== */}
             <div className="p-4 sm:p-6">
               {!aiData ? (
-                <div className="flex flex-col items-center justify-center py-16 gap-3">
-                  <Spinner color="primary" size="lg" />
-                  <p className="text-zinc-400 text-sm">
-                    กำลังโหลดข้อมูล AI...
+                <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
+                  <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
+                    <FileText size={20} className="text-zinc-500" />
+                  </div>
+                  <p className="text-zinc-400 text-sm font-medium">
+                    ยังไม่มีข้อมูล AI สำหรับงานนี้
+                  </p>
+                  <p className="text-zinc-600 text-xs max-w-xs">
+                    งานที่สร้างด้วยระบบ V2 จะมีข้อมูลประมาณการต้นทุน ความเสี่ยง
+                    และ Checklist จาก AI อัตโนมัติ
                   </p>
                 </div>
               ) : (
