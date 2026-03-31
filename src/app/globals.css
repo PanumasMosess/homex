@@ -42,6 +42,13 @@ body {
   animation: gradient-x 4s ease infinite;
 }
 
+.gradientButton {
+  @apply bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500;
+  @apply bg-[length:200%_200%];
+  @apply text-white;
+  animation: gradient-x 4s ease infinite;
+}
+
 @keyframes gradient-x {
   0%,
   100% {

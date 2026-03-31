@@ -397,7 +397,7 @@ const TaskV2Section = ({
               onPress={onOpen}
               color="primary"
               radius="full"
-              className="font-bold shrink-0"
+              className="font-bold shrink-0 gradientButton"
             >
               + สร้าง Task
             </Button>
