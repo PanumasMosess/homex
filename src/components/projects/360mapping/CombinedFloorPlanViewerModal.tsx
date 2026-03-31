@@ -91,14 +91,14 @@ export default function CombinedFloorPlanViewerModal({
   const totalPoints = selectedFloorPlan?.points?.length || 0;
 
   const handlePrevPoint = () => {
-    if (currentIndex > 0) {
-      setSelectedMedia(selectedFloorPlan.points[currentIndex - 1]);
+    if (currentIndex >= 0 && currentIndex < totalPoints - 1) {
+      setSelectedMedia(selectedFloorPlan.points[currentIndex + 1]);
     }
   };
 
   const handleNextPoint = () => {
-    if (currentIndex >= 0 && currentIndex < totalPoints - 1) {
-      setSelectedMedia(selectedFloorPlan.points[currentIndex + 1]);
+    if (currentIndex > 0) {
+      setSelectedMedia(selectedFloorPlan.points[currentIndex - 1]);
     }
   };
 
@@ -113,7 +113,7 @@ export default function CombinedFloorPlanViewerModal({
           setSelectedMedia(null);
         }
       }}
-      size="full" 
+      size="full"
       backdrop="blur"
       isDismissable={false}
       isKeyboardDismissDisabled={true}
@@ -201,13 +201,13 @@ export default function CombinedFloorPlanViewerModal({
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setSelectedMedia(point); 
+                              setSelectedMedia(point);
                               setIsAddingMode(false);
                             }}
                             className={`relative text-white p-2 rounded-full shadow-lg border transition-all duration-300
                               ${
                                 isSelected
-                                  ? "bg-warning border-warning scale-125 z-30" 
+                                  ? "bg-warning border-warning scale-125 z-30"
                                   : "bg-primary border-white hover:scale-110"
                               }
                             `}
