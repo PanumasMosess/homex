@@ -700,3 +700,94 @@ export type DeleteCameraModalProps = {
   onClose: () => void;
   onConfirm: () => void;
 };
+
+// =====================================
+// Task V2 Types
+// =====================================
+
+export interface TaskV2CostBreakdown {
+  materialPercent: number;
+  materialCost: number;
+  laborPercent: number;
+  laborCost: number;
+  machineryPercent: number;
+  machineryCost: number;
+}
+
+export interface TaskV2CostEstimation {
+  totalEstimate: number;
+  breakdown: TaskV2CostBreakdown;
+}
+
+export interface TaskV2DurationEstimate {
+  totalDays: number;
+  assumptions: string;
+}
+
+export interface TaskV2Risk {
+  name: string;
+  description: string;
+  mitigation: string;
+  status: "risk" | "mitigated";
+}
+
+export interface TaskV2ChecklistItem {
+  name: string;
+  progressPercent: number;
+  checked: boolean;
+}
+
+export interface TaskV2Material {
+  spec: string;
+  quantity: string;
+  unitPrice: number;
+  unit: string;
+  totalPrice: number;
+}
+
+export interface TaskV2AIResponse {
+  costEstimation: TaskV2CostEstimation;
+  durationEstimate: TaskV2DurationEstimate;
+  risks: TaskV2Risk[];
+  checklist: TaskV2ChecklistItem[];
+  materials: TaskV2Material[];
+  phase: string;
+}
+
+export interface TaskV2SectionProps {
+  tasks: any[];
+  setTasks: React.Dispatch<React.SetStateAction<any[]>>;
+  projectInfo: {
+    id: string;
+    code: string;
+    name: string;
+    customer: string;
+  };
+  organizationId: number;
+  currentUserId: number;
+  isCustomer: boolean;
+  projectMembers: any[];
+  contractors: any[];
+}
+
+export interface TaskV2DetailDialogProps {
+  task: any;
+  aiData: TaskV2AIResponse | null;
+  isOpen: boolean;
+  onClose: () => void;
+  projectInfo: {
+    id: string;
+    code: string;
+    name: string;
+  };
+  onChecklistChange: (checklist: TaskV2ChecklistItem[]) => void;
+}
+
+export interface CreateTaskV2ModalProps {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+  projectCode: string;
+}

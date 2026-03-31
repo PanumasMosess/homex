@@ -41,6 +41,16 @@ const Page = async () => {
       projectId: true,
       organizationId: true,
       createdById: true,
+      aiMaterialPercent: true,
+      aiMaterialCost: true,
+      aiLaborPercent: true,
+      aiLaborCost: true,
+      aiMachineryPercent: true,
+      aiMachineryCost: true,
+      aiDurationAssumptions: true,
+      aiRisks: true,
+      aiMaterials: true,
+      phase: true,
       taskUsers: {
         include: {
           user: {
@@ -87,8 +97,11 @@ const Page = async () => {
     ...task,
     budget: task.budget ? Number(task.budget) : null,
     estimatedBudget: task.estimatedBudget ? Number(task.estimatedBudget) : null,
-    assignees: task.taskUsers?.map((t) => t.user) || [],
-    contractors: task.taskContractors?.map((tc) => tc.contractor) || [],
+    aiMaterialCost: task.aiMaterialCost ? Number(task.aiMaterialCost) : null,
+    aiLaborCost: task.aiLaborCost ? Number(task.aiLaborCost) : null,
+    aiMachineryCost: task.aiMachineryCost ? Number(task.aiMachineryCost) : null,
+    assignees: task.taskUsers?.map((t: any) => t.user) || [],
+    contractors: task.taskContractors?.map((tc: any) => tc.contractor) || [],
   }));
 
   return (

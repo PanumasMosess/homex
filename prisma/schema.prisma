@@ -331,6 +331,21 @@ model task {
   createdById Int // คนสร้าง task
   creator     user @relation("task_creator", fields: [createdById], references: [id])
 
+  // 🌟 --- AI V2 Cost Breakdown ---
+  aiMaterialPercent   Int?       @default(0)
+  aiMaterialCost      Decimal?   @db.Decimal(14, 2)
+  aiLaborPercent      Int?       @default(0)
+  aiLaborCost         Decimal?   @db.Decimal(14, 2)
+  aiMachineryPercent  Int?       @default(0)
+  aiMachineryCost     Decimal?   @db.Decimal(14, 2)
+
+  // 🌟 --- AI V2 Extra ---
+  aiDurationAssumptions String?  @db.Text
+  aiRisks               String?  @db.LongText   // JSON array
+  aiMaterials           String?  @db.LongText   // JSON array (Draft PR)
+  phase                 String?
+
+  // ---------- relations ----------
   details              task_detail[] // ขั้นตอนย่อยของ task
   taskUsers            task_user[]
   taskContractors      task_contractor[]
@@ -874,3 +889,4 @@ model point360history {
   point     point360 @relation(fields: [pointId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
+

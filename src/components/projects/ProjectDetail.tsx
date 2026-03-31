@@ -10,6 +10,7 @@ import {
   Banknote,
   Rss,
   View,
+  Sparkles,
 } from "lucide-react";
 
 import {
@@ -74,6 +75,7 @@ import FeedSection from "./feed/FeedSection";
 import DashboardCamera from "./camera/DashboardCamera";
 import ProcurementSection from "./procurement/ProcurementSection";
 import DasboardMapping360 from "./360mapping/DasboardMapping360";
+import TaskV2Section from "./taskv2/TaskV2Section";
 
 const ProjectDetail = ({
   organizationId,
@@ -911,7 +913,7 @@ const ProjectDetail = ({
       </div>
 
       <div className="w-full">
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
           {[
             { id: "tasks", label: "งาน", icon: <Building2 size={18} /> },
             { id: "feed", label: "ฟีด", icon: <Rss size={18} /> },
@@ -923,6 +925,7 @@ const ProjectDetail = ({
             { id: "documents", label: "เอกสาร", icon: <FileText size={18} /> },
             { id: "camera", label: "กล้อง", icon: <Cctv size={18} /> },
             { id: "360mapping", label: "360°", icon: <View size={18} /> },
+            { id: "taskv2", label: "งาน V2", icon: <Sparkles size={18} /> },
           ].map((item) => (
             <Button
               key={item.id}
@@ -1119,6 +1122,19 @@ const ProjectDetail = ({
           />
         )}
 
+        {activeSection === "taskv2" && (
+          <TaskV2Section
+            tasks={tasks}
+            setTasks={setTasks}
+            projectInfo={projectInfo}
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+            isCustomer={isCustomer}
+            projectMembers={projectMembers}
+            contractors={contractors}
+          />
+        )}
+
         {/* Section อื่นๆ */}
         {![
           "tasks",
@@ -1127,6 +1143,7 @@ const ProjectDetail = ({
           "purchasing",
           "camera",
           "360mapping",
+          "taskv2",
         ].includes(activeSection) && (
           <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
             <p className="text-default-400 font-bold uppercase tracking-widest">
