@@ -20,6 +20,14 @@ import { createTaskV2, saveTaskV2AiData, createV2ChecklistAsSubtasks } from "@/l
 import { generateTaskV2Analysis } from "@/lib/ai/taskV2AI";
 import { generationImage } from "@/lib/ai/geminiAI";
 
+const AI_STEPS = [
+  { label: "สร้างรูปภาพปกงาน" },
+  { label: "บันทึกข้อมูลงานลงระบบ" },
+  { label: "AI วิเคราะห์งบประมาณ ระยะเวลา & ความเสี่ยง" },
+  { label: "บันทึกผลวิเคราะห์ AI" },
+  { label: "สร้าง Checklist ขั้นตอนการทำงาน" },
+];
+
 const CreateTaskV2Modal = ({
   isOpen,
   onOpenChange,
@@ -34,15 +42,6 @@ const CreateTaskV2Modal = ({
   const [currentStepIndex, setCurrentStepIndex] = useState(-1);
   const [isPending, startTransition] = useTransition();
 
-  const AI_STEPS = [
-    { label: "สร้างรูปภาพปกงาน" },
-    { label: "บันทึกข้อมูลงานลงระบบ" },
-    { label: "AI วิเคราะห์งบประมาณ & ระยะเวลา" },
-    { label: "AI ประเมินความเสี่ยง" },
-    { label: "บันทึกผลวิเคราะห์ AI" },
-    { label: "สร้าง Checklist ขั้นตอนการทำงาน" },
-  ];
-
   const aiProgress = currentStepIndex < 0 ? 0 : Math.min(Math.round(((currentStepIndex + 1) / AI_STEPS.length) * 100), 100);
 
   const handleCreate = async () => {
@@ -55,8 +54,14 @@ const CreateTaskV2Modal = ({
     setCurrentStepIndex(0);
 
     try {
-      // Step 0: Generate cover image
-      const imgRes = await generationImage(taskName);
+      // Step 0: Generate cover image (non-blocking — fail gracefully)
+      let coverUrl = "";
+      try {
+        const imgRes = await generationImage(taskName);
+        coverUrl = imgRes?.answer || "";
+      } catch {
+        // Image generation failed — continue without cover image
+      }
 
       // Step 1: Create task in DB
       setCurrentStepIndex(1);
@@ -64,28 +69,25 @@ const CreateTaskV2Modal = ({
         taskName,
         projectId,
         organizationId,
-        imgRes?.answer || ""
+        coverUrl
       );
 
       if (!taskRes.success || !taskRes.taskId) {
         throw new Error(taskRes.message || "สร้างงานไม่สำเร็จ");
       }
 
-      // Step 2: AI Analysis (budget & duration)
+      // Step 2: AI Analysis (budget, duration & risk)
       setCurrentStepIndex(2);
       const aiData = await generateTaskV2Analysis(taskName);
 
-      // Step 3: AI risk assessment (part of same call, visual step)
-      setCurrentStepIndex(3);
-
       if (aiData) {
-        // Step 4: Save AI data
-        setCurrentStepIndex(4);
+        // Step 3: Save AI data
+        setCurrentStepIndex(3);
         await saveTaskV2AiData(taskRes.taskId, aiData);
 
-        // Step 5: Create checklist as subtasks
+        // Step 4: Create checklist as subtasks
         if (aiData.checklist && aiData.checklist.length > 0) {
-          setCurrentStepIndex(5);
+          setCurrentStepIndex(4);
           await createV2ChecklistAsSubtasks(
             taskRes.taskId,
             projectId,
@@ -93,6 +95,8 @@ const CreateTaskV2Modal = ({
             aiData.checklist
           );
         }
+      } else {
+        toast.warning("AI วิเคราะห์ไม่สำเร็จ — งานถูกสร้างแล้วแต่ยังไม่มีข้อมูล AI");
       }
 
       setCurrentStepIndex(AI_STEPS.length);
@@ -179,6 +183,9 @@ const CreateTaskV2Modal = ({
                     }
                     classNames={{
                       input: "text-sm",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !isBusy) handleCreate();
                     }}
                   />
 

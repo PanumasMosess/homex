@@ -123,7 +123,7 @@ const TaskV2ProcurementTab = ({
           </tbody>
           <tfoot>
             <tr className="bg-zinc-900/80">
-              <td colSpan={4} className="p-3 text-right font-bold text-xs uppercase text-zinc-400">
+              <td colSpan={3} className="p-3 text-right font-bold text-xs uppercase text-zinc-400">
                 รวมทั้งหมด
               </td>
               <td className="p-3 text-right font-bold text-primary text-base">
@@ -132,6 +132,7 @@ const TaskV2ProcurementTab = ({
                   .toLocaleString("th-TH")}{" "}
                 ฿
               </td>
+              <td />
             </tr>
           </tfoot>
         </table>

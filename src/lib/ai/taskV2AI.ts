@@ -8,11 +8,20 @@ const ai_gemini = new GoogleGenAI({
 
 const model_version = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("AI timeout: ใช้เวลานานเกินไป")), ms)
+    ),
+  ]);
+};
+
 export const generateTaskV2Analysis = async (taskName: string) => {
   const prompt = `ข้อมูลตั้งต้น (Task Name): "${taskName}"`;
 
   try {
-    const result = await ai_gemini.models.generateContent({
+    const result = await withTimeout(ai_gemini.models.generateContent({
       model: model_version,
       config: {
         systemInstruction: `คุณคือ AI ผู้เชี่ยวชาญระดับสูงด้านวิศวกรรมก่อสร้าง การประเมินราคา (Quantity Surveyor) และการบริหารโครงการ (Project Manager)
@@ -74,7 +83,7 @@ Requirement: กรุณาตอบกลับเป็น JSON Object ที
         responseMimeType: "application/json",
       },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-    });
+    }), 60000);
 
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 

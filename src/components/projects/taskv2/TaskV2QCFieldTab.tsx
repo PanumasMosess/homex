@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { Checkbox, Input, Progress } from "@heroui/react";
-import { GripVertical, Info, Lightbulb, Pencil, Check, X } from "lucide-react";
+import { GripVertical, Info, Pencil, Check, X } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -288,7 +288,7 @@ const TaskV2QCFieldTab = ({
             <div className="flex gap-2">
               <span className="text-primary font-bold shrink-0">1.</span>
               <p>
-                <strong className="text-zinc-200">1. ส่งเข้าแอปมือถือโฟร์แมน:</strong>{" "}
+                <strong className="text-zinc-200">ส่งเข้าแอปมือถือโฟร์แมน:</strong>{" "}
                 ข้อมูล Step-by-Step ที่ AI สร้างขึ้น จะถูกส่งไปเป็น Checklist ในแอปพลิเคชันมือถือของโฟร์แมนหน้าไซต์งาน (จำลองหน้าจอด้านซ้าย)
               </p>
             </div>
@@ -302,16 +302,15 @@ const TaskV2QCFieldTab = ({
             </div>
 
             <div className="flex gap-2">
-              <span className="text-primary font-bold shrink-0">2.</span>
+              <span className="text-primary font-bold shrink-0">3.</span>
               <p>
-                <strong className="text-zinc-200">สะท้อนกลับมาที่ :</strong>{" "}
-                3. Dashboard: เปอร์เซ็นต์ความคืบหน้า (เช่น 40%, 75%) จะวิ่งกลับมาแสดงที่ หลอด Progress Bar สีฟ้า ในหน้า Dashboard ของ Project Manager ด้านบนสุดแบบอัตโนมัติ โดยที่ PM ไม่ต้องโทรไปถาม หรือไม่ต้องให้โฟร์แมนพิมพ์รายงานยาวๆ
+                <strong className="text-zinc-200">สะท้อนกลับมาที่ Dashboard:</strong>{" "}
+                เปอร์เซ็นต์ความคืบหน้า (เช่น 40%, 75%) จะวิ่งกลับมาแสดงที่ Progress Bar สีฟ้า ในหน้า Dashboard ของ PM แบบอัตโนมัติ โดยไม่ต้องโทรไปถามหรือพิมพ์รายงานยาวๆ
               </p>
             </div>
 
-
             <div className="flex gap-2">
-              <span className="text-primary font-bold shrink-0">3.</span>
+              <span className="text-primary font-bold shrink-0">4.</span>
               <p>
                 <strong className="text-zinc-200">อัปเดตความคืบหน้า:</strong>{" "}
                 กด <span className="text-success font-bold">ติ๊กถูก</span>{" "}
