@@ -90,15 +90,17 @@ export default function CombinedFloorPlanViewerModal({
     ) ?? -1;
   const totalPoints = selectedFloorPlan?.points?.length || 0;
 
+  // ซ้ายย้อนกลับ (-1)
   const handlePrevPoint = () => {
-    if (currentIndex >= 0 && currentIndex < totalPoints - 1) {
-      setSelectedMedia(selectedFloorPlan.points[currentIndex + 1]);
+    if (currentIndex > 0) {
+      setSelectedMedia(selectedFloorPlan.points[currentIndex - 1]);
     }
   };
 
+  // ขวาไปหน้า (+1)
   const handleNextPoint = () => {
-    if (currentIndex > 0) {
-      setSelectedMedia(selectedFloorPlan.points[currentIndex - 1]);
+    if (currentIndex >= 0 && currentIndex < totalPoints - 1) {
+      setSelectedMedia(selectedFloorPlan.points[currentIndex + 1]);
     }
   };
 
