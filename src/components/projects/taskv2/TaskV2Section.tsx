@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/core";
 import type { TabTask, TaskV2SectionProps, TaskV2AIResponse } from "@/lib/type";
 import { toast } from "react-toastify";
-import { updateTaskStatus, updateMainTask } from "@/lib/actions/actionProject";
+import { updateTaskStatus, updateMainTask, toggleSubtaskStatus } from "@/lib/actions/actionProject";
 import MainTaskCard from "../MainTaskCard";
 import TaskFilterTabs from "../TaskFilterTabs";
 import { EmptyStateCard } from "../EmptyStateCard";
@@ -158,8 +158,14 @@ const TaskV2Section = ({
   }, []);
 
   const handleChecklistChange = useCallback(
-    (checklist: any[]) => {
+    async (checklist: any[], toggledIndex: number) => {
       if (!selected) return;
+
+      const subtask = (selected.details || [])[toggledIndex];
+      if (!subtask) return;
+
+      const newStatus = checklist[toggledIndex]?.checked ?? false;
+
       const totalItems = checklist.length;
       const checkedItems = checklist.filter((c) => c.checked).length;
       const progress =
@@ -187,6 +193,37 @@ const TaskV2Section = ({
             : t
         )
       );
+
+      // Persist to DB + create/delete feed post
+      try {
+        const res = await toggleSubtaskStatus(subtask.id, newStatus, selected.coverImageUrl || undefined);
+        if (!res.success) throw new Error("อัปเดตไม่สำเร็จ");
+
+        await updateMainTask(selected.id, {
+          progressPercent: progress,
+          status:
+            progress === 100
+              ? "DONE"
+              : progress > 0
+                ? "PROGRESS"
+                : "TODO",
+        });
+      } catch {
+        toast.error("อัปเดตสถานะไม่สำเร็จ");
+        // Revert optimistic update
+        setTasks((prev: any[]) =>
+          prev.map((t) =>
+            t.id === selected.id
+              ? {
+                  ...t,
+                  progressPercent: selected.progressPercent,
+                  status: selected.status,
+                  details: selected.details,
+                }
+              : t
+          )
+        );
+      }
     },
     [selected, setTasks]
   );

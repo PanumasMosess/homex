@@ -42,7 +42,7 @@ const TaskV2DetailDialog = ({
       const updated: TaskV2ChecklistItem[] = aiData.checklist.map((item, i) =>
         i === index ? { ...item, checked: !item.checked } : item
       );
-      onChecklistChange(updated);
+      onChecklistChange(updated, index);
     },
     [aiData, onChecklistChange]
   );

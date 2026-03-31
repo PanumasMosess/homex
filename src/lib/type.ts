@@ -780,7 +780,7 @@ export interface TaskV2DetailDialogProps {
     code: string;
     name: string;
   };
-  onChecklistChange: (checklist: TaskV2ChecklistItem[]) => void;
+  onChecklistChange: (checklist: TaskV2ChecklistItem[], toggledIndex: number) => void;
 }
 
 export interface CreateTaskV2ModalProps {
