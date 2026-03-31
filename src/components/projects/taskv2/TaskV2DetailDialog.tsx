@@ -116,10 +116,10 @@ const TaskV2DetailDialog = ({
     >
       <ModalContent className="flex flex-col overflow-hidden bg-[#0f1117] text-white">
         {task && (
-          <ModalBody className="overflow-y-auto scrollbar-hide flex-1">
+          <ModalBody className="overflow-y-auto scrollbar-hide flex-1 mt-2">
             {/* ===== HEADER ===== */}
             <div className="p-4 sm:p-6 space-y-3 border-b border-zinc-800">
-              <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0 space-y-1">
                   <p className="text-xs text-zinc-400 flex items-center gap-1.5">
                     <CalendarDays size={12} />
@@ -143,7 +143,7 @@ const TaskV2DetailDialog = ({
                 </Chip>
               </div>
 
-              <div className="space-y-1">
+              <div className="space-y-1 pt-2">
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-zinc-400">
                     ความคืบหน้าของงาน (อัปเดตจาก Checklist)
