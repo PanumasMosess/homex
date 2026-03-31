@@ -700,3 +700,18 @@ export type DeleteCameraModalProps = {
   onClose: () => void;
   onConfirm: () => void;
 };
+
+export type Hotspot = {
+  id: string;
+  yaw: number; 
+  pitch: number;
+  label: string; 
+  targetPointId: number; 
+};
+
+export type Insta360ViewerProps = {
+  imageUrl: string;
+  caption?: string;
+  hotspots?: Hotspot[];
+  onHotspotClick?: (targetPointId: number) => void; 
+};
