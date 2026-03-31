@@ -784,6 +784,7 @@ export interface TaskV2DetailDialogProps {
   onChecklistChange: (checklist: TaskV2ChecklistItem[], toggledIndex: number) => void;
   onReorderChecklist: (reordered: TaskV2ChecklistItem[]) => void;
   onEditSubtask: (subtaskId: number, newName: string) => void;
+  onAddToProcurement: (material: TaskV2Material) => Promise<boolean>;
 }
 
 export interface CreateTaskV2ModalProps {

@@ -34,6 +34,7 @@ const TaskV2DetailDialog = ({
   onChecklistChange,
   onReorderChecklist,
   onEditSubtask,
+  onAddToProcurement,
 }: TaskV2DetailDialogProps) => {
   const [activeTab, setActiveTab] = useState<V2Tab>("card");
 
@@ -202,7 +203,10 @@ const TaskV2DetailDialog = ({
                 <>
                   {activeTab === "card" && <TaskV2CardTab aiData={aiData} />}
                   {activeTab === "prpo" && (
-                    <TaskV2ProcurementTab materials={aiData.materials} />
+                    <TaskV2ProcurementTab
+                      materials={aiData.materials}
+                      onAddToProcurement={onAddToProcurement}
+                    />
                   )}
                   {activeTab === "qcfield" && (
                     <TaskV2QCFieldTab

@@ -21,6 +21,7 @@ import type { TabTask, TaskV2SectionProps, TaskV2AIResponse } from "@/lib/type";
 import { toast } from "react-toastify";
 import { updateTaskStatus, updateMainTask, toggleSubtaskStatus } from "@/lib/actions/actionProject";
 import { reorderSubtasks, editSubtaskName } from "@/lib/actions/actionTaskV2";
+import { addMaterialToProcurement } from "@/lib/actions/actionProcurementSuggestion";
 import MainTaskCard from "../MainTaskCard";
 import TaskFilterTabs from "../TaskFilterTabs";
 import { EmptyStateCard } from "../EmptyStateCard";
@@ -297,6 +298,29 @@ const TaskV2Section = ({
     [selected, setTasks]
   );
 
+  const handleAddToProcurement = useCallback(
+    async (material: any): Promise<boolean> => {
+      if (!selected) return false;
+      const res = await addMaterialToProcurement({
+        materialName: material.spec,
+        specification: material.spec,
+        quantity: material.quantity,
+        unit: material.unit,
+        unitPrice: material.unitPrice,
+        totalPrice: material.totalPrice,
+        taskId: selected.id,
+        projectId: Number(projectInfo.id),
+        organizationId,
+      });
+      if (!res.success) {
+        toast.error(res.message || "เพิ่มไม่สำเร็จ");
+        return false;
+      }
+      return true;
+    },
+    [selected, projectInfo.id, organizationId]
+  );
+
   const handleDragEnd = useCallback(
     async (e: DragEndEvent) => {
       const { active, over } = e;
@@ -468,6 +492,7 @@ const TaskV2Section = ({
         onChecklistChange={handleChecklistChange}
         onReorderChecklist={handleReorderChecklist}
         onEditSubtask={handleEditSubtask}
+        onAddToProcurement={handleAddToProcurement}
       />
     </div>
   );
