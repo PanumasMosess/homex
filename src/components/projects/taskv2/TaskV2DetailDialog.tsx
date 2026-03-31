@@ -32,6 +32,8 @@ const TaskV2DetailDialog = ({
   onClose,
   projectInfo,
   onChecklistChange,
+  onReorderChecklist,
+  onEditSubtask,
 }: TaskV2DetailDialogProps) => {
   const [activeTab, setActiveTab] = useState<V2Tab>("card");
 
@@ -207,6 +209,8 @@ const TaskV2DetailDialog = ({
                       checklist={aiData.checklist}
                       taskName={task.taskName || ""}
                       onToggle={handleChecklistToggle}
+                      onReorder={onReorderChecklist}
+                      onEditSubtask={onEditSubtask}
                     />
                   )}
                 </>

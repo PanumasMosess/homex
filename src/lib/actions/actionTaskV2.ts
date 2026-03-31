@@ -253,3 +253,68 @@ export async function createV2ChecklistAsSubtasks(
     };
   }
 }
+
+/* ====================================================== */
+/* REORDER SUBTASKS (update sortOrder)                    */
+/* ====================================================== */
+export async function reorderSubtasks(
+  orderedIds: number[]
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
+    }
+
+    await prisma.$transaction(
+      orderedIds.map((id, index) =>
+        prisma.task_detail.update({
+          where: { id },
+          data: { sortOrder: index },
+        })
+      )
+    );
+
+    return { success: true, error: false, message: "จัดเรียงสำเร็จ" };
+  } catch (error: any) {
+    console.error("reorderSubtasks error:", error);
+    return {
+      success: false,
+      error: true,
+      message: error.message || "จัดเรียงไม่สำเร็จ",
+    };
+  }
+}
+
+/* ====================================================== */
+/* EDIT SUBTASK NAME                                      */
+/* ====================================================== */
+export async function editSubtaskName(
+  subtaskId: number,
+  newName: string
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
+    }
+
+    if (!newName.trim()) {
+      return { success: false, error: true, message: "ชื่อต้องไม่ว่าง" };
+    }
+
+    await prisma.task_detail.update({
+      where: { id: subtaskId },
+      data: { detailName: newName.trim() },
+    });
+
+    return { success: true, error: false, message: "แก้ไขสำเร็จ" };
+  } catch (error: any) {
+    console.error("editSubtaskName error:", error);
+    return {
+      success: false,
+      error: true,
+      message: error.message || "แก้ไขไม่สำเร็จ",
+    };
+  }
+}

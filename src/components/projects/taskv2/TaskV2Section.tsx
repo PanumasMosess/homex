@@ -20,6 +20,7 @@ import {
 import type { TabTask, TaskV2SectionProps, TaskV2AIResponse } from "@/lib/type";
 import { toast } from "react-toastify";
 import { updateTaskStatus, updateMainTask, toggleSubtaskStatus } from "@/lib/actions/actionProject";
+import { reorderSubtasks, editSubtaskName } from "@/lib/actions/actionTaskV2";
 import MainTaskCard from "../MainTaskCard";
 import TaskFilterTabs from "../TaskFilterTabs";
 import { EmptyStateCard } from "../EmptyStateCard";
@@ -83,6 +84,7 @@ const TaskV2Section = ({
     try { materials = selected.aiMaterials ? JSON.parse(selected.aiMaterials) : []; } catch { materials = []; }
 
     const checklist = (selected.details || []).map((d: any) => ({
+      id: d.id,
       name: d.detailName || "",
       progressPercent: d.weightPercent || 0,
       checked: d.status === true,
@@ -223,6 +225,71 @@ const TaskV2Section = ({
                   details: selected.details,
                 }
               : t
+          )
+        );
+      }
+    },
+    [selected, setTasks]
+  );
+
+  const handleReorderChecklist = useCallback(
+    async (reordered: any[]) => {
+      if (!selected) return;
+
+      // Optimistic UI: update details order
+      const reorderedDetails = reordered.map((item: any, i: number) => {
+        const detail = (selected.details || []).find((d: any) => d.id === item.id);
+        return detail ? { ...detail, sortOrder: i } : detail;
+      }).filter(Boolean);
+
+      setTasks((prev: any[]) =>
+        prev.map((t) =>
+          t.id === selected.id ? { ...t, details: reorderedDetails } : t
+        )
+      );
+
+      // Persist to DB
+      const ids = reordered.map((item: any) => item.id).filter(Boolean);
+      if (ids.length > 0) {
+        const res = await reorderSubtasks(ids);
+        if (!res.success) {
+          toast.error("จัดเรียงไม่สำเร็จ");
+          setTasks((prev: any[]) =>
+            prev.map((t) =>
+              t.id === selected.id ? { ...t, details: selected.details } : t
+            )
+          );
+        }
+      }
+    },
+    [selected, setTasks]
+  );
+
+  const handleEditSubtask = useCallback(
+    async (subtaskId: number, newName: string) => {
+      if (!selected) return;
+
+      // Optimistic UI
+      setTasks((prev: any[]) =>
+        prev.map((t) =>
+          t.id === selected.id
+            ? {
+                ...t,
+                details: (t.details || []).map((d: any) =>
+                  d.id === subtaskId ? { ...d, detailName: newName } : d
+                ),
+              }
+            : t
+        )
+      );
+
+      // Persist to DB
+      const res = await editSubtaskName(subtaskId, newName);
+      if (!res.success) {
+        toast.error("แก้ไขชื่อไม่สำเร็จ");
+        setTasks((prev: any[]) =>
+          prev.map((t) =>
+            t.id === selected.id ? { ...t, details: selected.details } : t
           )
         );
       }
@@ -399,6 +466,8 @@ const TaskV2Section = ({
         onClose={handleCloseDialog}
         projectInfo={projectInfo}
         onChecklistChange={handleChecklistChange}
+        onReorderChecklist={handleReorderChecklist}
+        onEditSubtask={handleEditSubtask}
       />
     </div>
   );

@@ -732,6 +732,7 @@ export interface TaskV2Risk {
 }
 
 export interface TaskV2ChecklistItem {
+  id?: number;
   name: string;
   progressPercent: number;
   checked: boolean;
@@ -781,6 +782,8 @@ export interface TaskV2DetailDialogProps {
     name: string;
   };
   onChecklistChange: (checklist: TaskV2ChecklistItem[], toggledIndex: number) => void;
+  onReorderChecklist: (reordered: TaskV2ChecklistItem[]) => void;
+  onEditSubtask: (subtaskId: number, newName: string) => void;
 }
 
 export interface CreateTaskV2ModalProps {
