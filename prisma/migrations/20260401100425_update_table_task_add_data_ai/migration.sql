@@ -1,0 +1,4 @@
+-- AlterTable
+ALTER TABLE `task` ADD COLUMN `isPlanned` BOOLEAN NOT NULL DEFAULT false,
+    ADD COLUMN `orderAi` INTEGER NULL,
+    ADD COLUMN `phaseAi` VARCHAR(191) NULL;

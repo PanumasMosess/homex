@@ -11,6 +11,7 @@ import {
   Rss,
   View,
   Sparkles,
+  Calendar,
 } from "lucide-react";
 
 import {
@@ -76,6 +77,7 @@ import DashboardCamera from "./camera/DashboardCamera";
 import ProcurementSection from "./procurement/ProcurementSection";
 import DasboardMapping360 from "./360mapping/DasboardMapping360";
 import TaskV2Section from "./taskv2/TaskV2Section";
+import PlanningSection from "./planning/PlanningSection";
 
 const ProjectDetail = ({
   organizationId,
@@ -396,10 +398,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                  ...t,
-                  status: taskToUpdate.status,
-                  progressPercent: taskToUpdate.progressPercent,
-                }
+                ...t,
+                status: taskToUpdate.status,
+                progressPercent: taskToUpdate.progressPercent,
+              }
               : t,
           ),
         );
@@ -679,14 +681,14 @@ const ProjectDetail = ({
       const updatedDetails = (selected.details || []).map((sub: any) =>
         sub.id === subtaskId
           ? {
-              ...sub,
-              status: newStatus,
-              ...(newStatus
-                ? imageUrl
-                  ? { imageUrl }
-                  : {}
-                : { imageUrl: null }),
-            }
+            ...sub,
+            status: newStatus,
+            ...(newStatus
+              ? imageUrl
+                ? { imageUrl }
+                : {}
+              : { imageUrl: null }),
+          }
           : sub,
       );
 
@@ -767,10 +769,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-                ...t,
-                details: updatedDetails,
-                progressPercent: newProgress,
-              }
+              ...t,
+              details: updatedDetails,
+              progressPercent: newProgress,
+            }
             : t,
         ),
       );
@@ -861,7 +863,7 @@ const ProjectDetail = ({
                   budgetSummary.expenses > projectInfo.budget
                     ? "text-danger"
                     : "text-warning"
-                }`}
+                  }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -913,7 +915,7 @@ const ProjectDetail = ({
       </div>
 
       <div className="w-full">
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
           {[
             { id: "tasks", label: "งาน", icon: <Building2 size={18} /> },
             {
@@ -935,6 +937,7 @@ const ProjectDetail = ({
               icon: <ShoppingCart size={18} />,
             },
             { id: "documents", label: "เอกสาร", icon: <FileText size={18} /> },
+            { id: "planning", label: "แผนงาน", icon: <Calendar size={18} /> },
             { id: "camera", label: "กล้อง", icon: <Cctv size={18} /> },
             { id: "360mapping", label: "360°", icon: <View size={18} /> },
           ].map((item) => (
@@ -1117,6 +1120,14 @@ const ProjectDetail = ({
           />
         )}
 
+        {activeSection === "planning" && (
+          <PlanningSection
+            projectId={Number(projectInfo.id)}
+            organizationId={organizationId}
+            currentUserId={currentUserId}
+          />
+        )}
+
         {activeSection === "camera" && (
           <DashboardCamera
             projectId={Number(projectInfo.id)}
@@ -1152,16 +1163,17 @@ const ProjectDetail = ({
           "documents",
           "feed",
           "purchasing",
+          "planning",
           "camera",
           "360mapping",
           "taskv2",
         ].includes(activeSection) && (
-          <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
-            <p className="text-default-400 font-bold uppercase tracking-widest">
-              Coming Soon
-            </p>
-          </div>
-        )}
+            <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
+              <p className="text-default-400 font-bold uppercase tracking-widest">
+                Coming Soon
+              </p>
+            </div>
+          )}
       </div>
 
       {/* --- MODAL (จัดกึ่งกลางเป๊ะสำหรับ iPhone 14) --- */}

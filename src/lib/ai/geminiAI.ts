@@ -589,3 +589,85 @@ export const generateTakeBudget_Durationday = async (prompt: string) => {
     throw error;
   }
 }
+
+export const generatePlanningAI = async (prompt: string) => {
+  try {
+    const result = await ai_gemini.models.generateContent({
+      model: model_version,
+      config: {
+        systemInstruction: `คุณเป็นผู้เชี่ยวชาญด้านวางแผนงานก่อสร้าง (Project Manager)
+
+              หน้าที่:
+              วิเคราะห์ task ที่ได้รับ โดยใช้ข้อมูลเดิมเป็นหลัก และเติมเฉพาะข้อมูลที่จำเป็นสำหรับการวางแผน
+
+              สิ่งที่ต้องทำ:
+              - วิเคราะห์ task
+              - ใช้ estimatedDurationDays ถ้ามี
+              - ถ้าไม่มี ให้ประเมินเพิ่ม
+              - จัดลำดับ → orderAi
+              - จัดกลุ่ม → phaseAi:
+                Foundation | Structure | Architecture | System | Finishing
+              - คำนวณ startAiPlanned จาก Project start
+              - วางงานแบบ parallel ถ้าทำพร้อมกันได้
+
+              กฎ:
+              - task แรก (orderAi = 1) ต้องเริ่มที่ Project start date
+              - task ถัดไป:
+                - ถ้าต้องรอ → ให้เริ่มหลัง task ก่อนหน้าจบ
+                - ถ้าไม่ต้องรอ → ให้เริ่มวันเดียวกัน
+              - ต้องใช้ duration ในการคำนวณ start
+              - ต้องใช้ id เดิม
+              - ห้ามเปลี่ยน name
+              - ห้ามลบ task
+              - ห้ามเว้น gap
+              - ต้องใช้งานจริงได้
+
+              รูปแบบคำตอบ:
+              [
+                {
+                  "id": number,
+                  "orderAi": number,
+                  "phaseAi": string,
+                  "estimatedDurationDays": number,
+                  "startAiPlanned": "YYYY-MM-DD"
+                }
+              ]
+
+              ตอบ JSON เท่านั้น ห้ามมีข้อความอื่น`,
+        temperature: 0.7,
+        responseMimeType: "application/json",
+      },
+      contents: [{ role: "user", parts: [{ text: prompt }] }],
+    });
+
+    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
+
+    if (!responseText) {
+      console.error("AI Response empty:", result);
+      return [];
+    }
+
+    try {
+      const parsed = JSON.parse(responseText);
+
+      if (Array.isArray(parsed)) {
+        return parsed.map((item: any) => ({
+          id: Number(item.id),
+          orderAi: Number(item.orderAi) || 0,
+          phaseAi: item.phaseAi || "Foundation",
+          estimatedDurationDays:
+            Number(item.estimatedDurationDays) || 1,
+          startAiPlanned: item.startAiPlanned || null,
+        }));
+      }
+
+      return [];
+    } catch (parseError) {
+      console.error("JSON Parse Error:", responseText);
+      return [];
+    }
+  } catch (error) {
+    console.error("Error generating planning AI:", error);
+    throw error;
+  }
+};

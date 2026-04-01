@@ -321,6 +321,11 @@ model task {
   // actual schedule
   startActual   DateTime?
   finishActual  DateTime?
+
+  orderAi   Int?              // เรียงลำดับโดย AI
+  phaseAi   String?           // กลุ่ม phase
+  isPlanned Boolean @default(false) // สถานะการสร้าง Planned
+
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @default(now())
 
