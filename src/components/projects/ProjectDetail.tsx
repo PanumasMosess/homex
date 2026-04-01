@@ -396,10 +396,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                ...t,
-                status: taskToUpdate.status,
-                progressPercent: taskToUpdate.progressPercent,
-              }
+                  ...t,
+                  status: taskToUpdate.status,
+                  progressPercent: taskToUpdate.progressPercent,
+                }
               : t,
           ),
         );
@@ -679,14 +679,14 @@ const ProjectDetail = ({
       const updatedDetails = (selected.details || []).map((sub: any) =>
         sub.id === subtaskId
           ? {
-            ...sub,
-            status: newStatus,
-            ...(newStatus
-              ? imageUrl
-                ? { imageUrl }
-                : {}
-              : { imageUrl: null }),
-          }
+              ...sub,
+              status: newStatus,
+              ...(newStatus
+                ? imageUrl
+                  ? { imageUrl }
+                  : {}
+                : { imageUrl: null }),
+            }
           : sub,
       );
 
@@ -767,10 +767,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-              ...t,
-              details: updatedDetails,
-              progressPercent: newProgress,
-            }
+                ...t,
+                details: updatedDetails,
+                progressPercent: newProgress,
+              }
             : t,
         ),
       );
@@ -861,7 +861,7 @@ const ProjectDetail = ({
                   budgetSummary.expenses > projectInfo.budget
                     ? "text-danger"
                     : "text-warning"
-                  }`}
+                }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -916,6 +916,18 @@ const ProjectDetail = ({
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
           {[
             { id: "tasks", label: "งาน", icon: <Building2 size={18} /> },
+            {
+              id: "taskv2",
+              label: (
+                <span>
+                  งาน{" "}
+                  <span className="ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary text-white leading-none">
+                    New
+                  </span>
+                </span>
+              ),
+              icon: <Sparkles size={18} />,
+            },
             { id: "feed", label: "ฟีด", icon: <Rss size={18} /> },
             {
               id: "purchasing",
@@ -925,7 +937,6 @@ const ProjectDetail = ({
             { id: "documents", label: "เอกสาร", icon: <FileText size={18} /> },
             { id: "camera", label: "กล้อง", icon: <Cctv size={18} /> },
             { id: "360mapping", label: "360°", icon: <View size={18} /> },
-            { id: "taskv2", label: <span>งาน <span className="ml-1 px-1.5 py-0.5 text-[10px] font-semibold rounded-full bg-primary text-white leading-none">New</span></span>, icon: <Sparkles size={18} /> },
           ].map((item) => (
             <Button
               key={item.id}
