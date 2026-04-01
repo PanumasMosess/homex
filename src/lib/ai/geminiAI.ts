@@ -592,6 +592,7 @@ export const generateTakeBudget_Durationday = async (prompt: string) => {
 
 export const generatePlanningAI = async (prompt: string) => {
   try {
+    console.log("🚀 CALL GEMINI");
     const result = await ai_gemini.models.generateContent({
       model: model_version,
       config: {
@@ -634,40 +635,56 @@ export const generatePlanningAI = async (prompt: string) => {
               ]
 
               ตอบ JSON เท่านั้น ห้ามมีข้อความอื่น`,
-        temperature: 0.7,
+          temperature: 0.7,
         responseMimeType: "application/json",
       },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
+    console.log("📦 RAW RESULT:", JSON.stringify(result, null, 2));
+
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!responseText) {
-      console.error("AI Response empty:", result);
-      return [];
+      console.log("❌ AI Response empty");
+      throw new Error("AI ไม่ตอบกลับ");
     }
+
+    console.log("🤖 RAW TEXT:", responseText);
+
+    // 🔥 กัน ```json
+    let safeText = responseText.trim();
+    safeText = safeText.replace(/```json/g, "").replace(/```/g, "");
+
+    let parsed;
 
     try {
-      const parsed = JSON.parse(responseText);
-
-      if (Array.isArray(parsed)) {
-        return parsed.map((item: any) => ({
-          id: Number(item.id),
-          orderAi: Number(item.orderAi) || 0,
-          phaseAi: item.phaseAi || "Foundation",
-          estimatedDurationDays:
-            Number(item.estimatedDurationDays) || 1,
-          startAiPlanned: item.startAiPlanned || null,
-        }));
-      }
-
-      return [];
+      parsed = JSON.parse(safeText);
     } catch (parseError) {
-      console.error("JSON Parse Error:", responseText);
-      return [];
+      console.log("❌ JSON PARSE ERROR:", safeText);
+      throw parseError;
     }
+
+    if (!Array.isArray(parsed)) {
+      console.log("❌ NOT ARRAY:", parsed);
+      throw new Error("AI ไม่ได้คืน array");
+    }
+
+    const cleaned = parsed.map((item: any) => ({
+      id: Number(item.id),
+      orderAi: Number(item.orderAi) || 0,
+      phaseAi: item.phaseAi || "Foundation",
+      estimatedDurationDays:
+        Number(item.estimatedDurationDays) || 1,
+      startAiPlanned: item.startAiPlanned || null,
+    }));
+
+    console.log("✅ CLEANED:", cleaned.length);
+
+    return cleaned;
+
   } catch (error) {
-    console.error("Error generating planning AI:", error);
-    throw error;
+    console.log("🔥 GENERATE AI ERROR:", error);
+    throw error; // 👈 สำคัญมาก
   }
 };
