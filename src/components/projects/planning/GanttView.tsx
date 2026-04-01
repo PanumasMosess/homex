@@ -112,7 +112,7 @@ export default function GanttView({
             const headerWidth = headerRef.current.clientWidth;
             const dayWidth = headerWidth / totalDays;
 
-            setTodayLeft(sidebarWidth + (currentDay - 0.45) * dayWidth);
+            setTodayLeft(sidebarWidth + currentDay * dayWidth);
         };
 
         update();
@@ -200,32 +200,52 @@ export default function GanttView({
         setIsGenerating(true);
 
         try {
+            console.log("🚀 START GENERATE AI");
+
             const aiTasks = await getPlanningTasksForAI(projectId);
+            console.log("📦 TASKS:", aiTasks.length);
 
             const prompt = `
-                    Project start date: ${projectStartDate.toISOString().split("T")[0]}
+Project start date: ${projectStartDate.toISOString().split("T")[0]}
 
-                    Tasks:
-                    ${JSON.stringify(aiTasks)}
-                    `;
+Tasks:
+${JSON.stringify(aiTasks)}
+`;
+
+            console.log("🧠 PROMPT READY");
 
             const result = await generatePlanningAI(prompt);
+            console.log("🤖 AI RESULT:", result);
 
             const clean = Array.isArray(result) ? result : [];
 
-            if (!clean.length) return;
+            if (!clean.length) {
+                console.log("❌ AI RETURN EMPTY");
+                return;
+            }
 
-            await updatePlanningFromAI(clean);
+            console.log("✅ CLEAN LENGTH:", clean.length);
+
+            const updateRes = await updatePlanningFromAI(clean);
+            console.log("💾 UPDATE RESULT:", updateRes);
+
+            if (!updateRes?.success) {
+                console.log("❌ UPDATE FAIL");
+                return;
+            }
 
             const res = await getPlanningData(projectId);
+            console.log("📊 NEW DATA:", res);
+
             setLocalData(res.data || []);
         } catch (e) {
-            console.error(e);
+            console.log("🔥 ERROR:", e);
         } finally {
+            console.log("🛑 END GENERATE AI");
             setIsGenerating(false);
         }
     };
-
+    
     return (
         <div className="bg-gray-900 p-4 rounded-xl border border-gray-700 overflow-x-auto">
             {isEmpty ? (

@@ -56,7 +56,7 @@ export default function PlanningSection({
             Gantt
           </button>
 
-          {/* <button
+          <button
             onClick={() => setView("calendar")}
             className={`px-3 py-1 rounded-lg ${view === "calendar" ? "bg-primary text-white" : ""}`}
           >
@@ -68,7 +68,7 @@ export default function PlanningSection({
             className={`px-3 py-1 rounded-lg ${view === "workload" ? "bg-primary text-white" : ""}`}
           >
             Workload
-          </button> */}
+          </button>
         </div>
       </div>
 
