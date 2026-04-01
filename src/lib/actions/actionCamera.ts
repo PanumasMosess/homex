@@ -90,3 +90,22 @@ export async function getCamerasByProject(projectId: number) {
     return { success: false, error: "ไม่สามารถดึงข้อมูลกล้องได้", data: [] };
   }
 }
+
+
+export async function savePersonCountAction(cameraId: number, maxCount: number) {
+  try {
+    if (maxCount === 0) return { success: true, message: "No people detected, skipped." };
+
+    await prisma.camera_analytics.create({
+      data: {
+        cameraId: cameraId,
+        personCount: maxCount,
+      },
+    });
+
+    return { success: true };
+  } catch (error) {
+    console.error("❌ Save Analytics Error:", error);
+    return { success: false, error: "Failed to save analytics" };
+  }
+}
