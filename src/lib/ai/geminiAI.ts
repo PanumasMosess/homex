@@ -1,7 +1,5 @@
 "use server";
 
-export const maxDuration = 120;
-
 import { GoogleGenAI } from "@google/genai";
 import {
   sendbase64toS3Data,
