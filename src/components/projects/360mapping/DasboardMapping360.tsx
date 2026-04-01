@@ -12,8 +12,8 @@ import {
   Spinner,
 } from "@heroui/react";
 import { toast } from "react-toastify";
-import FloorPlanModal from "./FloorPlanModal";
-import Viewer360Modal from "./Viewer360Modal";
+// import FloorPlanModal from "./CombinedFloorPlanViewerModal";
+// import Viewer360Modal from "./Viewer360Modal";
 import AddFloorPlanModal from "./form/AddFloorPlanModal";
 import AddPointModal from "./form/AddPointModal";
 import { DashboardCameraProp } from "@/lib/type";
@@ -33,6 +33,7 @@ import {
 import DeleteFloorPlanModal from "./DeleteFloorPlanModal";
 import DeletePointModal from "./DeletePointModal";
 import AddHistoryModal from "./form/AddHistoryModal";
+import CombinedFloorPlanViewerModal from "./CombinedFloorPlanViewerModal";
 
 const DasboardMapping360 = ({
   projectId,
@@ -235,19 +236,18 @@ const DasboardMapping360 = ({
       );
 
       if (res.success) {
-        // 1. กรองจุดที่ถูกลบออก
         const updatedPoints = selectedFloorPlan.points.filter(
           (p: any) => p.id !== pointToDelete.id,
         );
 
-        // 2. อัปเดตข้อมูลในแผนที่ทั้งหมด
+
         const updatedPlans = floorPlans.map((fp) =>
           fp.id === selectedFloorPlan.id
             ? { ...fp, points: updatedPoints }
             : fp,
         );
 
-        // 3. เซ็ต State ให้ UI รีเฟรชทันที
+
         setFloorPlans(updatedPlans as any);
         setSelectedFloorPlan({ ...selectedFloorPlan, points: updatedPoints });
         setPointToDelete(null);
@@ -438,7 +438,7 @@ const DasboardMapping360 = ({
         </div>
       )}
 
-      <FloorPlanModal
+      <CombinedFloorPlanViewerModal
         selectedFloorPlan={selectedFloorPlan}
         setSelectedFloorPlan={setSelectedFloorPlan}
         isAddingMode={isAddingMode}
@@ -453,13 +453,14 @@ const DasboardMapping360 = ({
         tempPoint={tempPoint}
         handleDeletePoint={handleDeletePoint}
         handleAddNewHistory={handleAddNewHistory}
+        selectedMedia={selectedMedia}
       />
 
-      <Viewer360Modal
+      {/* <Viewer360Modal
         selectedMedia={selectedMedia}
         onClose={() => setSelectedMedia(null)}
         handleAddNewHistory={handleAddNewHistory}
-      />
+      /> */}
 
       <AddFloorPlanModal
         isOpen={isAddFloorPlanOpen}
