@@ -44,10 +44,11 @@ model organization {
   feedPosts        feed_post[]
   stories          story[]
   storyViews       story_view[]       @relation("org_story_views")
-  procurementItems procurement_item[]
-  purchaseOrders   purchase_order[]
-  notifications    notification[]
-  cameras          camera[]
+  procurementItems       procurement_item[]
+  procurementSuggestions procurement_suggestion[]
+  purchaseOrders         purchase_order[]
+  notifications          notification[]
+  cameras                camera[]
   floorplans       floorplan[]
   point360s        point360[]
 }
@@ -102,8 +103,9 @@ model user {
   feedComments            feed_comment[]          @relation("feed_comment_user")
   feedCommentLikes        feed_comment_like[]     @relation("feed_comment_like_user")
   feedShares              feed_share[]            @relation("feed_share_user")
-  procurementItemsCreated procurement_item[]      @relation("procurement_item_creator")
-  procurementHistories    procurement_history[]   @relation("procurement_history_user")
+  procurementItemsCreated       procurement_item[]       @relation("procurement_item_creator")
+  procurementSuggestionsCreated procurement_suggestion[] @relation("procurement_suggestion_creator")
+  procurementHistories          procurement_history[]    @relation("procurement_history_user")
   procurementTaskConfirms procurement_task_link[] @relation("procurement_task_confirmer")
   purchaseOrdersCreated   purchase_order[]        @relation("purchase_order_creator")
   notifications           notification[]          @relation("notification_user")
@@ -223,9 +225,10 @@ model project {
   imgs             project_img[] // รูปแนบของโปรเจค
   feedPosts        feed_post[]
   stories          story[]
-  procurementItems procurement_item[]
-  purchaseOrders   purchase_order[]
-  cameras          camera[]
+  procurementItems       procurement_item[]
+  procurementSuggestions procurement_suggestion[]
+  purchaseOrders         purchase_order[]
+  cameras                camera[]
   floorplans       floorplan[]
   point360s        point360[]
 }
@@ -331,11 +334,27 @@ model task {
   createdById Int // คนสร้าง task
   creator     user @relation("task_creator", fields: [createdById], references: [id])
 
+  // 🌟 --- AI V2 Cost Breakdown ---
+  aiMaterialPercent   Int?       @default(0)
+  aiMaterialCost      Decimal?   @db.Decimal(14, 2)
+  aiLaborPercent      Int?       @default(0)
+  aiLaborCost         Decimal?   @db.Decimal(14, 2)
+  aiMachineryPercent  Int?       @default(0)
+  aiMachineryCost     Decimal?   @db.Decimal(14, 2)
+
+  // 🌟 --- AI V2 Extra ---
+  aiDurationAssumptions String?  @db.Text
+  aiRisks               String?  @db.LongText   // JSON array
+  aiMaterials           String?  @db.LongText   // JSON array (Draft PR)
+  phase                 String?
+
+  // ---------- relations ----------
   details              task_detail[] // ขั้นตอนย่อยของ task
   taskUsers            task_user[]
   taskContractors      task_contractor[]
   feedPosts            feed_post[]
-  procurementTaskLinks procurement_task_link[]
+  procurementTaskLinks   procurement_task_link[]
+  procurementSuggestions procurement_suggestion[]
 }
 
 // =====================================
@@ -874,3 +893,28 @@ model point360history {
   point     point360 @relation(fields: [pointId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
 }
+
+// =====================================
+// ProcurementSuggestion = วัสดุจาก AI ที่ถูก add ไปที่แทปจัดซื้อ
+// =====================================
+model procurement_suggestion {
+  id            Int      @id @default(autoincrement())
+  materialName  String
+  specification String?  @db.Text
+  quantity      String?
+  unit          String?
+  unitPrice     Decimal? @db.Decimal(12, 2)
+  totalPrice    Decimal? @db.Decimal(12, 2)
+  status        String   @default("PENDING") // PENDING / ADDED
+  createdAt     DateTime @default(now())
+
+  taskId         Int
+  task           task         @relation(fields: [taskId], references: [id])
+  projectId      Int
+  project        project      @relation(fields: [projectId], references: [id])
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+  createdById    Int
+  creator        user         @relation("procurement_suggestion_creator", fields: [createdById], references: [id])
+}
+

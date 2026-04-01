@@ -72,6 +72,7 @@ import NewRowQuoteDialog from "./NewRowQuoteDialog";
 import EditQuoteDialog from "./EditQuoteDialog";
 import DeleteConfirmModal from "./DeleteConfirmModal";
 import HistoryModal from "./HistoryModal";
+import AiSuggestionPanel from "./AiSuggestionPanel";
 
 const STATUS_LABELS: Record<string, { label: string; color: "default" | "primary" | "secondary" | "success" | "warning" | "danger" }> = {
   PENDING: { label: "รอจัดซื้อ", color: "default" },
@@ -1551,7 +1552,11 @@ const ProcurementSection = ({
         </div>
       </div>
 
-
+      {/* AI Suggestion Panel — รายการแนะนำจากงาน V2 */}
+      <AiSuggestionPanel
+        projectId={projectId}
+        onItemConverted={loadItems}
+      />
 
       {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-2">
