@@ -1,5 +1,7 @@
 "use server";
 
+export const maxDuration = 120;
+
 import { GoogleGenAI } from "@google/genai";
 import {
   sendbase64toS3Data,
@@ -545,7 +547,7 @@ export const transcribeVideoAudio = async (videoUrl: string) => {
 export const generateTakeBudget_Durationday = async (prompt: string) => {
   try {
     const result = await ai_gemini.models.generateContent({
-      model: model_version, 
+      model: model_version,
       config: {
         systemInstruction: `คุณคือวิศวกรประเมินราคาและวางแผนงานก่อสร้างมืออาชีพ (Estimator & Planner) ในประเทศไทย
         หน้าที่ของคุณคือการวิเคราะห์ชื่องานก่อสร้างที่ได้รับ และประเมิน "ราคากลางโดยประมาณ (บาท)" และ "ระยะเวลาทำงานคร่าวๆ (วัน)"
@@ -569,7 +571,7 @@ export const generateTakeBudget_Durationday = async (prompt: string) => {
       console.error("AI Response structure is invalid or empty:", result);
       return null; // เปลี่ยนจากคืนค่า [] เป็น null เพื่อให้เช็ค error ได้ง่ายขึ้น
     }
-    
+
     try {
       const estimate = JSON.parse(responseText);
 
@@ -579,7 +581,7 @@ export const generateTakeBudget_Durationday = async (prompt: string) => {
         estimatedDurationDays: Number(estimate.estimatedDurationDays) || 1, // ค่าเริ่มต้นให้เป็น 1 วัน
         reason: estimate.reason || "ประเมินจากมาตรฐานงานก่อสร้างทั่วไป",
       };
-      
+
     } catch (parseError) {
       console.error("JSON Parse Error. Raw response:", responseText);
       return null;
@@ -635,7 +637,7 @@ export const generatePlanningAI = async (prompt: string) => {
               ]
 
               ตอบ JSON เท่านั้น ห้ามมีข้อความอื่น`,
-          temperature: 0.7,
+        temperature: 0.7,
         responseMimeType: "application/json",
       },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
@@ -675,16 +677,22 @@ export const generatePlanningAI = async (prompt: string) => {
       orderAi: Number(item.orderAi) || 0,
       phaseAi: item.phaseAi || "Foundation",
       estimatedDurationDays:
-        Number(item.estimatedDurationDays) || 1,
+      Number(item.estimatedDurationDays) || 1,
       startAiPlanned: item.startAiPlanned || null,
     }));
 
     console.log("✅ CLEANED:", cleaned.length);
 
-    return cleaned;
-
+    return {
+      success: true,
+      data: cleaned,
+    };
   } catch (error) {
     console.log("🔥 GENERATE AI ERROR:", error);
-    throw error; // 👈 สำคัญมาก
+    return {
+      success: false,
+      data: [],
+      error: String(error),
+    };
   }
 };

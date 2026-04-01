@@ -215,12 +215,15 @@ ${JSON.stringify(aiTasks)}
             console.log("🧠 PROMPT READY");
 
             const result = await generatePlanningAI(prompt);
-            console.log("🤖 AI RESULT:", result);
+            if (!result.success) {
+                console.log("❌ AI ERROR:", result.error);
+                return;
+            }
 
-            const clean = Array.isArray(result) ? result : [];
+            const clean = result.data;
 
             if (!clean.length) {
-                console.log("❌ AI RETURN EMPTY");
+                console.log("❌ EMPTY DATA");
                 return;
             }
 
@@ -245,7 +248,7 @@ ${JSON.stringify(aiTasks)}
             setIsGenerating(false);
         }
     };
-    
+
     return (
         <div className="bg-gray-900 p-4 rounded-xl border border-gray-700 overflow-x-auto">
             {isEmpty ? (
