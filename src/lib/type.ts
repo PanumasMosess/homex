@@ -437,7 +437,7 @@ export interface CommentSectionProps {
 }
 
 export interface EzvizCameraProps {
-  cameraId: string;
+  cameraId?: number;
   accessToken: string;
   ezopenUrl: string;
   areaDomain?: string;

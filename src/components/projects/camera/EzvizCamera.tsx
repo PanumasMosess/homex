@@ -5,8 +5,10 @@ import { EzvizCameraProps } from "@/lib/type";
 
 import * as tf from "@tensorflow/tfjs";
 import * as cocossd from "@tensorflow-models/coco-ssd";
+import { savePersonCountAction } from "@/lib/actions/actionCamera";
 
 export default function EzvizCamera({
+  cameraId,
   accessToken,
   ezopenUrl,
   areaDomain = "https://open.ezviz.com",
@@ -24,6 +26,8 @@ export default function EzvizCamera({
   const overlayCanvasRef = useRef<HTMLCanvasElement>(null);
   const aiModelRef = useRef<cocossd.ObjectDetection | null>(null);
   const requestRef = useRef<number>(0);
+
+  const maxCountRef = useRef<number>(0);
 
   const containerId = useRef(
     `ezviz-player-${Math.random().toString(36).substring(2, 9)}`,
@@ -67,7 +71,6 @@ export default function EzvizCamera({
     loadAiModel();
   }, []);
 
-  // 🌟 3. [AI] ฟังก์ชันตรวจจับและนับคน
   const detectPersons = useCallback(async () => {
     if (!aiModelRef.current || !wrapperRef.current || !overlayCanvasRef.current)
       return;
@@ -80,12 +83,17 @@ export default function EzvizCamera({
         const predictions = await aiModelRef.current.detect(mediaElement);
 
         const people = predictions.filter((p) => p.class === "person");
-        setPersonCount(people.length);
+        const currentCount = people.length;
+
+        setPersonCount(currentCount);
+
+        if (currentCount > maxCountRef.current) {
+          maxCountRef.current = currentCount;
+        }
 
         const canvas = overlayCanvasRef.current;
         const ctx = canvas.getContext("2d");
         if (ctx) {
-          // ปรับขนาด Canvas ให้เท่ากับ Video พอดี
           canvas.width = mediaElement.clientWidth;
           canvas.height = mediaElement.clientHeight;
           ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -103,8 +111,7 @@ export default function EzvizCamera({
 
           people.forEach((person) => {
             const [x, y, width, height] = person.bbox;
-            // วาดกรอบ
-            ctx.strokeStyle = "#00FF00"; // สีเขียว
+            ctx.strokeStyle = "#00FF00";
             ctx.lineWidth = 2;
             ctx.strokeRect(
               x * scaleX,
@@ -113,7 +120,6 @@ export default function EzvizCamera({
               height * scaleY,
             );
 
-            // วาดป้ายกำกับ
             ctx.fillStyle = "#00FF00";
             ctx.font = "14px Arial";
             ctx.fillText(
@@ -124,12 +130,36 @@ export default function EzvizCamera({
           });
         }
       } catch (error) {
-        // อาจเกิด Error ได้ถ้าภาพยังไม่โหลดสมบูรณ์ หรือติด CORS Tainted Canvas
+        // อาจเกิด Error ได้ถ้าภาพยังไม่โหลดสมบูรณ์
       }
     }
 
     requestRef.current = requestAnimationFrame(detectPersons);
   }, []);
+
+  useEffect(() => {
+    if (!cameraId) return;
+
+    const SAVE_INTERVAL_MS = 5 * 60 * 1000;
+
+    const intervalId = setInterval(async () => {
+      const highestCount = maxCountRef.current;
+
+      console.log(
+        `📊 กำลังบันทึกสถิติ: กล้อง ID ${cameraId} ยอดคนสูงสุด ${highestCount} คน`,
+      );
+
+      try {
+        await savePersonCountAction(cameraId, highestCount);
+      } catch (error) {
+        console.error("❌ บันทึกสถิติไม่สำเร็จ:", error);
+      }
+
+      maxCountRef.current = 0;
+    }, SAVE_INTERVAL_MS);
+
+    return () => clearInterval(intervalId);
+  }, [cameraId]);
 
   const initPlayer = useCallback(() => {
     if (!PlayerConstructor || !ezopenUrl || !accessToken) return;

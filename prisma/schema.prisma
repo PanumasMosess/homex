@@ -27,30 +27,30 @@ model organization {
   ownerId Int?
   owner   user? @relation("org_owner", fields: [ownerId], references: [id])
 
-  users            user[]             @relation("org_users") // สมาชิกในบริษัททั้งหมด
-  positions        position[] // ตำแหน่งของบริษัท
-  permissions      permission[] // สิทธิ์ของบริษัท
-  projects         project[] // โปรเจคของบริษัท
-  projectUsers     project_user[]     @relation("org_project_users") // คนที่ถูกดึงเข้าโปรเจค (ตารางกลาง)
-  projectFiles     project_file[] // ไฟล์แนบโปรเจค
-  projectImgs      project_img[] // รูปแนบโปรเจค
-  tasks            task[] // งานหลักทั้งหมดของบริษัท (ทุกโปรเจค)
-  taskDetails      task_detail[] // งานย่อยทั้งหมดของบริษัท (ทุกโปรเจค)
-  taskUsers        task_user[]        @relation("org_task_users")
-  projectsRunnings projects_running[]
-  suppliers        supplier[]
-  contractors      contractor[]
-  taskContractors  task_contractor[]
-  feedPosts        feed_post[]
-  stories          story[]
-  storyViews       story_view[]       @relation("org_story_views")
+  users                  user[]                   @relation("org_users") // สมาชิกในบริษัททั้งหมด
+  positions              position[] // ตำแหน่งของบริษัท
+  permissions            permission[] // สิทธิ์ของบริษัท
+  projects               project[] // โปรเจคของบริษัท
+  projectUsers           project_user[]           @relation("org_project_users") // คนที่ถูกดึงเข้าโปรเจค (ตารางกลาง)
+  projectFiles           project_file[] // ไฟล์แนบโปรเจค
+  projectImgs            project_img[] // รูปแนบโปรเจค
+  tasks                  task[] // งานหลักทั้งหมดของบริษัท (ทุกโปรเจค)
+  taskDetails            task_detail[] // งานย่อยทั้งหมดของบริษัท (ทุกโปรเจค)
+  taskUsers              task_user[]              @relation("org_task_users")
+  projectsRunnings       projects_running[]
+  suppliers              supplier[]
+  contractors            contractor[]
+  taskContractors        task_contractor[]
+  feedPosts              feed_post[]
+  stories                story[]
+  storyViews             story_view[]             @relation("org_story_views")
   procurementItems       procurement_item[]
   procurementSuggestions procurement_suggestion[]
   purchaseOrders         purchase_order[]
   notifications          notification[]
   cameras                camera[]
-  floorplans       floorplan[]
-  point360s        point360[]
+  floorplans             floorplan[]
+  point360s              point360[]
 }
 
 // =====================================
@@ -95,25 +95,25 @@ model user {
   createdTasks task[] @relation("task_creator")
 
   // user เป็น "ผู้อัปโหลดไฟล์"
-  uploadedFiles           project_file[]          @relation("project_file_uploader")
-  uploadedImgs            project_img[]           @relation("project_img_uploader")
-  taskUsers               task_user[]
-  feedPosts               feed_post[]             @relation("feed_post_author")
-  feedLikes               feed_like[]             @relation("feed_like_user")
-  feedComments            feed_comment[]          @relation("feed_comment_user")
-  feedCommentLikes        feed_comment_like[]     @relation("feed_comment_like_user")
-  feedShares              feed_share[]            @relation("feed_share_user")
+  uploadedFiles                 project_file[]           @relation("project_file_uploader")
+  uploadedImgs                  project_img[]            @relation("project_img_uploader")
+  taskUsers                     task_user[]
+  feedPosts                     feed_post[]              @relation("feed_post_author")
+  feedLikes                     feed_like[]              @relation("feed_like_user")
+  feedComments                  feed_comment[]           @relation("feed_comment_user")
+  feedCommentLikes              feed_comment_like[]      @relation("feed_comment_like_user")
+  feedShares                    feed_share[]             @relation("feed_share_user")
   procurementItemsCreated       procurement_item[]       @relation("procurement_item_creator")
   procurementSuggestionsCreated procurement_suggestion[] @relation("procurement_suggestion_creator")
   procurementHistories          procurement_history[]    @relation("procurement_history_user")
-  procurementTaskConfirms procurement_task_link[] @relation("procurement_task_confirmer")
-  purchaseOrdersCreated   purchase_order[]        @relation("purchase_order_creator")
-  notifications           notification[]          @relation("notification_user")
-  stories                 story[]                 @relation("story_author")
-  storyViews              story_view[]            @relation("story_viewer")
-  cameras                 camera[]
-  floorplans              floorplan[]
-  point360s               point360[]
+  procurementTaskConfirms       procurement_task_link[]  @relation("procurement_task_confirmer")
+  purchaseOrdersCreated         purchase_order[]         @relation("purchase_order_creator")
+  notifications                 notification[]           @relation("notification_user")
+  stories                       story[]                  @relation("story_author")
+  storyViews                    story_view[]             @relation("story_viewer")
+  cameras                       camera[]
+  floorplans                    floorplan[]
+  point360s                     point360[]
 }
 
 // =====================================
@@ -218,19 +218,19 @@ model project {
   projectCode String?           @unique // รหัสโปรเจคที่ไม่ซ้ำ (เช่น "PROJ-001")
   code        projects_running? @relation(fields: [projectCode], references: [runningCode])
 
-  members          project_user[] // คนที่ถูกลากเข้าโปรเจค
-  tasks            task[] // งานหลักในโปรเจค
-  taskDetails      task_detail[] // งานย่อยทั้งหมดของโปรเจค
-  files            project_file[] // ไฟล์แนบของโปรเจค
-  imgs             project_img[] // รูปแนบของโปรเจค
-  feedPosts        feed_post[]
-  stories          story[]
+  members                project_user[] // คนที่ถูกลากเข้าโปรเจค
+  tasks                  task[] // งานหลักในโปรเจค
+  taskDetails            task_detail[] // งานย่อยทั้งหมดของโปรเจค
+  files                  project_file[] // ไฟล์แนบของโปรเจค
+  imgs                   project_img[] // รูปแนบของโปรเจค
+  feedPosts              feed_post[]
+  stories                story[]
   procurementItems       procurement_item[]
   procurementSuggestions procurement_suggestion[]
   purchaseOrders         purchase_order[]
   cameras                camera[]
-  floorplans       floorplan[]
-  point360s        point360[]
+  floorplans             floorplan[]
+  point360s              point360[]
 }
 
 // =====================================
@@ -335,24 +335,24 @@ model task {
   creator     user @relation("task_creator", fields: [createdById], references: [id])
 
   // 🌟 --- AI V2 Cost Breakdown ---
-  aiMaterialPercent   Int?       @default(0)
-  aiMaterialCost      Decimal?   @db.Decimal(14, 2)
-  aiLaborPercent      Int?       @default(0)
-  aiLaborCost         Decimal?   @db.Decimal(14, 2)
-  aiMachineryPercent  Int?       @default(0)
-  aiMachineryCost     Decimal?   @db.Decimal(14, 2)
+  aiMaterialPercent  Int?     @default(0)
+  aiMaterialCost     Decimal? @db.Decimal(14, 2)
+  aiLaborPercent     Int?     @default(0)
+  aiLaborCost        Decimal? @db.Decimal(14, 2)
+  aiMachineryPercent Int?     @default(0)
+  aiMachineryCost    Decimal? @db.Decimal(14, 2)
 
   // 🌟 --- AI V2 Extra ---
-  aiDurationAssumptions String?  @db.Text
-  aiRisks               String?  @db.LongText   // JSON array
-  aiMaterials           String?  @db.LongText   // JSON array (Draft PR)
+  aiDurationAssumptions String? @db.Text
+  aiRisks               String? @db.LongText // JSON array
+  aiMaterials           String? @db.LongText // JSON array (Draft PR)
   phase                 String?
 
   // ---------- relations ----------
-  details              task_detail[] // ขั้นตอนย่อยของ task
-  taskUsers            task_user[]
-  taskContractors      task_contractor[]
-  feedPosts            feed_post[]
+  details                task_detail[] // ขั้นตอนย่อยของ task
+  taskUsers              task_user[]
+  taskContractors        task_contractor[]
+  feedPosts              feed_post[]
   procurementTaskLinks   procurement_task_link[]
   procurementSuggestions procurement_suggestion[]
 }
@@ -831,8 +831,9 @@ model camera {
   projectId Int
   project   project @relation(fields: [projectId], references: [id])
 
-  userId Int
-  user   user @relation(fields: [userId], references: [id])
+  userId          Int
+  user            user               @relation(fields: [userId], references: [id])
+  cameraAnalytics camera_analytics[]
 }
 
 // ==========================================
@@ -918,3 +919,11 @@ model procurement_suggestion {
   creator        user         @relation("procurement_suggestion_creator", fields: [createdById], references: [id])
 }
 
+model camera_analytics {
+  id          Int      @id @default(autoincrement())
+  cameraId    Int
+  personCount Int
+  createdAt   DateTime @default(now())
+
+  camera camera @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+}
