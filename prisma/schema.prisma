@@ -360,6 +360,8 @@ model task {
   feedPosts              feed_post[]
   procurementTaskLinks   procurement_task_link[]
   procurementSuggestions procurement_suggestion[]
+  dependencies           task_dependency[] @relation("TaskDependencies")
+  dependsOnTasks         task_dependency[] @relation("TaskDependsOn")
 }
 
 // =====================================
@@ -412,6 +414,18 @@ model task_user {
   user   user @relation(fields: [userId], references: [id])
 
   @@unique([taskId, userId])
+}
+
+model task_dependency {
+  id           Int  @id @default(autoincrement())
+
+  taskId       Int
+  dependsOnId  Int
+
+  task         task @relation("TaskDependencies", fields: [taskId], references: [id])
+  dependsOn    task @relation("TaskDependsOn", fields: [dependsOnId], references: [id])
+
+  @@unique([taskId, dependsOnId])
 }
 
 model projects_running {
