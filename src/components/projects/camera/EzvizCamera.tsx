@@ -101,12 +101,19 @@ export default function EzvizCamera({
       img.src = result.imageUrl;
 
       img.onload = async () => {
-        // สแกนหาคน (Threshold 0.3 เพื่อระยะไกล)
         const predictions = await aiModelRef.current!.detect(img);
-        const people = predictions.filter(
-          (p) => p.class === "person" && p.score > 0.3,
-        );
 
+        console.log("🧐 ข้อมูลดิบที่ AI มองเห็น:", predictions);
+
+        // 🌟 3. ลดกำแพงความมั่นใจลงเหลือแค่ 15% (0.15) เพื่อบังคับให้มันแสดงกรอบ
+        const people = predictions.filter((p) => {
+          // ถ้าเป็นคน และมั่นใจเกิน 15% ให้เอามาโชว์
+          if (p.class === "person" && p.score > 0.15) return true;
+
+          // 💡 ทริค: บางทีคนงานใส่หมวกกันน็อค/เสื้อสะท้อนแสง AI อาจจะมองเห็นเป็นของอย่างอื่น
+          // เช่น เห็นเป็นเก้าอี้ (chair) หรือรถ (car) เราสามารถดักดูได้ใน Console ครับ
+          return false;
+        });
         const currentCount = people.length;
         setPersonCount(currentCount);
         if (currentCount > maxCountRef.current)
