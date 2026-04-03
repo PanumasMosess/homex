@@ -91,10 +91,13 @@ export async function getCamerasByProject(projectId: number) {
   }
 }
 
-
-export async function savePersonCountAction(cameraId: number, maxCount: number) {
+export async function savePersonCountAction(
+  cameraId: number,
+  maxCount: number,
+) {
   try {
-    if (maxCount === 0) return { success: true, message: "No people detected, skipped." };
+    if (maxCount === 0)
+      return { success: true, message: "No people detected, skipped." };
 
     await prisma.camera_analytics.create({
       data: {

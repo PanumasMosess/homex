@@ -71,3 +71,50 @@ export async function getCameraCredentials(
     };
   }
 }
+
+
+export async function captureSnapshotAction(accessToken: string, deviceSerial: string) {
+  try {
+    if (!accessToken || !deviceSerial) {
+      throw new Error("ข้อมูลไม่ครบถ้วน (accessToken หรือ deviceSerial หายไป)");
+    }
+
+    // 1. สั่ง EZVIZ API ให้ถ่ายภาพ (Capture)
+    const ezvizParams = new URLSearchParams();
+    ezvizParams.append("accessToken", accessToken);
+    ezvizParams.append("deviceSerial", deviceSerial);
+    ezvizParams.append("channelNo", "1");
+
+    const captureRes = await fetch("https://open.ezvizlife.com/api/lapp/device/capture", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: ezvizParams.toString(),
+    });
+    
+    const captureData = await captureRes.json();
+
+    if (captureData.code !== "200" || !captureData.data?.picUrl) {
+      throw new Error(`EZVIZ API Error: ${captureData.msg}`);
+    }
+
+    // 2. ไปดึงไฟล์รูปภาพจาก URL ที่ EZVIZ ให้มา
+    const picUrl = captureData.data.picUrl;
+    const imgRes = await fetch(picUrl);
+    
+    if (!imgRes.ok) throw new Error("ไม่สามารถดาวน์โหลดรูปภาพจากเซิร์ฟเวอร์กล้องได้");
+    
+    const arrayBuffer = await imgRes.arrayBuffer();
+    
+    // 3. แปลงรูปเป็น Base64 เพื่อส่งกลับไปให้ Client (Next.js Action รับข้อมูลแบบนี้ได้ดีที่สุด)
+    const base64 = Buffer.from(arrayBuffer).toString("base64");
+
+    return { 
+      success: true, 
+      imageUrl: `data:image/jpeg;base64,${base64}` 
+    };
+
+  } catch (error: any) {
+    console.error("❌ captureSnapshotAction Error:", error);
+    return { success: false, error: error.message || "เกิดข้อผิดพลาดภายในระบบ" };
+  }
+}
