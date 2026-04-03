@@ -44,19 +44,22 @@ export default function PlanningSection({
 
       {/* HEADER */}
       <div className="flex justify-between items-center">
-        <h2 className="text-lg font-bold">
+        <h2 className="text-lg font-bold text-default-700 dark:text-white">
           แผนงาน VS ความคืบหน้าจริง
         </h2>
 
-        <div className="flex bg-zinc-800 rounded-xl p-1 text-sm">
+        <div className="flex bg-default-100 dark:bg-zinc-800 rounded-xl p-1 text-sm">
           <button
             onClick={() => setView("gantt")}
-            className={`px-3 py-1 rounded-lg ${view === "gantt" ? "bg-primary text-white" : ""}`}
+            className={`px-3 py-1 rounded-lg transition ${view === "gantt"
+                ? "bg-primary text-white"
+                : "text-default-500 hover:bg-default-200 dark:hover:bg-zinc-700"
+              }`}
           >
             Gantt
           </button>
 
-          <button
+          {/* <button
             onClick={() => setView("calendar")}
             className={`px-3 py-1 rounded-lg ${view === "calendar" ? "bg-primary text-white" : ""}`}
           >
@@ -68,13 +71,13 @@ export default function PlanningSection({
             className={`px-3 py-1 rounded-lg ${view === "workload" ? "bg-primary text-white" : ""}`}
           >
             Workload
-          </button>
+          </button> */}
         </div>
       </div>
 
       {/* CONTENT */}
       {loading ? (
-        <div className="p-10 text-center text-gray-400">
+        <div className="p-10 text-center text-default-500">
           กำลังโหลดแผนงาน...
         </div>
       ) : (

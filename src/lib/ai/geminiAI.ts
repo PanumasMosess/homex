@@ -588,109 +588,128 @@ export const generateTakeBudget_Durationday = async (prompt: string) => {
     console.error("Error generating estimate with AI:", error);
     throw error;
   }
-}
+};
 
 export const generatePlanningAI = async (prompt: string) => {
   try {
-    console.log("🚀 CALL GEMINI");
     const result = await ai_gemini.models.generateContent({
       model: model_version,
       config: {
-        systemInstruction: `คุณเป็นผู้เชี่ยวชาญด้านวางแผนงานก่อสร้าง (Project Manager)
+        systemInstruction: `
+          คุณคือ Project Manager งานก่อสร้างมืออาชีพ (มีความรู้ด้าน Site Engineer จริง)
 
-              หน้าที่:
-              วิเคราะห์ task ที่ได้รับ โดยใช้ข้อมูลเดิมเป็นหลัก และเติมเฉพาะข้อมูลที่จำเป็นสำหรับการวางแผน
+          หน้าที่:
+          - วิเคราะห์ชื่อ task แล้วจัด phaseAi ให้ถูกต้อง
+          - จัดลำดับ orderAi ตาม flow หน้างานจริง
+          - กำหนด dependsOn ให้สอดคล้องกับการทำงานจริง
 
-              สิ่งที่ต้องทำ:
-              - วิเคราะห์ task
-              - ใช้ estimatedDurationDays ถ้ามี
-              - ถ้าไม่มี ให้ประเมินเพิ่ม
-              - จัดลำดับ → orderAi
-              - จัดกลุ่ม → phaseAi:
-                Foundation | Structure | Architecture | System | Finishing
-              - คำนวณ startAiPlanned จาก Project start
-              - วางงานแบบ parallel ถ้าทำพร้อมกันได้
+          Phase:
+          Foundation | Structure | Architecture | System | Finishing
 
-              กฎ:
-              - task แรก (orderAi = 1) ต้องเริ่มที่ Project start date
-              - task ถัดไป:
-                - ถ้าต้องรอ → ให้เริ่มหลัง task ก่อนหน้าจบ
-                - ถ้าไม่ต้องรอ → ให้เริ่มวันเดียวกัน
-              - ต้องใช้ duration ในการคำนวณ start
-              - ต้องใช้ id เดิม
-              - ห้ามเปลี่ยน name
-              - ห้ามลบ task
-              - ห้ามเว้น gap
-              - ต้องใช้งานจริงได้
+          ========================
+          กฎลำดับหลัก (บังคับ)
+          ========================
+          Foundation → Structure → System (ROUGH-IN) → Architecture → System (INSTALL) → Finishing
 
-              รูปแบบคำตอบ:
-              [
-                {
-                  "id": number,
-                  "orderAi": number,
-                  "phaseAi": string,
-                  "estimatedDurationDays": number,
-                  "startAiPlanned": "YYYY-MM-DD"
-                }
-              ]
+          ========================
+          กฎโครงสร้าง (บังคับ)
+          ========================
+          - เสา → คาน → พื้น → หลังคา
 
-              ตอบ JSON เท่านั้น ห้ามมีข้อความอื่น`,
-        temperature: 0.7,
+          ห้าม:
+          - พื้น เริ่มก่อน เสา
+          - คาน เริ่มก่อน เสา
+          - งานโครงสร้างหลัก เริ่มพร้อมกันทั้งหมด
+
+          ========================
+          กฎระบบ (บังคับ)
+          ========================
+          - System (ROUGH-IN) ต้องมาก่อน Architecture
+          - System (INSTALL) ต้องมาหลัง Architecture
+
+          ========================
+          กฎการทำงานจริง (สำคัญมาก)
+          ========================
+          - ห้ามให้ task ใน phase เดียวกันเริ่มพร้อมกันทั้งหมด
+
+          - ทุก task (ยกเว้นตัวแรกของ phase) ต้องมี dependsOn
+
+          - ในแต่ละ phase:
+            - มี root task 1 งาน
+            - งานอื่นต้องอิง root หรือ task ก่อนหน้า
+
+          - งานต้อง "ทยอยเริ่ม" (staggered)
+            ❌ ห้าม start พร้อมกันทั้งหมด
+
+          ========================
+          กฎเฉพาะหน้างาน
+          ========================
+          - งานผนัง:
+            ต้องแบ่งเป็นลำดับ (โซน/ชั้น)
+            ห้ามเริ่มทั้งหมดพร้อมกัน
+
+          - งานโครงสร้าง:
+            พื้น ต้อง dependsOn เสา/คาน
+
+          - งานส่วนใหญ่:
+            ต้องมี dependency อย่างน้อย 1 งาน
+
+          ========================
+          ข้อห้าม
+          ========================
+          ❌ ห้ามทุก task ไม่มี dependsOn  
+          ❌ ห้ามทุก task อยู่ใน chain เดียว  
+          ❌ ห้าม start พร้อมกันหมด  
+
+          ========================
+          รูปแบบคำตอบ
+          ========================
+          ตอบ JSON เท่านั้น:
+          [
+            {
+              "id": number,
+              "orderAi": number,
+              "phaseAi": string,
+              "estimatedDurationDays": number,
+              "dependsOn": number[]
+            }
+          ]
+        `,
+        temperature: 0.2,
         responseMimeType: "application/json",
       },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
     });
 
-    console.log("📦 RAW RESULT:", JSON.stringify(result, null, 2));
+    const text = result.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) throw new Error("AI empty");
 
-    const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
-
-    if (!responseText) {
-      console.log("❌ AI Response empty");
-      throw new Error("AI ไม่ตอบกลับ");
-    }
-
-    console.log("🤖 RAW TEXT:", responseText);
-
-    // 🔥 กัน ```json
-    let safeText = responseText.trim();
-    safeText = safeText.replace(/```json/g, "").replace(/```/g, "");
-
-    let parsed;
-
-    try {
-      parsed = JSON.parse(safeText);
-    } catch (parseError) {
-      console.log("❌ JSON PARSE ERROR:", safeText);
-      throw parseError;
-    }
+    const parsed = JSON.parse(text.replace(/```json|```/g, "").trim());
 
     if (!Array.isArray(parsed)) {
-      console.log("❌ NOT ARRAY:", parsed);
-      throw new Error("AI ไม่ได้คืน array");
+      throw new Error("AI response not array");
     }
 
-    const cleaned = parsed.map((item: any) => ({
-      id: Number(item.id),
-      orderAi: Number(item.orderAi) || 0,
-      phaseAi: item.phaseAi || "Foundation",
-      estimatedDurationDays:
-      Number(item.estimatedDurationDays) || 1,
-      startAiPlanned: item.startAiPlanned || null,
+    const cleaned = parsed.map((i: any) => ({
+      id: Number(i.id),
+      orderAi: Number(i.orderAi) || 0,
+      phaseAi: i.phaseAi || "Structure",
+      estimatedDurationDays: Number(i.estimatedDurationDays) || 1,
+      dependsOn: Array.isArray(i.dependsOn)
+        ? [...new Set(i.dependsOn.map(Number))]
+        : [],
     }));
-
-    console.log("✅ CLEANED:", cleaned.length);
 
     return {
       success: true,
       data: cleaned,
     };
-  } catch (error) {
-    console.log("🔥 GENERATE AI ERROR:", error);
+  } catch (e) {
+    console.error("[generatePlanningAI]", e);
     return {
       success: false,
       data: [],
-      error: String(error),
+      error: String(e),
     };
   }
 };
