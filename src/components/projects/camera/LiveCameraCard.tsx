@@ -7,9 +7,8 @@ import {
   Chip,
   Spinner,
 } from "@heroui/react";
-import { MapPin, Trash2, VideoOff } from "lucide-react";
+import { MapPin, Trash2, VideoOff, Bot } from "lucide-react";
 import EzvizCamera from "./EzvizCamera";
-
 import { getCameraCredentials } from "@/lib/camera/cameraGetToken";
 
 const LiveCameraCard = ({
@@ -23,16 +22,17 @@ const LiveCameraCard = ({
 }) => {
   const [liveToken, setLiveToken] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
+  const [isModalOpen, setIsModalOpen] = useState(false); // 🌟 คุมสถานะขยายจอจากตรงนี้
   const [liveAreaDomain, setLiveAreaDomain] = useState(
     "https://open.ezviz.com",
   );
   const [isLoading, setIsLoading] = useState(true);
   const [fetchError, setFetchError] = useState("");
+  const [isAiEnabled, setIsAiEnabled] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
     const fetchStream = async () => {
-      // 🌟 ดักเคส 1: ไม่มี SN ตั้งแต่แรก ไม่ต้องเสียเวลาไปเรียก API
       if (!camera?.id) {
         if (isMounted) {
           setFetchError("ไม่พบหมายเลขซีเรียล (SN) ของกล้องตัวนี้");
@@ -40,8 +40,6 @@ const LiveCameraCard = ({
         }
         return;
       }
-
-      // 🌟 ดักเคส 2: กล้อง Offline ปิดไปเลย
       if (camera.status !== "online") {
         setIsLoading(false);
         return;
@@ -49,21 +47,15 @@ const LiveCameraCard = ({
 
       setIsLoading(true);
       setFetchError("");
-
       try {
         const res = await getCameraCredentials(camera.id, "1");
         if (!isMounted) return;
-
-        // 🌟 ดักเคส 3: เรียก API สำเร็จ และได้ URL มาจริงๆ
         if (res.success && res.ezopenUrl && res.accessToken) {
           setLiveToken(res.accessToken);
           setLiveUrl(res.ezopenUrl);
           setLiveAreaDomain(res.areaDomain || "https://open.ezviz.com");
         } else {
-          // ถ้า API แจ้ง Error หรือไม่ได้ URL กลับมา
-          setFetchError(
-            res.error || "เกิดข้อผิดพลาดในการดึงสตรีม หรือ SN ไม่ถูกต้อง",
-          );
+          setFetchError(res.error || "เกิดข้อผิดพลาดในการดึงสตรีม");
         }
       } catch (err) {
         if (isMounted) setFetchError("ไม่สามารถเชื่อมต่อเซิร์ฟเวอร์ได้");
@@ -71,7 +63,6 @@ const LiveCameraCard = ({
         if (isMounted) setIsLoading(false);
       }
     };
-
     fetchStream();
     return () => {
       isMounted = false;
@@ -88,6 +79,7 @@ const LiveCameraCard = ({
         >
           {camera.status.toUpperCase()}
         </Chip>
+
         {camera.status !== "online" ? (
           <div className="flex flex-col items-center text-zinc-600">
             <VideoOff size={40} strokeWidth={1.5} />
@@ -103,75 +95,85 @@ const LiveCameraCard = ({
             </span>
           </div>
         ) : fetchError ? (
-          <div className="flex flex-col items-center justify-center p-6 w-full h-full bg-red-950/10">
+          <div className="flex flex-col items-center justify-center p-6 w-full h-full bg-red-950/10 text-center">
             <VideoOff size={32} className="text-red-500/50 mb-3" />
-            <p className="text-red-500 text-xs font-semibold text-center leading-relaxed max-w-[80%]">
-              {fetchError}
-            </p>
-            <div className="flex gap-2 mt-4">
-              <Button
-                size="sm"
-                variant="flat"
-                color="danger"
-                className="h-7 text-[10px]"
-                onPress={() => window.location.reload()}
-              >
-                ลองใหม่
-              </Button>
-            </div>
+            <p className="text-red-500 text-xs font-semibold">{fetchError}</p>
           </div>
         ) : liveToken && liveUrl ? (
-          <div className="w-full h-full relative overflow-hidden">
+          <div
+            className={
+              isModalOpen
+                ? "fixed inset-0 z-[9999] bg-black"
+                : "w-full h-full relative overflow-hidden"
+            }
+          >
             <EzvizCamera
-              key={`${camera.id}-${liveToken.substring(0, 10)}`}
+              /* 🌟 แก้ตรงนี้: ใช้แค่ camera.id ล้วนๆ ห้ามเอา isModalOpen มาใส่ */
+              key={camera.id}
               accessToken={liveToken}
               ezopenUrl={liveUrl}
               areaDomain={liveAreaDomain}
               cameraId={camera.id}
+              isAiEnabled={isAiEnabled}
+              isModalOpen={isModalOpen}
+              onToggleModal={() => setIsModalOpen(!isModalOpen)}
             />
           </div>
         ) : null}
       </CardBody>
 
       <CardFooter className="flex flex-col items-start px-4 py-4 bg-zinc-800/80 border-t border-white/5 flex-grow">
-        <h3 className="font-bold text-sm sm:text-base truncate w-full text-zinc-100 mb-1">
+        <h3 className="font-bold text-sm truncate w-full text-zinc-100 mb-1">
           {camera.name}
         </h3>
         <div className="flex justify-between items-center w-full mt-auto">
-          <p className="text-[11px] sm:text-xs text-zinc-500 flex items-center gap-1.5">
-            <MapPin size={12} className="text-primary" /> {camera.location}
-          </p>
-          <div className="flex flex-col items-end">
-            <span className="text-[9px] uppercase text-zinc-600 font-bold tracking-tighter">
-              Device SN
-            </span>
-            <p className="text-[10px] sm:text-xs font-mono text-zinc-400 group-hover:text-primary transition-colors">
-              {camera.id || "N/A"}
+          <div className="flex flex-col">
+            <p className="text-[11px] text-zinc-500 flex items-center gap-1.5 mb-1">
+              <MapPin size={12} className="text-primary" /> {camera.location}
+            </p>
+            <p className="text-[10px] font-mono text-zinc-500">
+              SN: {camera.id || "N/A"}
             </p>
           </div>
-          {onEdit && (
-            <Button
-              size="sm"
-              variant="bordered"
-              className="h-7 text-[10px] border-zinc-700 text-zinc-400 hover:text-white"
-              onPress={() => onEdit(camera)}
-            >
-              แก้ไข SN
-            </Button>
-          )}
 
-          {onDelete && (
-            <Button
-              isIconOnly
-              size="sm"
-              variant="light"
-              color="danger"
-              className="text-zinc-500 hover:text-danger min-w-0 w-8 h-8 rounded-full"
-              onPress={() => onDelete(camera)}
-            >
-              <Trash2 size={16} />
-            </Button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {camera.status === "online" && liveToken && (
+              <Button
+                size="sm"
+                variant={isAiEnabled ? "solid" : "flat"}
+                color={isAiEnabled ? "success" : "default"}
+                className="h-8 px-2 min-w-0"
+                onPress={() => setIsAiEnabled(!isAiEnabled)}
+              >
+                <Bot size={16} className={isAiEnabled ? "animate-pulse" : ""} />
+                <span className="text-[10px] font-bold">
+                  {isAiEnabled ? "AI ON" : "AI"}
+                </span>
+              </Button>
+            )}
+            {onEdit && (
+              <Button
+                size="sm"
+                variant="bordered"
+                className="h-8 text-[10px]"
+                onPress={() => onEdit(camera)}
+              >
+                แก้ไข
+              </Button>
+            )}
+            {onDelete && (
+              <Button
+                isIconOnly
+                size="sm"
+                variant="light"
+                color="danger"
+                className="w-8 h-8"
+                onPress={() => onDelete(camera)}
+              >
+                <Trash2 size={16} />
+              </Button>
+            )}
+          </div>
         </div>
       </CardFooter>
     </Card>
