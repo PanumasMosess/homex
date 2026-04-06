@@ -109,11 +109,11 @@ const LiveCameraCard = ({
           >
             <EzvizCamera
               /* 🌟 แก้ตรงนี้: ใช้แค่ camera.id ล้วนๆ ห้ามเอา isModalOpen มาใส่ */
-              key={camera.id}
+              key={camera.dbId}
               accessToken={liveToken}
               ezopenUrl={liveUrl}
               areaDomain={liveAreaDomain}
-              cameraId={camera.id}
+              cameraDBId={camera.dbId}
               isAiEnabled={isAiEnabled}
               isModalOpen={isModalOpen}
               onToggleModal={() => setIsModalOpen(!isModalOpen)}

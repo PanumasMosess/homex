@@ -92,19 +92,65 @@ export async function getCamerasByProject(projectId: number) {
 }
 
 export async function savePersonCountAction(
-  cameraId: number,
+  cameraDBId: number,
   maxCount: number,
 ) {
   try {
     if (maxCount === 0)
       return { success: true, message: "No people detected, skipped." };
 
-    await prisma.camera_analytics.create({
-      data: {
-        cameraId: cameraId,
-        personCount: maxCount,
+    const camera = await prisma.camera.findFirst({
+      where: { id: cameraDBId },
+    });
+
+    if (!camera) {
+      console.error(`❌ ไม่พบข้อมูลกล้อง ID: ${cameraDBId} ในระบบ`);
+      return { success: false, error: "Camera not found" };
+    }
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+
+    const endOfDay = new Date();
+    endOfDay.setHours(23, 59, 59, 999);
+
+    const existingRecord = await prisma.camera_analytics.findFirst({
+      where: {
+        cameraId: camera.id,
+        createdAt: {
+          gte: startOfDay,
+          lte: endOfDay,
+        },
+      },
+      orderBy: {
+        personCount: "desc", 
       },
     });
+
+    if (existingRecord) {
+      if (maxCount > existingRecord.personCount) {
+        await prisma.camera_analytics.update({
+          where: { id: existingRecord.id },
+          data: { personCount: maxCount },
+        });
+        // console.log(
+        //   `🆙 อัปเดตสถิติใหม่: ${maxCount} คน (เดิม ${existingRecord.personCount})`,
+        // );
+      } else {
+        return {
+          success: true,
+          message: "New count is not higher than existing record for today.",
+        };
+      }
+    } else {
+      await prisma.camera_analytics.create({
+        data: {
+          cameraId: camera.id,
+          personCount: maxCount,
+        },
+      });
+      // console.log(`🆕 บันทึกสถิติแรกของวัน: ${maxCount} คน`);
+    }
 
     return { success: true };
   } catch (error) {

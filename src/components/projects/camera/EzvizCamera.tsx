@@ -2,42 +2,33 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { EzvizCameraProps } from "@/lib/type";
-import * as tf from "@tensorflow/tfjs";
-import * as cocossd from "@tensorflow-models/coco-ssd";
 import { captureSnapshotAction } from "@/lib/camera/cameraGetToken";
-
-interface ExtendedEzvizProps extends EzvizCameraProps {
-  isAiEnabled?: boolean;
-  isModalOpen?: boolean;
-  onToggleModal?: () => void;
-}
+import { askGeminiToCountAction } from "@/lib/ai/geminiAI";
+import { savePersonCountAction } from "@/lib/actions/actionCamera";
 
 export default function EzvizCamera({
-  cameraId,
+  cameraDBId,
   accessToken,
   ezopenUrl,
   areaDomain = "https://open.ezviz.com",
   isAiEnabled = false,
   isModalOpen = false,
   onToggleModal,
-}: ExtendedEzvizProps) {
+}: EzvizCameraProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [PlayerConstructor, setPlayerConstructor] = useState<any>(null);
   const [personCount, setPersonCount] = useState<number>(0);
-  const [isAiLoading, setIsAiLoading] = useState<boolean>(true);
-  const [aiDebugMsg, setAiDebugMsg] = useState<string>("⏳ เตรียมระบบ AI...");
+  const [aiDebugMsg, setAiDebugMsg] = useState<string>("⏳ รอคำสั่ง AI...");
   const [isZoomed, setIsZoomed] = useState<boolean>(false);
 
   const playerRef = useRef<any>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
   const snapshotCanvasRef = useRef<HTMLCanvasElement>(null);
-  const aiModelRef = useRef<cocossd.ObjectDetection | null>(null);
 
-  const [containerId] = useState(`ez-video-${cameraId}`);
+  const [containerId] = useState(`ez-video-${cameraDBId}`);
   const deviceSerial =
     ezopenUrl.match(/open\.ezviz\.com\/([a-zA-Z0-9]+)\//)?.[1] || "";
 
-  // 1. โหลดไลบรารีกล้อง
   useEffect(() => {
     let isMounted = true;
     const loadLib = async () => {
@@ -56,48 +47,19 @@ export default function EzvizCamera({
     };
   }, []);
 
-  // 2. โหลด AI Model
-  useEffect(() => {
-    const loadAi = async () => {
-      try {
-        await tf.ready();
-        const model = await cocossd.load({ base: "mobilenet_v2" });
-        aiModelRef.current = model;
-        setIsAiLoading(false);
-        setAiDebugMsg("✅ AI พร้อมทำงาน");
-      } catch (e) {
-        setAiDebugMsg("❌ โหลด AI ไม่สำเร็จ");
-      }
-    };
-    loadAi();
-  }, []);
-
-  // 🌟 3. ฟังก์ชัน AI สแกนภาพ (ที่ผมเผลอลบไปรอบที่แล้ว เอากลับมาแล้วครับ!)
   const scanSnapshot = useCallback(async () => {
-    if (
-      !aiModelRef.current ||
-      !deviceSerial ||
-      !snapshotCanvasRef.current ||
-      !isAiEnabled
-    )
-      return;
+    if (!deviceSerial || !snapshotCanvasRef.current || !isAiEnabled) return;
 
     try {
       setAiDebugMsg("📸 กำลังถ่ายภาพ...");
       const result = await captureSnapshotAction(accessToken, deviceSerial);
 
       if (result.success && result.imageUrl) {
-        setAiDebugMsg("🔍 กำลังวิเคราะห์...");
+        setAiDebugMsg("🧠 ส่งรูปให้ Gemini คิด...");
+
         const img = new Image();
         img.src = result.imageUrl;
-        img.onload = async () => {
-          const pred = await aiModelRef.current!.detect(img);
-          const people = pred.filter(
-            (p) => p.class === "person" && p.score > 0.15,
-          );
-          setPersonCount(people.length);
-
-          // วาดกรอบสีเขียวลง Canvas
+        img.onload = () => {
           const canvas = snapshotCanvasRef.current;
           if (canvas) {
             const ctx = canvas.getContext("2d");
@@ -105,29 +67,39 @@ export default function EzvizCamera({
             canvas.height = img.height;
             if (ctx) {
               ctx.drawImage(img, 0, 0);
-              people.forEach((p) => {
-                const [x, y, w, h] = p.bbox;
-                ctx.strokeStyle = "#22C55E";
-                ctx.lineWidth = 6;
-                ctx.strokeRect(x, y, w, h);
-              });
             }
           }
-          setAiDebugMsg(`✅ เจอคน ${people.length} คน`);
         };
+
+        const geminiResult = await askGeminiToCountAction(result.imageUrl);
+
+        if (geminiResult.success && typeof geminiResult.count === "number") {
+          setPersonCount(geminiResult.count);
+          setAiDebugMsg(`✅ Gemini นับได้ ${geminiResult.count} คน`);
+          if (cameraDBId) {
+            try {
+              await savePersonCountAction(cameraDBId, geminiResult.count);
+              // console.log(`✅ บันทึก ${geminiResult.count} คน ลง DB สำเร็จ!`);
+            } catch (dbError) {
+              console.error("❌ บันทึกลง DB ล้มเหลว:", dbError);
+            }
+          }
+        } else {
+          setAiDebugMsg(`❌ ${geminiResult.error}`);
+        }
       }
     } catch (e) {
       setAiDebugMsg("❌ ดึงภาพล้มเหลว");
     }
   }, [accessToken, deviceSerial, isAiEnabled]);
 
-  // 🌟 4. สั่งรัน AI ทุกๆ 15 วินาที
   useEffect(() => {
-    if (isAiEnabled && !isAiLoading) {
-      scanSnapshot(); // รันทันทีที่เปิด AI
-      const interval = setInterval(scanSnapshot, 15000);
+    if (isAiEnabled) {
+      scanSnapshot();
+      // const interval = setInterval(scanSnapshot, 15000); // 15000ms = 15 วินาที (สำหรับทดสอบ)
+      const interval = setInterval(scanSnapshot, 180000); // 180000ms = 3 นาที
       return () => clearInterval(interval);
-    } else if (!isAiEnabled) {
+    } else {
       setPersonCount(0);
       setAiDebugMsg("⏸️ AI หยุดทำงาน");
       const canvas = snapshotCanvasRef.current;
@@ -136,9 +108,8 @@ export default function EzvizCamera({
         ctx?.clearRect(0, 0, canvas.width, canvas.height);
       }
     }
-  }, [isAiEnabled, isAiLoading, scanSnapshot]);
+  }, [isAiEnabled, scanSnapshot]);
 
-  // 5. สร้างกล้อง EZVIZ
   const initPlayer = useCallback(() => {
     if (!PlayerConstructor || !ezopenUrl || !accessToken) return;
 
@@ -228,7 +199,7 @@ export default function EzvizCamera({
       </div>
 
       {/* สถานะ AI (ด้านบน) */}
-      {!isAiLoading && isAiEnabled && (
+      {isAiEnabled && (
         <div className="absolute top-6 left-6 flex items-center gap-2 bg-black/60 backdrop-blur-md border border-white/10 px-4 py-2 rounded-xl z-[70]">
           <div className="w-2 h-2 rounded-full bg-success animate-ping"></div>
           <span className="text-white text-xs font-bold font-mono tracking-tight">
@@ -246,7 +217,7 @@ export default function EzvizCamera({
       <div
         onClick={() => !isZoomed && setIsZoomed(true)}
         className={`absolute transition-all duration-300 overflow-hidden shadow-2xl z-[85] border-2 border-primary/50 rounded-lg cursor-pointer
-          ${isAiEnabled && !isAiLoading ? "opacity-100" : "opacity-0 pointer-events-none"}
+          ${isAiEnabled ? "opacity-100" : "opacity-0 pointer-events-none"}
           ${isZoomed ? "inset-4 md:inset-10 bg-black" : isModalOpen ? "bottom-6 right-6 w-64 aspect-video" : "bottom-6 right-6 w-32 aspect-video"}
         `}
       >
