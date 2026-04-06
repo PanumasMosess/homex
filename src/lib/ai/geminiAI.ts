@@ -7,7 +7,7 @@ import {
 } from "../actions/actionIndex";
 
 const ai_gemini = new GoogleGenAI({
-  apiKey: process.env.GOOGLE_API_KEY,
+  apiKey: process.env.GEMINI_API_KEY,
 });
 
 const model_version = process.env.GEMINI_MODEL || "gemini-2.5-flash";
@@ -424,7 +424,9 @@ export const suggestTasksForMaterial = async (
   if (taskList.length === 0) return [];
 
   const tasksText = taskList
-    .map((t) => `ID:${t.id} ชื่อ:"${t.taskName || "ไม่มีชื่อ"}" สถานะ:${t.status}`)
+    .map(
+      (t) => `ID:${t.id} ชื่อ:"${t.taskName || "ไม่มีชื่อ"}" สถานะ:${t.status}`,
+    )
     .join("\n");
 
   const prompt = `วัสดุ: "${materialName}"
@@ -579,7 +581,6 @@ export const generateTakeBudget_Durationday = async (prompt: string) => {
         estimatedDurationDays: Number(estimate.estimatedDurationDays) || 1, // ค่าเริ่มต้นให้เป็น 1 วัน
         reason: estimate.reason || "ประเมินจากมาตรฐานงานก่อสร้างทั่วไป",
       };
-
     } catch (parseError) {
       console.error("JSON Parse Error. Raw response:", responseText);
       return null;
@@ -713,3 +714,54 @@ export const generatePlanningAI = async (prompt: string) => {
     };
   }
 };
+
+export async function askGeminiToCountAction(imageUrl: string) {
+  try {
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error("ไม่พบ GEMINI_API_KEY ในระบบ");
+    }
+
+    const imageResponse = await fetch(imageUrl);
+    if (!imageResponse.ok) {
+      throw new Error("ไม่สามารถดาวน์โหลดภาพจากกล้องได้");
+    }
+
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = buffer.toString("base64");
+    const mimeType = imageResponse.headers.get("content-type") || "image/jpeg";
+
+    const prompt = `
+      Count the exact number of people visible in this image. 
+      Return ONLY an integer number (e.g., 0, 1, 2, 3). 
+      Do not include any other text, punctuation, or explanation.
+    `;
+
+    const response = await ai_gemini.models.generateContent({
+      model: model_version,
+      contents: [
+        prompt,
+        {
+          inlineData: {
+            data: base64Image,
+            mimeType: mimeType,
+          },
+        },
+      ],
+    });
+
+    // E. ดึงข้อความตอบกลับและแปลงเป็นตัวเลข
+    const text = response.text?.trim() || "";
+    const count = parseInt(text, 10);
+
+    if (isNaN(count)) {
+      console.error("AI ตอบกลับมาผิดรูปแบบ:", text);
+      return { success: false, error: "AI คืนค่าผิดรูปแบบ" };
+    }
+
+    return { success: true, count: count };
+  } catch (error: any) {
+    console.error("Gemini Count Error:", error);
+    return { success: false, error: error.message || "ระบบ AI ขัดข้อง" };
+  }
+}

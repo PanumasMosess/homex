@@ -194,7 +194,7 @@ export interface SubtaskItemProps {
   startEditSubtask: (subtask: any) => void;
   setEditingSubtaskId: (id: number | null) => void;
   handleSaveSubtaskEdit: () => void;
-  handleToggleSubtask: (id: number, status: boolean, imageUrl?: string,) => void;
+  handleToggleSubtask: (id: number, status: boolean, imageUrl?: string) => void;
   handleDeleteSubtask: (id: number) => void;
   canManage?: boolean;
 }
@@ -437,10 +437,13 @@ export interface CommentSectionProps {
 }
 
 export interface EzvizCameraProps {
-  cameraId?: number;
+  cameraDBId?: number;
   accessToken: string;
   ezopenUrl: string;
   areaDomain?: string;
+  isAiEnabled?: boolean;
+  isModalOpen?: boolean;
+  onToggleModal?: () => void;
 }
 
 export interface DashboardCameraProp {
@@ -684,7 +687,6 @@ export type UpdateCameraInput = {
   status?: string;
 };
 
-
 export type UpdateCameraFormProps = {
   camera: any;
   isOpen: boolean;
@@ -781,7 +783,10 @@ export interface TaskV2DetailDialogProps {
     code: string;
     name: string;
   };
-  onChecklistChange: (checklist: TaskV2ChecklistItem[], toggledIndex: number) => void;
+  onChecklistChange: (
+    checklist: TaskV2ChecklistItem[],
+    toggledIndex: number,
+  ) => void;
   onReorderChecklist: (reordered: TaskV2ChecklistItem[]) => void;
   onEditSubtask: (subtaskId: number, newName: string) => void;
   onAddToProcurement: (material: TaskV2Material) => Promise<boolean>;
@@ -797,15 +802,15 @@ export interface CreateTaskV2ModalProps {
 }
 export type Hotspot = {
   id: string;
-  yaw: number; 
+  yaw: number;
   pitch: number;
-  label: string; 
-  targetPointId: number; 
+  label: string;
+  targetPointId: number;
 };
 
 export type Insta360ViewerProps = {
   imageUrl: string;
   caption?: string;
   hotspots?: Hotspot[];
-  onHotspotClick?: (targetPointId: number) => void; 
+  onHotspotClick?: (targetPointId: number) => void;
 };
