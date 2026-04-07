@@ -178,11 +178,6 @@ const TaskV2CardTab = ({
                 </>
               )}
             </div>
-            {!isEditingBudget && (
-              <p className="text-xs text-zinc-500">
-                / ยอดรวมจริง: ฿ {actualTotal.toLocaleString("th-TH")}
-              </p>
-            )}
           </div>
 
           <div className="space-y-3">
@@ -239,6 +234,12 @@ const TaskV2CardTab = ({
                 className="w-full"
               />
             </div>
+          </div>
+
+          <div className="flex justify-end pt-1 border-t border-zinc-800/60">
+            <p className="text-xs text-zinc-400">
+              ยอดรวมจริง: <span className="font-semibold text-emerald-400">฿ {actualTotal.toLocaleString("th-TH")}</span>
+            </p>
           </div>
         </div>
 
