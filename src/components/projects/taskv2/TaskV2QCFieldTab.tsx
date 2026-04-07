@@ -327,64 +327,66 @@ const TaskV2QCFieldTab = ({
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Checklist */}
         <div className="space-y-3">
-          <div className="space-y-1">
-            <h3 className="font-bold text-sm">อัปเดตงานหน้าไซต์</h3>
-            <p className="text-xs text-zinc-500 break-words">{taskName}</p>
-          </div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm">อัปเดตงานหน้าไซต์</h3>
+              {/* <p className="text-xs text-zinc-500 break-words">{taskName}</p> */}
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
-            {!isStarted && (
-              <Button
-                color="primary"
-                size="sm"
-                startContent={<Play size={14} />}
-                onPress={() => {
-                  setStartDate(toLocalDateString(new Date()));
-                  setShowStartDialog(true);
-                }}
-                className="font-bold"
-              >
-                เริ่มงาน
-              </Button>
-            )}
-            {isStarted && !isFinished && (
-              <>
-                <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
-                  <CheckCircle2 size={14} />
-                  <span>เริ่มงานแล้ว: {new Date(startActual!).toLocaleDateString("th-TH")}</span>
-                  <button
-                    onClick={() => {
-                      setStartDate(toLocalDateString(new Date(startActual!)));
-                      setShowStartDialog(true);
-                    }}
-                    className="ml-1 p-0.5 rounded hover:bg-success/20 text-success/70 hover:text-success transition-colors"
-                    title="แก้ไขวันที่เริ่มงาน"
-                  >
-                    <Pencil size={12} />
-                  </button>
-                </div>
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {!isStarted && (
                 <Button
-                  color="success"
+                  color="primary"
                   size="sm"
-                  startContent={<Send size={14} />}
+                  startContent={<Play size={14} />}
                   onPress={() => {
-                    setSubmitDate(toLocalDateString(new Date()));
-                    setShowSubmitDialog(true);
+                    setStartDate(toLocalDateString(new Date()));
+                    setShowStartDialog(true);
                   }}
                   className="font-bold"
-                  isDisabled={!allDone}
                 >
-                  ส่งงาน
+                  เริ่มงาน
                 </Button>
-              </>
-            )}
-            {isFinished && (
-              <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
-                <CheckCircle2 size={14} />
-                <span>ส่งงานแล้ว: {new Date(finishActual!).toLocaleDateString("th-TH")}</span>
-              </div>
-            )}
+              )}
+              {isStarted && !isFinished && (
+                <>
+                  <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
+                    <CheckCircle2 size={14} />
+                    <span>เริ่มงานแล้ว: {new Date(startActual!).toLocaleDateString("th-TH")}</span>
+                    <button
+                      onClick={() => {
+                        setStartDate(toLocalDateString(new Date(startActual!)));
+                        setShowStartDialog(true);
+                      }}
+                      className="ml-1 p-0.5 rounded hover:bg-success/20 text-success/70 hover:text-success transition-colors"
+                      title="แก้ไขวันที่เริ่มงาน"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                  <Button
+                    color="success"
+                    size="sm"
+                    startContent={<Send size={14} />}
+                    onPress={() => {
+                      setSubmitDate(toLocalDateString(new Date()));
+                      setShowSubmitDialog(true);
+                    }}
+                    className="font-bold"
+                    isDisabled={!allDone}
+                  >
+                    ส่งงาน
+                  </Button>
+                </>
+              )}
+              {isFinished && (
+                <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
+                  <CheckCircle2 size={14} />
+                  <span>ส่งงานแล้ว: {new Date(finishActual!).toLocaleDateString("th-TH")}</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Lock notice */}
@@ -432,7 +434,7 @@ const TaskV2QCFieldTab = ({
           </DndContext>
 
           {/* Progress summary */}
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2">
+          {/* <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2">
             <div className="flex justify-between text-xs">
               <span className="text-zinc-400">ความคืบหน้ารวม</span>
               <span className="font-bold text-primary">{progress}%</span>
@@ -441,7 +443,7 @@ const TaskV2QCFieldTab = ({
             <p className="text-[10px] text-zinc-500">
               {checkedItems}/{totalItems} ขั้นตอน
             </p>
-          </div>
+          </div> */}
         </div>
 
         {/* Right: Dashboard Summary */}
@@ -547,11 +549,8 @@ const TaskV2QCFieldTab = ({
         }}
       >
         <ModalContent>
-          <ModalHeader className="text-base font-bold">เริ่มงาน</ModalHeader>
+          <ModalHeader className="text-base font-bold">เลือกวันที่เริ่มงาน</ModalHeader>
           <ModalBody>
-            <p className="text-sm text-zinc-400 mb-2">
-              เลือกวันที่เริ่มงาน
-            </p>
             <input
               type="date"
               value={startDate}
@@ -561,21 +560,13 @@ const TaskV2QCFieldTab = ({
           </ModalBody>
           <ModalFooter>
             <Button
-              variant="flat"
-              size="sm"
-              onPress={() => setShowStartDialog(false)}
-              isDisabled={isLoading}
-            >
-              ยกเลิก
-            </Button>
-            <Button
               color="primary"
               size="sm"
               onPress={handleConfirmStart}
               isLoading={isLoading}
-              className="font-bold"
+              className="font-bold w-100"
             >
-              ยืนยันเริ่มงาน
+              ยืนยัน
             </Button>
           </ModalFooter>
         </ModalContent>
