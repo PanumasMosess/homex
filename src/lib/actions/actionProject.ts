@@ -778,6 +778,14 @@ export async function submitTaskV2(
       return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
     }
 
+    const subtasks = await prisma.task_detail.findMany({
+      where: { taskId },
+      select: { id: true, status: true },
+    });
+    if (subtasks.length > 0 && subtasks.some((s) => !s.status)) {
+      return { success: false, error: true, message: "ยังมี Subtask ที่ยังไม่เสร็จ กรุณาทำให้ครบก่อนส่งงาน" };
+    }
+
     await prisma.task.update({
       where: { id: taskId },
       data: {

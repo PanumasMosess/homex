@@ -353,7 +353,7 @@ const TaskV2ActualBudgetTab = ({
           isLoading={isPending}
           startContent={!isPending ? <Plus size={16} /> : undefined}
         >
-          + เพิ่มรายการ
+          เพิ่มรายการ
         </Button>
       </div>
 

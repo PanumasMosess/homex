@@ -178,18 +178,14 @@ const TaskV2Section = ({
         totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0;
 
       // Optimistic UI update (progress + details in one call)
+      const newTaskStatus = progress > 0 ? "PROGRESS" : "TODO";
       setTasks((prev: any[]) =>
         prev.map((t) =>
           t.id === selected.id
             ? {
                 ...t,
                 progressPercent: progress,
-                status:
-                  progress === 100
-                    ? "DONE"
-                    : progress > 0
-                      ? "PROGRESS"
-                      : "TODO",
+                status: newTaskStatus,
                 details: (t.details || []).map((d: any, i: number) =>
                   checklist[i]
                     ? {
@@ -213,12 +209,7 @@ const TaskV2Section = ({
 
         await updateMainTask(selected.id, {
           progressPercent: progress,
-          status:
-            progress === 100
-              ? "DONE"
-              : progress > 0
-                ? "PROGRESS"
-                : "TODO",
+          status: newTaskStatus,
         });
       } catch {
         toast.error("อัปเดตสถานะไม่สำเร็จ");

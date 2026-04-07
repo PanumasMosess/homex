@@ -4,7 +4,6 @@ import { useState, useCallback } from "react";
 import {
   Checkbox,
   Input,
-  Progress,
   Button,
   Modal,
   ModalContent,
@@ -332,7 +331,6 @@ const TaskV2QCFieldTab = ({
           <div className="flex items-center justify-between gap-2">
             <div className="min-w-0">
               <h3 className="font-bold text-sm">อัปเดตงานหน้าไซต์</h3>
-              {/* <p className="text-xs text-zinc-500 break-words">{taskName}</p> */}
             </div>
 
             {/* Action Buttons */}
@@ -435,17 +433,6 @@ const TaskV2QCFieldTab = ({
             </SortableContext>
           </DndContext>
 
-          {/* Progress summary */}
-          {/* <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-zinc-400">ความคืบหน้ารวม</span>
-              <span className="font-bold text-primary">{progress}%</span>
-            </div>
-            <Progress value={progress} color="primary" size="sm" />
-            <p className="text-[10px] text-zinc-500">
-              {checkedItems}/{totalItems} ขั้นตอน
-            </p>
-          </div> */}
         </div>
 
         {/* Right: Dashboard Summary */}
