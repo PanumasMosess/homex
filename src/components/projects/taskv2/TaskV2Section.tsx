@@ -19,7 +19,7 @@ import {
 } from "@dnd-kit/core";
 import type { TabTask, TaskV2SectionProps, TaskV2AIResponse } from "@/lib/type";
 import { toast } from "react-toastify";
-import { updateTaskStatus, updateMainTask, toggleSubtaskStatus } from "@/lib/actions/actionProject";
+import { updateTaskStatus, updateMainTask, toggleSubtaskStatus, startTaskV2, submitTaskV2 } from "@/lib/actions/actionProject";
 import { reorderSubtasks, editSubtaskName } from "@/lib/actions/actionTaskV2";
 import { addMaterialToProcurement } from "@/lib/actions/actionProcurementSuggestion";
 import MainTaskCard from "../MainTaskCard";
@@ -89,6 +89,7 @@ const TaskV2Section = ({
       name: d.detailName || "",
       progressPercent: d.weightPercent || 0,
       checked: d.status === true,
+      finishActual: d.finishActual || null,
     }));
 
     return {
@@ -177,21 +178,23 @@ const TaskV2Section = ({
         totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0;
 
       // Optimistic UI update (progress + details in one call)
+      const newTaskStatus = progress > 0 ? "PROGRESS" : "TODO";
       setTasks((prev: any[]) =>
         prev.map((t) =>
           t.id === selected.id
             ? {
                 ...t,
                 progressPercent: progress,
-                status:
-                  progress === 100
-                    ? "DONE"
-                    : progress > 0
-                      ? "PROGRESS"
-                      : "TODO",
+                status: newTaskStatus,
                 details: (t.details || []).map((d: any, i: number) =>
                   checklist[i]
-                    ? { ...d, status: checklist[i].checked }
+                    ? {
+                        ...d,
+                        status: checklist[i].checked,
+                        finishActual: checklist[i].checked
+                          ? d.finishActual || new Date().toISOString()
+                          : null,
+                      }
                     : d
                 ),
               }
@@ -206,12 +209,7 @@ const TaskV2Section = ({
 
         await updateMainTask(selected.id, {
           progressPercent: progress,
-          status:
-            progress === 100
-              ? "DONE"
-              : progress > 0
-                ? "PROGRESS"
-                : "TODO",
+          status: newTaskStatus,
         });
       } catch {
         toast.error("อัปเดตสถานะไม่สำเร็จ");
@@ -293,6 +291,46 @@ const TaskV2Section = ({
             t.id === selected.id ? { ...t, details: selected.details } : t
           )
         );
+      }
+    },
+    [selected, setTasks]
+  );
+
+  const handleStartTask = useCallback(
+    async (startDate: string) => {
+      if (!selected) return;
+      const res = await startTaskV2(selected.id, startDate);
+      if (res.success) {
+        setTasks((prev: any[]) =>
+          prev.map((t) =>
+            t.id === selected.id
+              ? { ...t, startActual: startDate, status: "PROGRESS" }
+              : t
+          )
+        );
+        toast.success("เริ่มงานเรียบร้อย");
+      } else {
+        toast.error(res.message || "เริ่มงานไม่สำเร็จ");
+      }
+    },
+    [selected, setTasks]
+  );
+
+  const handleSubmitTask = useCallback(
+    async (finishDate: string) => {
+      if (!selected) return;
+      const res = await submitTaskV2(selected.id, finishDate);
+      if (res.success) {
+        setTasks((prev: any[]) =>
+          prev.map((t) =>
+            t.id === selected.id
+              ? { ...t, finishActual: finishDate, status: "DONE", progressPercent: 100 }
+              : t
+          )
+        );
+        toast.success("ส่งงานเรียบร้อย");
+      } else {
+        toast.error(res.message || "ส่งงานไม่สำเร็จ");
       }
     },
     [selected, setTasks]
@@ -493,6 +531,8 @@ const TaskV2Section = ({
         onReorderChecklist={handleReorderChecklist}
         onEditSubtask={handleEditSubtask}
         onAddToProcurement={handleAddToProcurement}
+        onStartTask={handleStartTask}
+        onSubmitTask={handleSubmitTask}
       />
     </div>
   );

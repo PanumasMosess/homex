@@ -738,6 +738,7 @@ export interface TaskV2ChecklistItem {
   name: string;
   progressPercent: number;
   checked: boolean;
+  finishActual?: string | null;
 }
 
 export interface TaskV2Material {
@@ -790,6 +791,8 @@ export interface TaskV2DetailDialogProps {
   onReorderChecklist: (reordered: TaskV2ChecklistItem[]) => void;
   onEditSubtask: (subtaskId: number, newName: string) => void;
   onAddToProcurement: (material: TaskV2Material) => Promise<boolean>;
+  onStartTask: (startDate: string) => Promise<void>;
+  onSubmitTask: (finishDate: string) => Promise<void>;
 }
 
 export interface CreateTaskV2ModalProps {
@@ -800,6 +803,32 @@ export interface CreateTaskV2ModalProps {
   currentUserId: number;
   projectCode: string;
 }
+// =====================================
+// Task Actual Cost Types
+// =====================================
+
+export type ActualCostCategory = "MATERIAL" | "LABOR" | "MACHINERY";
+
+export interface TaskActualCostEntry {
+  id: number;
+  category: ActualCostCategory;
+  amount: number;
+  description: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  creator?: {
+    id: number;
+    displayName: string | null;
+  };
+}
+
+export interface TaskActualCostSummary {
+  material: number;
+  labor: number;
+  machinery: number;
+  total: number;
+}
+
 export type Hotspot = {
   id: string;
   yaw: number;
