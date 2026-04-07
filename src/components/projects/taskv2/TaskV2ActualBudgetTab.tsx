@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useTransition, useRef } from "react";
-import { Button, Input, Chip } from "@heroui/react";
+import { Button, Input } from "@heroui/react";
 import {
   Package,
   HardHat,
@@ -159,7 +159,11 @@ const TaskV2ActualBudgetTab = ({
       });
 
       if (res.success) {
-        toast.success("บันทึกรายการสำเร็จ");
+        if (imageFile && !imageUrl) {
+          toast.warning("บันทึกรายการสำเร็จ แต่อัปโหลดรูปไม่สำเร็จ");
+        } else {
+          toast.success("บันทึกรายการสำเร็จ");
+        }
         setAmount("");
         setDescription("");
         clearImage();

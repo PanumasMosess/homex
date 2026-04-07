@@ -15,8 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "react-toastify";
 import type { TaskV2AIResponse, TaskActualCostSummary } from "@/lib/type";
-import { getActualCostSummary } from "@/lib/actions/actionTaskV2ActualCost";
-import { updateTaskCustomBudget } from "@/lib/actions/actionTaskV2ActualCost";
+import { getActualCostSummary, updateTaskCustomBudget } from "@/lib/actions/actionTaskV2ActualCost";
 
 interface TaskV2CardTabProps {
   aiData: TaskV2AIResponse;
@@ -43,8 +42,27 @@ const TaskV2CardTab = ({
   });
   const [budget, setBudget] = useState(currentBudget);
   const [isEditingBudget, setIsEditingBudget] = useState(false);
-  const [budgetInput, setBudgetInput] = useState(String(currentBudget || ""));
+  const [budgetInput, setBudgetInput] = useState(
+    currentBudget ? currentBudget.toLocaleString("th-TH") : ""
+  );
   const [isPending, startTransition] = useTransition();
+
+  const formatBudgetNumber = (val: string) => {
+    const num = val.replace(/[^0-9.]/g, "");
+    if (!num) return "";
+    const parts = num.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
+  };
+
+  const parseBudgetNumber = (val: string) => Number(val.replace(/,/g, ""));
+
+  const handleBudgetInputChange = (val: string) => {
+    const raw = val.replace(/,/g, "");
+    if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
+      setBudgetInput(formatBudgetNumber(raw));
+    }
+  };
 
   useEffect(() => {
     getActualCostSummary(taskId).then((res) => {
@@ -53,7 +71,7 @@ const TaskV2CardTab = ({
   }, [taskId]);
 
   const handleSaveBudget = () => {
-    const val = Number(budgetInput);
+    const val = parseBudgetNumber(budgetInput);
     if (isNaN(val) || val < 0) {
       toast.error("กรุณากรอกตัวเลขที่ถูกต้อง");
       return;
@@ -195,9 +213,10 @@ const TaskV2CardTab = ({
               {isEditingBudget ? (
                 <div className="flex items-center gap-2 flex-1">
                   <Input
-                    type="number"
+                    type="text"
+                    inputMode="decimal"
                     value={budgetInput}
-                    onValueChange={setBudgetInput}
+                    onValueChange={handleBudgetInputChange}
                     size="sm"
                     variant="bordered"
                     startContent={<span className="text-zinc-400 text-sm">฿</span>}
@@ -209,7 +228,7 @@ const TaskV2CardTab = ({
                       if (e.key === "Enter") handleSaveBudget();
                       if (e.key === "Escape") {
                         setIsEditingBudget(false);
-                        setBudgetInput(String(budget || ""));
+                        setBudgetInput(budget ? budget.toLocaleString("th-TH") : "");
                       }
                     }}
                     autoFocus
@@ -231,7 +250,7 @@ const TaskV2CardTab = ({
                     variant="flat"
                     onPress={() => {
                       setIsEditingBudget(false);
-                      setBudgetInput(String(budget || ""));
+                      setBudgetInput(budget ? budget.toLocaleString("th-TH") : "");
                     }}
                   >
                     <X size={14} />
@@ -252,7 +271,7 @@ const TaskV2CardTab = ({
                 </p>
                 <button
                   onClick={() => {
-                    setBudgetInput(String(budget || ""));
+                    setBudgetInput(budget ? budget.toLocaleString("th-TH") : "");
                     setIsEditingBudget(true);
                   }}
                   className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"

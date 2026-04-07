@@ -971,4 +971,6 @@ model task_actual_cost {
 
   createdById    Int
   creator        user         @relation("actual_cost_creator", fields: [createdById], references: [id])
+
+  @@index([taskId])
 }
