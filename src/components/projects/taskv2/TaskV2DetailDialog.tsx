@@ -35,6 +35,8 @@ const TaskV2DetailDialog = ({
   onReorderChecklist,
   onEditSubtask,
   onAddToProcurement,
+  onStartTask,
+  onSubmitTask,
 }: TaskV2DetailDialogProps) => {
   const [activeTab, setActiveTab] = useState<V2Tab>("card");
 
@@ -216,6 +218,10 @@ const TaskV2DetailDialog = ({
                       onToggle={handleChecklistToggle}
                       onReorder={onReorderChecklist}
                       onEditSubtask={onEditSubtask}
+                      startActual={task.startActual || null}
+                      finishActual={task.finishActual || null}
+                      onStartTask={onStartTask}
+                      onSubmitTask={onSubmitTask}
                     />
                   )}
                 </>

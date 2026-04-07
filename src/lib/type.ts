@@ -738,6 +738,7 @@ export interface TaskV2ChecklistItem {
   name: string;
   progressPercent: number;
   checked: boolean;
+  finishActual?: string | null;
 }
 
 export interface TaskV2Material {
@@ -790,6 +791,8 @@ export interface TaskV2DetailDialogProps {
   onReorderChecklist: (reordered: TaskV2ChecklistItem[]) => void;
   onEditSubtask: (subtaskId: number, newName: string) => void;
   onAddToProcurement: (material: TaskV2Material) => Promise<boolean>;
+  onStartTask: (startDate: string) => Promise<void>;
+  onSubmitTask: (finishDate: string) => Promise<void>;
 }
 
 export interface CreateTaskV2ModalProps {

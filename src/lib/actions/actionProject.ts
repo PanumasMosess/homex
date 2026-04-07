@@ -494,9 +494,10 @@ export async function toggleSubtaskStatus(
       where: { id: subtaskId },
       data: {
         status: newStatus,
+        finishActual: newStatus ? new Date() : null,
         ...(newStatus ? (imageUrl ? { imageUrl } : {}) : { imageUrl: null }),
       },
-      include: { task: { select: { id: true, coverImageUrl: true } } },
+      include: { task: { select: { id: true, coverImageUrl: true, startActual: true } } },
     });
 
     if (newStatus === true) {
@@ -734,5 +735,62 @@ export async function deleteDocFile(id: number, organizationId: number) {
       error: true,
       message: error.message || "ลบไม่สำเร็จ",
     };
+  }
+}
+
+// =====================================
+// Task V2 — Start / Submit
+// =====================================
+
+export async function startTaskV2(
+  taskId: number,
+  startDate: string,
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
+    }
+
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        startActual: new Date(startDate),
+        status: "PROGRESS",
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true, error: false, message: "เริ่มงานเรียบร้อย" };
+  } catch (error: any) {
+    console.error("startTaskV2 Error:", error);
+    return { success: false, error: true, message: "เกิดข้อผิดพลาดในการเริ่มงาน" };
+  }
+}
+
+export async function submitTaskV2(
+  taskId: number,
+  finishDate: string,
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
+    }
+
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        finishActual: new Date(finishDate),
+        status: "DONE",
+        progressPercent: 100,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true, error: false, message: "ส่งงานเรียบร้อย" };
+  } catch (error: any) {
+    console.error("submitTaskV2 Error:", error);
+    return { success: false, error: true, message: "เกิดข้อผิดพลาดในการส่งงาน" };
   }
 }
