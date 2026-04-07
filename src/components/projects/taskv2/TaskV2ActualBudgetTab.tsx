@@ -10,6 +10,7 @@ import {
   Trash2,
   Camera,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 import { toast } from "react-toastify";
 import type {
@@ -79,7 +80,18 @@ const TaskV2ActualBudgetTab = ({
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const formatNumber = (val: string) => {
+    const num = val.replace(/[^0-9.]/g, "");
+    if (!num) return "";
+    const parts = num.split(".");
+    parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+    return parts.length > 1 ? `${parts[0]}.${parts[1]}` : parts[0];
+  };
+
+  const parseNumber = (val: string) => Number(val.replace(/,/g, ""));
 
   // Fetch data on mount
   useEffect(() => {
@@ -110,8 +122,16 @@ const TaskV2ActualBudgetTab = ({
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
+  const handleAmountChange = (val: string) => {
+    const raw = val.replace(/,/g, "");
+    if (raw === "" || /^\d*\.?\d*$/.test(raw)) {
+      setAmount(formatNumber(raw));
+    }
+  };
+
   const handleSubmit = () => {
-    if (!amount || Number(amount) <= 0) {
+    const numericAmount = parseNumber(amount);
+    if (!amount || numericAmount <= 0) {
       toast.error("กรุณากรอกยอดเงิน");
       return;
     }
@@ -133,7 +153,7 @@ const TaskV2ActualBudgetTab = ({
         taskId,
         organizationId,
         category: selectedCategory,
-        amount: Number(amount),
+        amount: numericAmount,
         description: description || undefined,
         imageUrl,
       });
@@ -235,16 +255,16 @@ const TaskV2ActualBudgetTab = ({
       <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-4">
         <p className="text-sm font-medium text-zinc-300">เลือกหมวดหมู่</p>
 
-        {/* Category Selector */}
-        <div className="flex gap-2">
+        {/* Category Tab Bar */}
+        <div className="flex bg-zinc-800/80 rounded-xl p-1">
           {CATEGORIES.map((cat) => (
             <button
               key={cat.key}
               onClick={() => setSelectedCategory(cat.key)}
-              className={`flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+              className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-sm font-medium transition-all ${
                 selectedCategory === cat.key
                   ? "bg-primary text-white shadow-md"
-                  : "bg-zinc-800/60 text-zinc-400 hover:bg-zinc-700 hover:text-zinc-200"
+                  : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
               {cat.icon}
@@ -253,12 +273,13 @@ const TaskV2ActualBudgetTab = ({
           ))}
         </div>
 
-        {/* Amount Input */}
+        {/* Amount Input (with comma formatting) */}
         <Input
-          type="number"
+          type="text"
+          inputMode="decimal"
           placeholder="0"
           value={amount}
-          onValueChange={setAmount}
+          onValueChange={handleAmountChange}
           startContent={
             <span className="text-zinc-400 text-sm font-bold">฿</span>
           }
@@ -355,33 +376,37 @@ const TaskV2ActualBudgetTab = ({
               return (
                 <div
                   key={entry.id}
-                  className="flex items-center gap-3 p-3 bg-zinc-900/60 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors"
+                  className="flex items-start gap-3 p-3 bg-zinc-900/60 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors"
                 >
                   {/* Icon */}
                   <div
-                    className={`w-9 h-9 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0`}
+                    className={`w-9 h-9 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0 mt-0.5`}
                   >
                     <span className={meta.color}>{meta.icon}</span>
                   </div>
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-0.5">
-                    <p className="text-sm font-medium text-zinc-200 truncate">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <p className="text-sm font-medium text-zinc-200">
                       {entry.description || meta.label}
                     </p>
                     <div className="flex items-center gap-2 text-[10px] text-zinc-500">
                       <span>{formatDate(entry.createdAt)}</span>
                       <span>{formatTime(entry.createdAt)}</span>
-                      {entry.imageUrl && (
-                        <Chip size="sm" variant="flat" color="default" className="h-4 text-[10px]">
-                          📷 รูปแนบ
-                        </Chip>
-                      )}
                     </div>
+                    {entry.imageUrl && (
+                      <button
+                        onClick={() => setLightboxUrl(entry.imageUrl)}
+                        className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 text-[11px] transition-colors"
+                      >
+                        <ImageIcon size={12} />
+                        ดูรูปแนบ
+                      </button>
+                    )}
                   </div>
 
                   {/* Amount */}
-                  <p className="text-sm font-bold text-zinc-100 shrink-0">
+                  <p className="text-sm font-bold text-zinc-100 shrink-0 mt-0.5">
                     ฿ {entry.amount.toLocaleString("th-TH")}
                   </p>
 
@@ -389,7 +414,7 @@ const TaskV2ActualBudgetTab = ({
                   <button
                     onClick={() => handleDelete(entry.id)}
                     disabled={deletingId === entry.id}
-                    className="p-1.5 rounded-lg hover:bg-danger/20 text-zinc-500 hover:text-danger transition-colors shrink-0 disabled:opacity-50"
+                    className="p-1.5 rounded-lg hover:bg-danger/20 text-zinc-500 hover:text-danger transition-colors shrink-0 mt-0.5 disabled:opacity-50"
                   >
                     <Trash2 size={14} />
                   </button>
@@ -399,6 +424,28 @@ const TaskV2ActualBudgetTab = ({
           </div>
         )}
       </div>
+
+      {/* ===== LIGHTBOX ===== */}
+      {lightboxUrl && (
+        <div
+          className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/80 backdrop-blur-sm"
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[85vh]">
+            <img
+              src={lightboxUrl}
+              alt="รูปแนบ"
+              className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
+            />
+            <button
+              onClick={() => setLightboxUrl(null)}
+              className="absolute -top-3 -right-3 w-8 h-8 bg-zinc-800 hover:bg-zinc-700 border border-zinc-600 rounded-full flex items-center justify-center transition-colors"
+            >
+              <X size={16} className="text-white" />
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
