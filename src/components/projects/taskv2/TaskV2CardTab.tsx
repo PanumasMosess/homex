@@ -259,26 +259,24 @@ const TaskV2CardTab = ({
               ) : (
                 <>
                   <p className="text-2xl sm:text-3xl font-bold text-emerald-400">
-                    ฿ {actualTotal.toLocaleString("th-TH")}
+                    ฿ {budget.toLocaleString("th-TH")}
                   </p>
+                  <button
+                    onClick={() => {
+                      setBudgetInput(budget ? budget.toLocaleString("th-TH") : "");
+                      setIsEditingBudget(true);
+                    }}
+                    className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  >
+                    <Pencil size={12} />
+                  </button>
                 </>
               )}
             </div>
             {!isEditingBudget && (
-              <div className="flex items-center gap-2">
-                <p className="text-xs text-zinc-500">
-                  / ราคากลางสุทธิ: ฿ {budget.toLocaleString("th-TH")}
-                </p>
-                <button
-                  onClick={() => {
-                    setBudgetInput(budget ? budget.toLocaleString("th-TH") : "");
-                    setIsEditingBudget(true);
-                  }}
-                  className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
-                >
-                  <Pencil size={12} />
-                </button>
-              </div>
+              <p className="text-xs text-zinc-500">
+                / ยอดรวมจริง: ฿ {actualTotal.toLocaleString("th-TH")}
+              </p>
             )}
           </div>
 
