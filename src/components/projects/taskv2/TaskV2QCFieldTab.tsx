@@ -21,9 +21,11 @@ import {
   Send,
   Clock,
   CheckCircle2,
-  Circle,
   ListChecks,
   Lock,
+  CalendarDays,
+  Timer,
+  AlertCircle,
 } from "lucide-react";
 import {
   DndContext,
@@ -249,6 +251,7 @@ const TaskV2QCFieldTab = ({
   const checkedItems = checklist.filter((c) => c.checked).length;
   const progress =
     totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0;
+  const allDone = totalItems > 0 && checkedItems === totalItems;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -350,6 +353,16 @@ const TaskV2QCFieldTab = ({
                 <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
                   <CheckCircle2 size={14} />
                   <span>เริ่มงานแล้ว: {new Date(startActual!).toLocaleDateString("th-TH")}</span>
+                  <button
+                    onClick={() => {
+                      setStartDate(toLocalDateString(new Date(startActual!)));
+                      setShowStartDialog(true);
+                    }}
+                    className="ml-1 p-0.5 rounded hover:bg-success/20 text-success/70 hover:text-success transition-colors"
+                    title="แก้ไขวันที่เริ่มงาน"
+                  >
+                    <Pencil size={12} />
+                  </button>
                 </div>
                 <Button
                   color="success"
@@ -360,6 +373,7 @@ const TaskV2QCFieldTab = ({
                     setShowSubmitDialog(true);
                   }}
                   className="font-bold"
+                  isDisabled={!allDone}
                 >
                   ส่งงาน
                 </Button>
@@ -378,6 +392,12 @@ const TaskV2QCFieldTab = ({
             <div className="flex items-center gap-2 text-xs text-warning bg-warning/10 border border-warning/20 px-3 py-2 rounded-lg">
               <Lock size={14} />
               <span>กรุณากด &quot;เริ่มงาน&quot; ก่อน จึงจะสามารถติ๊ก Checklist ได้</span>
+            </div>
+          )}
+          {isStarted && !isFinished && !allDone && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-800/50 border border-zinc-700/50 px-3 py-2 rounded-lg">
+              <AlertCircle size={14} />
+              <span>ต้องทำ Subtask ให้ครบทุกรายการก่อนจึงจะส่งงานได้ ({checkedItems}/{totalItems})</span>
             </div>
           )}
 
@@ -424,15 +444,60 @@ const TaskV2QCFieldTab = ({
           </div>
         </div>
 
-        {/* Right: Subtask Summary */}
+        {/* Right: Dashboard Summary */}
         <div className="space-y-4">
-          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 sm:p-5 space-y-4">
-            <div className="flex items-center gap-2 text-primary">
-              <ListChecks size={16} />
-              <h3 className="font-bold text-sm">สรุปรายการงาน</h3>
+          {/* Status cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <CalendarDays size={13} />
+                <span className="text-[10px] uppercase tracking-wider">เริ่มงาน</span>
+              </div>
+              <p className="text-sm font-bold text-zinc-200">
+                {startActual ? new Date(startActual).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              </p>
             </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <CheckCircle2 size={13} />
+                <span className="text-[10px] uppercase tracking-wider">ส่งงาน</span>
+              </div>
+              <p className="text-sm font-bold text-zinc-200">
+                {finishActual ? new Date(finishActual).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              </p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <Timer size={13} />
+                <span className="text-[10px] uppercase tracking-wider">ระยะเวลารวม</span>
+              </div>
+              <p className="text-sm font-bold text-zinc-200">
+                {startActual && finishActual
+                  ? `${calcDaysBetween(startActual, finishActual)} วัน`
+                  : startActual
+                    ? `${calcDaysBetween(startActual, new Date())} วัน (กำลังดำเนินการ)`
+                    : "—"}
+              </p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <ListChecks size={13} />
+                <span className="text-[10px] uppercase tracking-wider">ขั้นตอน</span>
+              </div>
+              <p className="text-sm font-bold">
+                <span className="text-success">{checkedItems}</span>
+                <span className="text-zinc-500">/{totalItems}</span>
+              </p>
+            </div>
+          </div>
 
-            <div className="space-y-2">
+          {/* Subtask breakdown table */}
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden">
+            <div className="px-4 py-2.5 border-b border-zinc-800 flex items-center gap-2">
+              <ListChecks size={14} className="text-primary" />
+              <h3 className="font-bold text-xs text-zinc-300">สรุปขั้นตอนงาน</h3>
+            </div>
+            <div className="divide-y divide-zinc-800/70">
               {checklist.map((item, i) => {
                 const days =
                   item.checked && item.finishActual && startActual
@@ -442,63 +507,30 @@ const TaskV2QCFieldTab = ({
                 return (
                   <div
                     key={item.id ?? i}
-                    className={`flex items-start gap-2.5 p-2.5 rounded-lg border ${
-                      item.checked
-                        ? "bg-success/5 border-success/20"
-                        : "bg-zinc-900/30 border-zinc-800/50"
-                    }`}
+                    className="flex items-center gap-3 px-4 py-2.5"
                   >
-                    <div className="mt-0.5 shrink-0">
-                      {item.checked ? (
-                        <CheckCircle2 size={16} className="text-success" />
-                      ) : (
-                        <Circle size={16} className="text-zinc-600" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`text-sm leading-tight ${
-                          item.checked
-                            ? "text-zinc-400 line-through"
-                            : "text-zinc-300"
-                        }`}
-                      >
-                        {item.name}
-                      </p>
-                      {item.checked && days !== null ? (
-                        <p className="text-[11px] text-success mt-0.5 flex items-center gap-1">
-                          <Clock size={11} />
-                          ใช้เวลาทำ {days} วัน
-                        </p>
-                      ) : (
-                        <p className="text-[11px] text-zinc-600 mt-0.5">
-                          ยังไม่เสร็จ
-                        </p>
-                      )}
-                    </div>
+                    <span className="text-[10px] text-zinc-600 font-mono w-5 shrink-0">
+                      {String(i + 1).padStart(2, "0")}
+                    </span>
+                    <p
+                      className={`flex-1 text-xs leading-tight truncate ${
+                        item.checked ? "text-zinc-500" : "text-zinc-300"
+                      }`}
+                    >
+                      {item.name}
+                    </p>
+                    {item.checked ? (
+                      <span className="text-[11px] text-success font-medium flex items-center gap-1 shrink-0">
+                        <Clock size={11} />
+                        {days !== null ? `${days} วัน` : "เสร็จ"}
+                      </span>
+                    ) : (
+                      <span className="text-[11px] text-zinc-600 shrink-0">รอดำเนินการ</span>
+                    )}
                   </div>
                 );
               })}
             </div>
-
-            {isStarted && (
-              <div className="border-t border-zinc-800 pt-3 space-y-1">
-                <div className="flex justify-between text-xs">
-                  <span className="text-zinc-400">เสร็จแล้ว</span>
-                  <span className="text-success font-bold">
-                    {checkedItems}/{totalItems} ขั้นตอน
-                  </span>
-                </div>
-                {isFinished && startActual && finishActual && (
-                  <div className="flex justify-between text-xs">
-                    <span className="text-zinc-400">ระยะเวลารวม</span>
-                    <span className="text-primary font-bold">
-                      {calcDaysBetween(startActual, finishActual)} วัน
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -520,16 +552,11 @@ const TaskV2QCFieldTab = ({
             <p className="text-sm text-zinc-400 mb-2">
               เลือกวันที่เริ่มงาน
             </p>
-            <Input
+            <input
               type="date"
-              label="วันที่เริ่มงาน"
               value={startDate}
-              onValueChange={setStartDate}
-              variant="bordered"
-              classNames={{
-                input: "text-white",
-                inputWrapper: "bg-zinc-900 border-zinc-700",
-              }}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-primary"
             />
           </ModalBody>
           <ModalFooter>
@@ -571,16 +598,11 @@ const TaskV2QCFieldTab = ({
             <p className="text-sm text-zinc-400 mb-2">
               เลือกวันที่ส่งงาน
             </p>
-            <Input
+            <input
               type="date"
-              label="วันที่ส่งงาน"
               value={submitDate}
-              onValueChange={setSubmitDate}
-              variant="bordered"
-              classNames={{
-                input: "text-white",
-                inputWrapper: "bg-zinc-900 border-zinc-700",
-              }}
+              onChange={(e) => setSubmitDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-primary"
             />
           </ModalBody>
           <ModalFooter>
