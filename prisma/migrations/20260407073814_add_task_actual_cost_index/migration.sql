@@ -1,3 +1,2 @@
 -- RenameIndex
-ALTER TABLE `task_actual_cost` DROP INDEX `task_actual_cost_taskId_fkey`;
-ALTER TABLE `task_actual_cost` ADD INDEX `task_actual_cost_taskId_idx`(`taskId`);
+ALTER TABLE `task_actual_cost` RENAME INDEX `task_actual_cost_taskId_fkey` TO `task_actual_cost_taskId_idx`;
