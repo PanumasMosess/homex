@@ -361,7 +361,7 @@ const TaskV2ActualBudgetTab = ({
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <p className="text-sm font-medium text-zinc-300">
-            ประวัติรายการทั้งหมด
+            ประวัติรายการวันนี้
           </p>
           <p className="text-sm font-bold text-zinc-200">
             รวม: ฿ {summary.total.toLocaleString("th-TH")}
@@ -374,43 +374,42 @@ const TaskV2ActualBudgetTab = ({
             <p className="text-sm">ยังไม่มีรายการ</p>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden divide-y divide-zinc-800">
             {entries.map((entry) => {
               const meta = getCategoryMeta(entry.category);
               return (
                 <div
                   key={entry.id}
-                  className="flex items-start gap-3 p-3 bg-zinc-900/60 border border-zinc-800 rounded-xl hover:border-zinc-700 transition-colors"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-zinc-800/40 transition-colors"
                 >
-                  {/* Icon */}
-                  <div
-                    className={`w-9 h-9 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0 mt-0.5`}
-                  >
-                    <span className={meta.color}>{meta.icon}</span>
-                  </div>
+                  {/* Icon — clickable if has image */}
+                  {entry.imageUrl ? (
+                    <button
+                      onClick={() => setLightboxUrl(entry.imageUrl)}
+                      className={`w-9 h-9 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0 ring-1 ring-white/10 hover:ring-white/30 transition-all`}
+                    >
+                      <span className={meta.color}>{meta.icon}</span>
+                    </button>
+                  ) : (
+                    <div
+                      className={`w-9 h-9 rounded-lg ${meta.bgColor} flex items-center justify-center shrink-0`}
+                    >
+                      <span className={meta.color}>{meta.icon}</span>
+                    </div>
+                  )}
 
                   {/* Content */}
-                  <div className="flex-1 min-w-0 space-y-1">
-                    <p className="text-sm font-medium text-zinc-200">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-200 truncate">
                       {entry.description || meta.label}
                     </p>
-                    <div className="flex items-center gap-2 text-[10px] text-zinc-500">
-                      <span>{formatDate(entry.createdAt)}</span>
-                      <span>{formatTime(entry.createdAt)}</span>
-                    </div>
-                    {entry.imageUrl && (
-                      <button
-                        onClick={() => setLightboxUrl(entry.imageUrl)}
-                        className="flex items-center gap-1.5 mt-1 px-2 py-1 rounded-md bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 text-[11px] transition-colors"
-                      >
-                        <ImageIcon size={12} />
-                        ดูรูปแนบ
-                      </button>
-                    )}
+                    <p className="text-[10px] text-zinc-500">
+                      {formatTime(entry.createdAt)}
+                    </p>
                   </div>
 
                   {/* Amount */}
-                  <p className="text-sm font-bold text-zinc-100 shrink-0 mt-0.5">
+                  <p className="text-sm font-bold text-zinc-100 shrink-0">
                     ฿ {entry.amount.toLocaleString("th-TH")}
                   </p>
 
@@ -418,7 +417,7 @@ const TaskV2ActualBudgetTab = ({
                   <button
                     onClick={() => handleDelete(entry.id)}
                     disabled={deletingId === entry.id}
-                    className="p-1.5 rounded-lg hover:bg-danger/20 text-zinc-500 hover:text-danger transition-colors shrink-0 mt-0.5 disabled:opacity-50"
+                    className="p-1.5 rounded-lg hover:bg-danger/20 text-zinc-500 hover:text-danger transition-colors shrink-0 disabled:opacity-50"
                   >
                     <Trash2 size={14} />
                   </button>
