@@ -1,8 +1,32 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { Checkbox, Input, Progress } from "@heroui/react";
-import { GripVertical, Info, Pencil, Check, X } from "lucide-react";
+import {
+  Checkbox,
+  Input,
+  Button,
+  Modal,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+} from "@heroui/react";
+import {
+  GripVertical,
+  Pencil,
+  Check,
+  X,
+  Play,
+  Send,
+  Clock,
+  CheckCircle2,
+  ListChecks,
+  Lock,
+  CalendarDays,
+  Timer,
+  AlertCircle,
+  ChevronDown,
+} from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -26,6 +50,24 @@ interface TaskV2QCFieldTabProps {
   onToggle: (index: number) => void;
   onReorder: (reordered: TaskV2ChecklistItem[]) => void;
   onEditSubtask: (subtaskId: number, newName: string) => void;
+  startActual: string | null;
+  finishActual: string | null;
+  onStartTask: (startDate: string) => Promise<void>;
+  onSubmitTask: (finishDate: string) => Promise<void>;
+}
+
+function calcDaysBetween(start: string | Date, end: string | Date): number {
+  const s = new Date(start);
+  const e = new Date(end);
+  const diff = Math.abs(e.getTime() - s.getTime());
+  return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+}
+
+function toLocalDateString(date: Date): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 /* ─── Sortable Item ─── */
@@ -39,6 +81,8 @@ const SortableChecklistItem = ({
   setEditValue,
   onSaveEdit,
   onCancelEdit,
+  isLocked,
+  startActual,
 }: {
   item: TaskV2ChecklistItem;
   index: number;
@@ -49,6 +93,8 @@ const SortableChecklistItem = ({
   setEditValue: (v: string) => void;
   onSaveEdit: () => void;
   onCancelEdit: () => void;
+  isLocked: boolean;
+  startActual: string | null;
 }) => {
   const isEditing = editingId === item.id;
   const {
@@ -69,13 +115,20 @@ const SortableChecklistItem = ({
     zIndex: isDragging ? 50 : ("auto" as const),
   };
 
+  const daysText =
+    item.checked && item.finishActual && startActual
+      ? `${calcDaysBetween(startActual, item.finishActual)} วัน`
+      : null;
+
   return (
     <div
       ref={setNodeRef}
       style={style}
       className={`flex items-center gap-2 p-3 rounded-xl border transition-all group ${item.checked
         ? "bg-success/5 border-success/30"
-        : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700"
+        : isLocked
+          ? "bg-zinc-900/20 border-zinc-800/50 opacity-60"
+          : "bg-zinc-900/40 border-zinc-800 hover:border-zinc-700"
         }`}
     >
       {/* Drag handle */}
@@ -91,7 +144,8 @@ const SortableChecklistItem = ({
       {/* Checkbox */}
       <Checkbox
         isSelected={item.checked}
-        onValueChange={() => onToggle(index)}
+        onValueChange={() => !isLocked && onToggle(index)}
+        isDisabled={isLocked}
         size="sm"
         color="success"
         className="shrink-0"
@@ -132,19 +186,27 @@ const SortableChecklistItem = ({
         <div className="flex-1 min-w-0 flex items-center gap-2">
           <div className="flex-1 min-w-0 space-y-0.5">
             <p
-              className={`text-sm font-medium leading-tight cursor-pointer ${item.checked
+              className={`text-sm font-medium leading-tight ${isLocked ? "cursor-not-allowed" : "cursor-pointer"} ${item.checked
                 ? "line-through text-zinc-500"
                 : "text-zinc-200"
                 }`}
-              onClick={() => onToggle(index)}
+              onClick={() => !isLocked && onToggle(index)}
             >
               {item.name}
             </p>
-            <p className="text-[10px] text-zinc-500">
-              สัดส่วน: {item.progressPercent}%
-            </p>
+            <div className="flex items-center gap-2">
+              <p className="text-[10px] text-zinc-500">
+                สัดส่วน: {item.progressPercent}%
+              </p>
+              {daysText && (
+                <span className="text-[10px] text-success font-medium flex items-center gap-0.5">
+                  <Clock size={10} />
+                  {daysText}
+                </span>
+              )}
+            </div>
           </div>
-          {item.id && (
+          {item.id && !isLocked && (
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -168,14 +230,29 @@ const TaskV2QCFieldTab = ({
   onToggle,
   onReorder,
   onEditSubtask,
+  startActual,
+  finishActual,
+  onStartTask,
+  onSubmitTask,
 }: TaskV2QCFieldTabProps) => {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editValue, setEditValue] = useState("");
+  const [showStartDialog, setShowStartDialog] = useState(false);
+  const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [startDate, setStartDate] = useState(toLocalDateString(new Date()));
+  const [submitDate, setSubmitDate] = useState(toLocalDateString(new Date()));
+  const [isLoading, setIsLoading] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
+
+  const isStarted = !!startActual;
+  const isFinished = !!finishActual;
+  const isLocked = !isStarted;
 
   const totalItems = checklist.length;
   const checkedItems = checklist.filter((c) => c.checked).length;
   const progress =
     totalItems > 0 ? Math.round((checkedItems / totalItems) * 100) : 0;
+  const allDone = totalItems > 0 && checkedItems === totalItems;
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -222,116 +299,325 @@ const TaskV2QCFieldTab = ({
     setEditValue("");
   }, []);
 
+  const handleConfirmStart = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await onStartTask(startDate);
+      setShowStartDialog(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [startDate, onStartTask]);
+
+  const handleConfirmSubmit = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      await onSubmitTask(submitDate);
+      setShowSubmitDialog(false);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [submitDate, onSubmitTask]);
+
   const sortableIds = checklist.map(
     (item, i) => item.id ?? i
   );
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      {/* Left: Checklist */}
-      <div className="space-y-3">
-        <div className="space-y-1">
-          <h3 className="font-bold text-sm">อัปเดตงานหน้าไซต์</h3>
-          <p className="text-xs text-zinc-500 break-words">{taskName}</p>
-        </div>
+    <>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Checklist */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <div className="min-w-0">
+              <h3 className="font-bold text-sm">อัปเดตงานหน้าไซต์</h3>
+            </div>
 
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleDragEnd}
-        >
-          <SortableContext
-            items={sortableIds}
-            strategy={verticalListSortingStrategy}
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
+              {!isStarted && (
+                <Button
+                  color="primary"
+                  size="sm"
+                  startContent={<Play size={14} />}
+                  onPress={() => {
+                    setStartDate(toLocalDateString(new Date()));
+                    setShowStartDialog(true);
+                  }}
+                  className="font-bold"
+                >
+                  เริ่มงาน
+                </Button>
+              )}
+              {isStarted && !isFinished && (
+                <>
+                  <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
+                    <CheckCircle2 size={14} />
+                    <span>เริ่มงานแล้ว: {new Date(startActual!).toLocaleDateString("th-TH")}</span>
+                    <button
+                      onClick={() => {
+                        setStartDate(toLocalDateString(new Date(startActual!)));
+                        setShowStartDialog(true);
+                      }}
+                      className="ml-1 p-0.5 rounded hover:bg-success/20 text-success/70 hover:text-success transition-colors"
+                      title="แก้ไขวันที่เริ่มงาน"
+                    >
+                      <Pencil size={12} />
+                    </button>
+                  </div>
+                  <Button
+                    color="success"
+                    size="sm"
+                    startContent={<Send size={14} />}
+                    onPress={() => {
+                      setSubmitDate(toLocalDateString(new Date()));
+                      setShowSubmitDialog(true);
+                    }}
+                    className="font-bold"
+                    isDisabled={!allDone}
+                  >
+                    ส่งงาน
+                  </Button>
+                </>
+              )}
+              {isFinished && (
+                <div className="flex items-center gap-1.5 text-xs text-success bg-success/10 border border-success/20 px-3 py-1.5 rounded-lg">
+                  <CheckCircle2 size={14} />
+                  <span>ส่งงานแล้ว: {new Date(finishActual!).toLocaleDateString("th-TH")}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Lock notice */}
+          {isLocked && (
+            <div className="flex items-center gap-2 text-xs text-warning bg-warning/10 border border-warning/20 px-3 py-2 rounded-lg">
+              <Lock size={14} />
+              <span>กรุณากด &quot;เริ่มงาน&quot; ก่อน จึงจะสามารถติ๊ก Checklist ได้</span>
+            </div>
+          )}
+          {isStarted && !isFinished && !allDone && (
+            <div className="flex items-center gap-2 text-xs text-zinc-400 bg-zinc-800/50 border border-zinc-700/50 px-3 py-2 rounded-lg">
+              <AlertCircle size={14} />
+              <span>ต้องทำ Subtask ให้ครบทุกรายการก่อนจึงจะส่งงานได้ ({checkedItems}/{totalItems})</span>
+            </div>
+          )}
+
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
           >
-            <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
-              {checklist.map((item, i) => (
-                <SortableChecklistItem
-                  key={item.id ?? i}
-                  item={item}
-                  index={i}
-                  onToggle={onToggle}
-                  onStartEdit={handleStartEdit}
-                  editingId={editingId}
-                  editValue={editValue}
-                  setEditValue={setEditValue}
-                  onSaveEdit={handleSaveEdit}
-                  onCancelEdit={handleCancelEdit}
-                />
-              ))}
-            </div>
-          </SortableContext>
-        </DndContext>
-
-        {/* Progress summary */}
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-2">
-          <div className="flex justify-between text-xs">
-            <span className="text-zinc-400">ความคืบหน้ารวม</span>
-            <span className="font-bold text-primary">{progress}%</span>
-          </div>
-          <Progress value={progress} color="primary" size="sm" />
-          <p className="text-[10px] text-zinc-500">
-            {checkedItems}/{totalItems} ขั้นตอน
-          </p>
-        </div>
-      </div>
-
-      {/* Right: Instructions */}
-      <div className="space-y-4">
-        <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 sm:p-5 space-y-4">
-          <div className="flex items-center gap-2 text-primary">
-            <Info size={16} />
-            <h3 className="font-bold text-sm">วิธีที่ข้อมูลส่วนนี้ทำงาน</h3>
-          </div>
-
-          <div className="space-y-3 text-xs text-zinc-400 leading-relaxed">
-            <div className="flex gap-2">
-              <span className="text-primary font-bold shrink-0">1.</span>
-              <p>
-                <strong className="text-zinc-200">ส่งเข้าแอปมือถือโฟร์แมน:</strong>{" "}
-                ข้อมูล Step-by-Step ที่ AI สร้างขึ้น จะถูกส่งไปเป็น Checklist ในแอปพลิเคชันมือถือของโฟร์แมนหน้าไซต์งาน (จำลองหน้าจอด้านซ้าย)
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <span className="text-primary font-bold shrink-0">2.</span>
-              <p>
-                <strong className="text-zinc-200">อัปเดตแบบ Real-time:</strong>{" "}
-                เมื่อโฟร์แมนทำงานเสร็จในแต่ละขั้น และกด ติ๊กถูก ระบบจะรู้ทันทีว่างานนี้มีความคืบหน้า (Progress) ไปแล้วกี่เปอร์เซ็นต์
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <span className="text-primary font-bold shrink-0">3.</span>
-              <p>
-                <strong className="text-zinc-200">สะท้อนกลับมาที่ Dashboard:</strong>{" "}
-                เปอร์เซ็นต์ความคืบหน้า (เช่น 40%, 75%) จะวิ่งกลับมาแสดงที่ Progress Bar สีฟ้า ในหน้า Dashboard ของ PM แบบอัตโนมัติ โดยไม่ต้องโทรไปถามหรือพิมพ์รายงานยาวๆ
-              </p>
-            </div>
-
-            <div className="flex gap-2">
-              <span className="text-primary font-bold shrink-0">4.</span>
-              <p>
-                <strong className="text-zinc-200">อัปเดตความคืบหน้า:</strong>{" "}
-                กด <span className="text-success font-bold">ติ๊กถูก</span>{" "}
-                เมื่อทำงานเสร็จในแต่ละขั้นตอน Progress จะอัปเดตอัตโนมัติ
-              </p>
-            </div>
-
-            <div className="bg-warning/5 border border-warning/20 rounded-xl p-4 space-y-2">
-              <div className="flex items-center gap-2 text-warning">
-                <p className="font-bold text-xs">💡 ลองเล่นดูสิ: </p>
+            <SortableContext
+              items={sortableIds}
+              strategy={verticalListSortingStrategy}
+            >
+              <div className="space-y-2 max-h-[400px] overflow-y-auto scrollbar-hide pr-1">
+                {checklist.map((item, i) => (
+                  <SortableChecklistItem
+                    key={item.id ?? i}
+                    item={item}
+                    index={i}
+                    onToggle={onToggle}
+                    onStartEdit={handleStartEdit}
+                    editingId={editingId}
+                    editValue={editValue}
+                    setEditValue={setEditValue}
+                    onSaveEdit={handleSaveEdit}
+                    onCancelEdit={handleCancelEdit}
+                    isLocked={isLocked}
+                    startActual={startActual}
+                  />
+                ))}
               </div>
-              <p className="text-xs text-zinc-400 leading-relaxed">
-                ลองคลิกติ๊กถูกที่ Checklist ในหน้าจอมือถือจำลองด้านซ้าย แล้วสังเกตหลอดความคืบหน้า (Progress Bar) ด้านบนสุดของหน้าจอว่าเปลี่ยนไปอย่างไร
+            </SortableContext>
+          </DndContext>
+
+        </div>
+
+        {/* Right: Dashboard Summary */}
+        <div className="space-y-4">
+          {/* Status cards */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <CalendarDays size={13} />
+                <span className="text-[10px] uppercase tracking-wider">เริ่มงาน</span>
+              </div>
+              <p className="text-sm font-bold text-zinc-200">
+                {startActual ? new Date(startActual).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              </p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <CheckCircle2 size={13} />
+                <span className="text-[10px] uppercase tracking-wider">ส่งงาน</span>
+              </div>
+              <p className="text-sm font-bold text-zinc-200">
+                {finishActual ? new Date(finishActual).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }) : "—"}
+              </p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <Timer size={13} />
+                <span className="text-[10px] uppercase tracking-wider">ระยะเวลารวม</span>
+              </div>
+              <p className="text-sm font-bold text-zinc-200">
+                {startActual && finishActual
+                  ? `${calcDaysBetween(startActual, finishActual)} วัน`
+                  : startActual
+                    ? `${calcDaysBetween(startActual, new Date())} วัน (กำลังดำเนินการ)`
+                    : "—"}
+              </p>
+            </div>
+            <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-3 space-y-1">
+              <div className="flex items-center gap-1.5 text-zinc-500">
+                <ListChecks size={13} />
+                <span className="text-[10px] uppercase tracking-wider">ขั้นตอน</span>
+              </div>
+              <p className="text-sm font-bold">
+                <span className="text-success">{checkedItems}</span>
+                <span className="text-zinc-500">/{totalItems}</span>
               </p>
             </div>
           </div>
+
+          {/* Subtask breakdown table (collapsible) */}
+          <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowBreakdown((v) => !v)}
+              className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-zinc-800/40 transition-colors"
+            >
+              <ListChecks size={14} className="text-primary" />
+              <h3 className="font-bold text-xs text-zinc-300">สรุปขั้นตอนงาน</h3>
+              <span className="text-[10px] text-zinc-500 ml-auto mr-1">{checkedItems}/{totalItems}</span>
+              <ChevronDown
+                size={14}
+                className={`text-zinc-500 transition-transform duration-200 ${showBreakdown ? "rotate-180" : ""}`}
+              />
+            </button>
+            {showBreakdown && (
+              <div className="divide-y divide-zinc-800/70 border-t border-zinc-800">
+                {checklist.map((item, i) => {
+                  const days =
+                    item.checked && item.finishActual && startActual
+                      ? calcDaysBetween(startActual, item.finishActual)
+                      : null;
+
+                  return (
+                    <div
+                      key={item.id ?? i}
+                      className="flex items-center gap-3 px-4 py-2.5"
+                    >
+                      <span className="text-[10px] text-zinc-600 font-mono w-5 shrink-0">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>
+                      <p
+                        className={`flex-1 text-xs leading-tight truncate ${
+                          item.checked ? "text-zinc-500" : "text-zinc-300"
+                        }`}
+                      >
+                        {item.name}
+                      </p>
+                      {item.checked ? (
+                        <span className="text-[11px] text-success font-medium flex items-center gap-1 shrink-0">
+                          <Clock size={11} />
+                          {days !== null ? `${days} วัน` : "เสร็จ"}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-zinc-600 shrink-0">รอดำเนินการ</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
-
-
       </div>
-    </div>
+
+      {/* ─── Start Task Dialog ─── */}
+      <Modal
+        isOpen={showStartDialog}
+        onOpenChange={(open) => !isLoading && setShowStartDialog(open)}
+        size="sm"
+        placement="center"
+        classNames={{
+          base: "bg-[#1a1b23] text-white",
+          closeButton: "text-zinc-400 hover:text-white",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-base font-bold">เลือกวันที่เริ่มงาน</ModalHeader>
+          <ModalBody>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-primary"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              color="primary"
+              size="sm"
+              onPress={handleConfirmStart}
+              isLoading={isLoading}
+              className="font-bold w-100"
+            >
+              ยืนยัน
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+
+      {/* ─── Submit Task Dialog ─── */}
+      <Modal
+        isOpen={showSubmitDialog}
+        onOpenChange={(open) => !isLoading && setShowSubmitDialog(open)}
+        size="sm"
+        placement="center"
+        classNames={{
+          base: "bg-[#1a1b23] text-white",
+          closeButton: "text-zinc-400 hover:text-white",
+        }}
+      >
+        <ModalContent>
+          <ModalHeader className="text-base font-bold">ส่งงาน</ModalHeader>
+          <ModalBody>
+            <p className="text-sm text-zinc-400 mb-2">
+              เลือกวันที่ส่งงาน
+            </p>
+            <input
+              type="date"
+              value={submitDate}
+              onChange={(e) => setSubmitDate(e.target.value)}
+              className="w-full px-3 py-2 rounded-lg bg-zinc-900 border border-zinc-700 text-white text-sm focus:outline-none focus:border-primary"
+            />
+          </ModalBody>
+          <ModalFooter>
+            <Button
+              variant="flat"
+              size="sm"
+              onPress={() => setShowSubmitDialog(false)}
+              isDisabled={isLoading}
+            >
+              ยกเลิก
+            </Button>
+            <Button
+              color="success"
+              size="sm"
+              onPress={handleConfirmSubmit}
+              isLoading={isLoading}
+              className="font-bold"
+            >
+              ยืนยันส่งงาน
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </>
   );
 };
 
