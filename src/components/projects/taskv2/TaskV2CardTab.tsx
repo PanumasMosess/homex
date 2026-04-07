@@ -1,21 +1,86 @@
 "use client";
 
-import { Progress } from "@heroui/react";
+import { useState, useEffect, useTransition } from "react";
+import { Progress, Input, Button } from "@heroui/react";
 import {
   DollarSign,
   CalendarDays,
   AlertTriangle,
   ShieldCheck,
   ShieldAlert,
+  TrendingUp,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
-import type { TaskV2AIResponse } from "@/lib/type";
+import { toast } from "react-toastify";
+import type { TaskV2AIResponse, TaskActualCostSummary } from "@/lib/type";
+import { getActualCostSummary } from "@/lib/actions/actionTaskV2ActualCost";
+import { updateTaskCustomBudget } from "@/lib/actions/actionTaskV2ActualCost";
 
 interface TaskV2CardTabProps {
   aiData: TaskV2AIResponse;
+  taskId: number;
+  currentBudget: number;
+  startActual: string | null;
+  finishActual: string | null;
 }
 
-const TaskV2CardTab = ({ aiData }: TaskV2CardTabProps) => {
+const TaskV2CardTab = ({
+  aiData,
+  taskId,
+  currentBudget,
+  startActual,
+  finishActual,
+}: TaskV2CardTabProps) => {
   const { costEstimation, durationEstimate, risks } = aiData;
+
+  const [actualSummary, setActualSummary] = useState<TaskActualCostSummary>({
+    material: 0,
+    labor: 0,
+    machinery: 0,
+    total: 0,
+  });
+  const [budget, setBudget] = useState(currentBudget);
+  const [isEditingBudget, setIsEditingBudget] = useState(false);
+  const [budgetInput, setBudgetInput] = useState(String(currentBudget || ""));
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    getActualCostSummary(taskId).then((res) => {
+      if (res.success) setActualSummary(res.data);
+    });
+  }, [taskId]);
+
+  const handleSaveBudget = () => {
+    const val = Number(budgetInput);
+    if (isNaN(val) || val < 0) {
+      toast.error("กรุณากรอกตัวเลขที่ถูกต้อง");
+      return;
+    }
+    startTransition(async () => {
+      const res = await updateTaskCustomBudget(taskId, val);
+      if (res.success) {
+        setBudget(val);
+        setIsEditingBudget(false);
+        toast.success("บันทึกราคากลางสุทธิสำเร็จ");
+      } else {
+        toast.error(res.message || "บันทึกไม่สำเร็จ");
+      }
+    });
+  };
+
+  const actualDays = (() => {
+    if (!startActual) return 0;
+    const start = new Date(startActual);
+    const end = finishActual ? new Date(finishActual) : new Date();
+    return Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)));
+  })();
+
+  const actualTotal = actualSummary.total;
+  const actualMaterialPercent = actualTotal > 0 ? Math.round((actualSummary.material / actualTotal) * 100) : 0;
+  const actualLaborPercent = actualTotal > 0 ? Math.round((actualSummary.labor / actualTotal) * 100) : 0;
+  const actualMachineryPercent = actualTotal > 0 ? Math.round((actualSummary.machinery / actualTotal) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -111,6 +176,168 @@ const TaskV2CardTab = ({ aiData }: TaskV2CardTabProps) => {
           </div>
           <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 rounded-full text-xs text-zinc-400">
             สมมติฐาน: {durationEstimate.assumptions}
+          </div>
+        </div>
+      </div>
+
+      {/* ===== ACTUAL COST (ข้อมูลจริง) ===== */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
+        <div className="bg-zinc-900/60 border border-emerald-800/40 rounded-xl p-4 sm:p-5 space-y-4">
+          <div className="flex items-center gap-2 text-emerald-400">
+            <TrendingUp size={18} />
+            <h3 className="font-bold text-sm">
+              งบประมาณจริง (Actual Cost)
+            </h3>
+          </div>
+
+          <div className="space-y-1">
+            <div className="flex items-center gap-3">
+              {isEditingBudget ? (
+                <div className="flex items-center gap-2 flex-1">
+                  <Input
+                    type="number"
+                    value={budgetInput}
+                    onValueChange={setBudgetInput}
+                    size="sm"
+                    variant="bordered"
+                    startContent={<span className="text-zinc-400 text-sm">฿</span>}
+                    classNames={{
+                      input: "text-lg font-bold text-white",
+                      inputWrapper: "bg-zinc-900/80 border-zinc-600 h-10",
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleSaveBudget();
+                      if (e.key === "Escape") {
+                        setIsEditingBudget(false);
+                        setBudgetInput(String(budget || ""));
+                      }
+                    }}
+                    autoFocus
+                  />
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    color="success"
+                    variant="flat"
+                    onPress={handleSaveBudget}
+                    isLoading={isPending}
+                  >
+                    <Check size={14} />
+                  </Button>
+                  <Button
+                    isIconOnly
+                    size="sm"
+                    color="danger"
+                    variant="flat"
+                    onPress={() => {
+                      setIsEditingBudget(false);
+                      setBudgetInput(String(budget || ""));
+                    }}
+                  >
+                    <X size={14} />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <p className="text-2xl sm:text-3xl font-bold text-emerald-400">
+                    ฿ {actualTotal.toLocaleString("th-TH")}
+                  </p>
+                </>
+              )}
+            </div>
+            {!isEditingBudget && (
+              <div className="flex items-center gap-2">
+                <p className="text-xs text-zinc-500">
+                  / ราคากลางสุทธิ: ฿ {budget.toLocaleString("th-TH")}
+                </p>
+                <button
+                  onClick={() => {
+                    setBudgetInput(String(budget || ""));
+                    setIsEditingBudget(true);
+                  }}
+                  className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+                >
+                  <Pencil size={12} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-3">
+            {/* Material */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">
+                  ค่าวัสดุ ({actualMaterialPercent}%)
+                </span>
+                <span className="font-medium">
+                  ฿ {actualSummary.material.toLocaleString("th-TH")}
+                </span>
+              </div>
+              <Progress
+                value={actualMaterialPercent}
+                color="primary"
+                size="sm"
+                className="w-full"
+              />
+            </div>
+
+            {/* Labor */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">
+                  ค่าแรงติดตั้ง ({actualLaborPercent}%)
+                </span>
+                <span className="font-medium">
+                  ฿ {actualSummary.labor.toLocaleString("th-TH")}
+                </span>
+              </div>
+              <Progress
+                value={actualLaborPercent}
+                color="warning"
+                size="sm"
+                className="w-full"
+              />
+            </div>
+
+            {/* Machinery */}
+            <div className="space-y-1">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">
+                  ค่าเครื่องจักร ({actualMachineryPercent}%)
+                </span>
+                <span className="font-medium">
+                  ฿ {actualSummary.machinery.toLocaleString("th-TH")}
+                </span>
+              </div>
+              <Progress
+                value={actualMachineryPercent}
+                color="secondary"
+                size="sm"
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Actual Duration */}
+        <div className="bg-zinc-900/60 border border-emerald-800/40 rounded-xl p-4 sm:p-5 flex flex-col items-center justify-center text-center space-y-3">
+          <CalendarDays className="text-emerald-400" size={32} />
+          <p className="text-xs text-zinc-400 font-medium">
+            ระยะเวลาจริง (Actual Duration)
+          </p>
+          <div className="flex items-baseline gap-2">
+            <span className="text-4xl font-bold text-emerald-400">
+              {startActual ? actualDays : "—"}
+            </span>
+            <span className="text-zinc-400 text-sm">วัน</span>
+          </div>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-800 rounded-full text-xs text-zinc-400">
+            {startActual
+              ? finishActual
+                ? "เสร็จสิ้นแล้ว"
+                : "กำลังดำเนินการ"
+              : "ยังไม่เริ่มงาน"}
           </div>
         </div>
       </div>

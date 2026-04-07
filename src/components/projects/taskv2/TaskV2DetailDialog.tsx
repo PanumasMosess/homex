@@ -14,6 +14,7 @@ import {
   CheckSquare,
   Clock,
   CalendarDays,
+  Wallet,
 } from "lucide-react";
 import type {
   TaskV2DetailDialogProps,
@@ -22,8 +23,9 @@ import type {
 import TaskV2CardTab from "./TaskV2CardTab";
 import TaskV2ProcurementTab from "./TaskV2ProcurementTab";
 import TaskV2QCFieldTab from "./TaskV2QCFieldTab";
+import TaskV2ActualBudgetTab from "./TaskV2ActualBudgetTab";
 
-type V2Tab = "card" | "prpo" | "qcfield";
+type V2Tab = "card" | "prpo" | "qcfield" | "actual_budget";
 
 const TaskV2DetailDialog = ({
   task,
@@ -92,6 +94,11 @@ const TaskV2DetailDialog = ({
       key: "qcfield" as V2Tab,
       label: "อัปเดตหน้างาน (QC Field)",
       icon: <CheckSquare size={16} />,
+    },
+    {
+      key: "actual_budget" as V2Tab,
+      label: "งบประมาณจริง",
+      icon: <Wallet size={16} />,
     },
   ];
 
@@ -188,7 +195,12 @@ const TaskV2DetailDialog = ({
 
             {/* ===== TAB CONTENT ===== */}
             <div className="p-4 sm:p-6">
-              {!aiData ? (
+              {activeTab === "actual_budget" ? (
+                <TaskV2ActualBudgetTab
+                  taskId={task.id}
+                  organizationId={task.organizationId}
+                />
+              ) : !aiData ? (
                 <div className="flex flex-col items-center justify-center py-16 gap-3 text-center">
                   <div className="w-12 h-12 rounded-full bg-zinc-800 flex items-center justify-center">
                     <FileText size={20} className="text-zinc-500" />
@@ -203,7 +215,15 @@ const TaskV2DetailDialog = ({
                 </div>
               ) : (
                 <>
-                  {activeTab === "card" && <TaskV2CardTab aiData={aiData} />}
+                  {activeTab === "card" && (
+                    <TaskV2CardTab
+                      aiData={aiData}
+                      taskId={task.id}
+                      currentBudget={Number(task.budget) || 0}
+                      startActual={task.startActual || null}
+                      finishActual={task.finishActual || null}
+                    />
+                  )}
                   {activeTab === "prpo" && (
                     <TaskV2ProcurementTab
                       materials={aiData.materials}

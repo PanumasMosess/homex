@@ -51,6 +51,7 @@ model organization {
   cameras                camera[]
   floorplans             floorplan[]
   point360s              point360[]
+  taskActualCosts        task_actual_cost[]
 }
 
 // =====================================
@@ -114,6 +115,7 @@ model user {
   cameras                       camera[]
   floorplans                    floorplan[]
   point360s                     point360[]
+  actualCostsCreated             task_actual_cost[] @relation("actual_cost_creator")
 }
 
 // =====================================
@@ -362,6 +364,7 @@ model task {
   procurementSuggestions procurement_suggestion[]
   dependencies           task_dependency[] @relation("TaskDependencies")
   dependsOnTasks         task_dependency[] @relation("TaskDependsOn")
+  actualCosts            task_actual_cost[]
 }
 
 // =====================================
@@ -945,4 +948,27 @@ model camera_analytics {
   createdAt   DateTime @default(now())
 
   camera camera @relation(fields: [cameraId], references: [id], onDelete: Cascade)
+}
+
+// =====================================
+// TaskActualCost = บันทึกงบประมาณจริง (ต่อ Task)
+// - category: MATERIAL / LABOR / MACHINERY
+// =====================================
+model task_actual_cost {
+  id          Int      @id @default(autoincrement())
+  category    String   // MATERIAL / LABOR / MACHINERY
+  amount      Decimal  @db.Decimal(14, 2)
+  description String?  @db.Text
+  imageUrl    String?  @db.Text
+  createdAt   DateTime @default(now())
+
+  // ---------- relations ----------
+  taskId         Int
+  task           task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  organizationId Int
+  organization   organization @relation(fields: [organizationId], references: [id])
+
+  createdById    Int
+  creator        user         @relation("actual_cost_creator", fields: [createdById], references: [id])
 }

@@ -803,6 +803,32 @@ export interface CreateTaskV2ModalProps {
   currentUserId: number;
   projectCode: string;
 }
+// =====================================
+// Task Actual Cost Types
+// =====================================
+
+export type ActualCostCategory = "MATERIAL" | "LABOR" | "MACHINERY";
+
+export interface TaskActualCostEntry {
+  id: number;
+  category: ActualCostCategory;
+  amount: number;
+  description: string | null;
+  imageUrl: string | null;
+  createdAt: string;
+  creator?: {
+    id: number;
+    displayName: string | null;
+  };
+}
+
+export interface TaskActualCostSummary {
+  material: number;
+  labor: number;
+  machinery: number;
+  total: number;
+}
+
 export type Hotspot = {
   id: string;
   yaw: number;
