@@ -26,6 +26,7 @@ import {
   CalendarDays,
   Timer,
   AlertCircle,
+  ChevronDown,
 } from "lucide-react";
 import {
   DndContext,
@@ -242,6 +243,7 @@ const TaskV2QCFieldTab = ({
   const [startDate, setStartDate] = useState(toLocalDateString(new Date()));
   const [submitDate, setSubmitDate] = useState(toLocalDateString(new Date()));
   const [isLoading, setIsLoading] = useState(false);
+  const [showBreakdown, setShowBreakdown] = useState(false);
 
   const isStarted = !!startActual;
   const isFinished = !!finishActual;
@@ -493,46 +495,57 @@ const TaskV2QCFieldTab = ({
             </div>
           </div>
 
-          {/* Subtask breakdown table */}
+          {/* Subtask breakdown table (collapsible) */}
           <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl overflow-hidden">
-            <div className="px-4 py-2.5 border-b border-zinc-800 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowBreakdown((v) => !v)}
+              className="w-full px-4 py-2.5 flex items-center gap-2 hover:bg-zinc-800/40 transition-colors"
+            >
               <ListChecks size={14} className="text-primary" />
               <h3 className="font-bold text-xs text-zinc-300">สรุปขั้นตอนงาน</h3>
-            </div>
-            <div className="divide-y divide-zinc-800/70">
-              {checklist.map((item, i) => {
-                const days =
-                  item.checked && item.finishActual && startActual
-                    ? calcDaysBetween(startActual, item.finishActual)
-                    : null;
+              <span className="text-[10px] text-zinc-500 ml-auto mr-1">{checkedItems}/{totalItems}</span>
+              <ChevronDown
+                size={14}
+                className={`text-zinc-500 transition-transform duration-200 ${showBreakdown ? "rotate-180" : ""}`}
+              />
+            </button>
+            {showBreakdown && (
+              <div className="divide-y divide-zinc-800/70 border-t border-zinc-800">
+                {checklist.map((item, i) => {
+                  const days =
+                    item.checked && item.finishActual && startActual
+                      ? calcDaysBetween(startActual, item.finishActual)
+                      : null;
 
-                return (
-                  <div
-                    key={item.id ?? i}
-                    className="flex items-center gap-3 px-4 py-2.5"
-                  >
-                    <span className="text-[10px] text-zinc-600 font-mono w-5 shrink-0">
-                      {String(i + 1).padStart(2, "0")}
-                    </span>
-                    <p
-                      className={`flex-1 text-xs leading-tight truncate ${
-                        item.checked ? "text-zinc-500" : "text-zinc-300"
-                      }`}
+                  return (
+                    <div
+                      key={item.id ?? i}
+                      className="flex items-center gap-3 px-4 py-2.5"
                     >
-                      {item.name}
-                    </p>
-                    {item.checked ? (
-                      <span className="text-[11px] text-success font-medium flex items-center gap-1 shrink-0">
-                        <Clock size={11} />
-                        {days !== null ? `${days} วัน` : "เสร็จ"}
+                      <span className="text-[10px] text-zinc-600 font-mono w-5 shrink-0">
+                        {String(i + 1).padStart(2, "0")}
                       </span>
-                    ) : (
-                      <span className="text-[11px] text-zinc-600 shrink-0">รอดำเนินการ</span>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
+                      <p
+                        className={`flex-1 text-xs leading-tight truncate ${
+                          item.checked ? "text-zinc-500" : "text-zinc-300"
+                        }`}
+                      >
+                        {item.name}
+                      </p>
+                      {item.checked ? (
+                        <span className="text-[11px] text-success font-medium flex items-center gap-1 shrink-0">
+                          <Clock size={11} />
+                          {days !== null ? `${days} วัน` : "เสร็จ"}
+                        </span>
+                      ) : (
+                        <span className="text-[11px] text-zinc-600 shrink-0">รอดำเนินการ</span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
       </div>
