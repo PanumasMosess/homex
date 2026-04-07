@@ -170,9 +170,10 @@ const TaskV2CardTab = ({
                       setBudgetInput(budget ? budget.toLocaleString("th-TH") : "");
                       setIsEditingBudget(true);
                     }}
-                    className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-zinc-700/60 text-zinc-500 hover:text-zinc-300 transition-colors text-[11px] pt-1"
                   >
-                    <Pencil size={12} /> ตั้งค่า
+                    <Pencil size={11} />
+                    <span>ตั้งค่า</span>
                   </button>
                 </>
               )}
