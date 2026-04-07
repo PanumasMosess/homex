@@ -269,12 +269,14 @@ export interface CreatePermissionData {
 }
 
 export type SectionType =
+  | "dashboard"
   | "tasks"
   | "purchasing"
   | "documents"
   | "camera"
   | "360mapping"
   | "feed"
+  | "taskv2"
   | (string & {});
 
 export type CreateSupplierProps = {
@@ -451,6 +453,23 @@ export interface DashboardCameraProp {
   projectId: number;
   organizationId: number;
   currentUserId: number;
+}
+
+export interface ConstructionDashboardProp {
+  projectId: number;
+  organizationId: number;
+  currentUserId: number;
+  projectInfo?: {
+    id: string;
+    code: string;
+    name: string;
+    customer: string;
+    image: string;
+    video: string;
+    budget: number;
+  };
+  projectProgress?: number;
+  expenses?: number;
 }
 
 // =====================================
@@ -843,3 +862,18 @@ export type Insta360ViewerProps = {
   hotspots?: Hotspot[];
   onHotspotClick?: (targetPointId: number) => void;
 };
+
+export interface StatusBoardProps {
+  todo?: number;
+  progress?: number;
+  done?: number;
+  delay?: number;
+  isLoading?: boolean;
+}
+
+export interface ProjectMetricsBoard {
+  actualProgress: number;
+  plannedProgress: number;
+  budgetSpentPercent: number;
+  delayTasksCount: number;
+}

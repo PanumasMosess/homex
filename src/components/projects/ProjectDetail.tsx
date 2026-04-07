@@ -12,6 +12,7 @@ import {
   View,
   Sparkles,
   Calendar,
+  LayoutDashboard,
 } from "lucide-react";
 
 import {
@@ -78,6 +79,7 @@ import ProcurementSection from "./procurement/ProcurementSection";
 import DasboardMapping360 from "./360mapping/DasboardMapping360";
 import TaskV2Section from "./taskv2/TaskV2Section";
 import PlanningSection from "./planning/PlanningSection";
+import ConstructionDashboard from "./dashboard/ConstructionDashboard";
 
 const ProjectDetail = ({
   organizationId,
@@ -90,7 +92,7 @@ const ProjectDetail = ({
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [view, setView] = useState<"card" | "board">("card");
-  const [activeSection, setActiveSection] = useState<SectionType>("tasks");
+  const [activeSection, setActiveSection] = useState<SectionType>("dashboard");
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabTask>("all");
   const [priority, setPriority] = useState<"urgent" | "high" | "normal" | null>(
@@ -398,10 +400,10 @@ const ProjectDetail = ({
           prev.map((t) =>
             t.id === taskId
               ? {
-                ...t,
-                status: taskToUpdate.status,
-                progressPercent: taskToUpdate.progressPercent,
-              }
+                  ...t,
+                  status: taskToUpdate.status,
+                  progressPercent: taskToUpdate.progressPercent,
+                }
               : t,
           ),
         );
@@ -681,14 +683,14 @@ const ProjectDetail = ({
       const updatedDetails = (selected.details || []).map((sub: any) =>
         sub.id === subtaskId
           ? {
-            ...sub,
-            status: newStatus,
-            ...(newStatus
-              ? imageUrl
-                ? { imageUrl }
-                : {}
-              : { imageUrl: null }),
-          }
+              ...sub,
+              status: newStatus,
+              ...(newStatus
+                ? imageUrl
+                  ? { imageUrl }
+                  : {}
+                : { imageUrl: null }),
+            }
           : sub,
       );
 
@@ -769,10 +771,10 @@ const ProjectDetail = ({
         prev.map((t) =>
           t.id === selected.id
             ? {
-              ...t,
-              details: updatedDetails,
-              progressPercent: newProgress,
-            }
+                ...t,
+                details: updatedDetails,
+                progressPercent: newProgress,
+              }
             : t,
         ),
       );
@@ -863,7 +865,7 @@ const ProjectDetail = ({
                   budgetSummary.expenses > projectInfo.budget
                     ? "text-danger"
                     : "text-warning"
-                  }`}
+                }`}
               >
                 <Banknote className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                 <span>{budgetSummary.expenses.toLocaleString()}</span>
@@ -917,6 +919,11 @@ const ProjectDetail = ({
       <div className="w-full">
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2 bg-default-100 dark:bg-zinc-800/50 p-1.5 rounded-2xl w-full">
           {[
+            {
+              id: "dashboard",
+              label: "สรุป",
+              icon: <LayoutDashboard size={18} />,
+            },
             { id: "tasks", label: "งาน", icon: <Building2 size={18} /> },
             {
               id: "taskv2",
@@ -1157,8 +1164,20 @@ const ProjectDetail = ({
           />
         )}
 
+        {activeSection === "dashboard" && (
+          <ConstructionDashboard
+            currentUserId={currentUserId}
+            projectId={Number(projectInfo.id)}
+            organizationId={organizationId}
+            projectInfo={projectInfo}
+            projectProgress={projectProgress}
+            expenses={budgetSummary.expenses}
+          />
+        )}
+
         {/* Section อื่นๆ */}
         {![
+          "dashboard",
           "tasks",
           "documents",
           "feed",
@@ -1168,12 +1187,12 @@ const ProjectDetail = ({
           "360mapping",
           "taskv2",
         ].includes(activeSection) && (
-            <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
-              <p className="text-default-400 font-bold uppercase tracking-widest">
-                Coming Soon
-              </p>
-            </div>
-          )}
+          <div className="flex flex-col items-center justify-center p-20 bg-default-50 rounded-3xl border-2 border-dashed">
+            <p className="text-default-400 font-bold uppercase tracking-widest">
+              Coming Soon
+            </p>
+          </div>
+        )}
       </div>
 
       {/* --- MODAL (จัดกึ่งกลางเป๊ะสำหรับ iPhone 14) --- */}

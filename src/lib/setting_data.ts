@@ -1,5 +1,5 @@
 import { Box, Home, Settings, Users } from "lucide-react";
-import { Task } from "./type";
+import { ProjectMetricsBoard, Task } from "./type";
 
 export const menuItems = [
   { name: "Dashboard", icon: Home, path: "/dashboard" },
@@ -317,17 +317,128 @@ export const calculateTaskProgress = (details: any[]) => {
 
 export const PROJECT_DOC_TYPES = [
   { key: "contract", label: "สัญญาจ้าง / LOI", textValue: "สัญญาจ้าง" },
-  { key: "quotation", label: "ใบเสนอราคา (Quotation)", textValue: "ใบเสนอราคา" },
-  { key: "invoice", label: "ใบแจ้งหนี้ / ใบเสร็จรับเงิน", textValue: "ใบแจ้งหนี้/ใบเสร็จ" },
+  {
+    key: "quotation",
+    label: "ใบเสนอราคา (Quotation)",
+    textValue: "ใบเสนอราคา",
+  },
+  {
+    key: "invoice",
+    label: "ใบแจ้งหนี้ / ใบเสร็จรับเงิน",
+    textValue: "ใบแจ้งหนี้/ใบเสร็จ",
+  },
   { key: "boq", label: "บัญชีแสดงปริมาณวัสดุ (BOQ)", textValue: "BOQ" },
-  { key: "drawing_arch", label: "แบบสถาปัตยกรรม (Architectural)", textValue: "แบบสถาปัตยกรรม" },
-  { key: "drawing_struct", label: "แบบวิศวกรรมโครงสร้าง (Structural)", textValue: "แบบโครงสร้าง" },
-  { key: "drawing_mep", label: "แบบระบบ MEP (ไฟฟ้า/ประปา/แอร์)", textValue: "แบบระบบไฟฟ้า-ประปา" },
-  { key: "as_built", label: "แบบแปลนจริง (As-Built Drawing)", textValue: "แบบ As-Built" },
-  { key: "shop_drawing", label: "แบบขยายหน้างาน (Shop Drawing)", textValue: "Shop Drawing" },
-  { key: "material_approval", label: "เอกสารอนุมัติวัสดุ (Material Submit)", textValue: "เอกสารอนุมัติวัสดุ" },
-  { key: "daily_report", label: "รายงานหน้างานประจำวัน (Daily Report)", textValue: "รายงานประจำวัน" },
-  { key: "inspection", label: "ใบแจ้งเข้าตรวจงาน (RFI / Inspection)", textValue: "เอกสารตรวจสอบ" },
-  { key: "permit", label: "ใบอนุญาตก่อสร้าง / เอกสารราชการ", textValue: "ใบอนุญาตก่อสร้าง" },
+  {
+    key: "drawing_arch",
+    label: "แบบสถาปัตยกรรม (Architectural)",
+    textValue: "แบบสถาปัตยกรรม",
+  },
+  {
+    key: "drawing_struct",
+    label: "แบบวิศวกรรมโครงสร้าง (Structural)",
+    textValue: "แบบโครงสร้าง",
+  },
+  {
+    key: "drawing_mep",
+    label: "แบบระบบ MEP (ไฟฟ้า/ประปา/แอร์)",
+    textValue: "แบบระบบไฟฟ้า-ประปา",
+  },
+  {
+    key: "as_built",
+    label: "แบบแปลนจริง (As-Built Drawing)",
+    textValue: "แบบ As-Built",
+  },
+  {
+    key: "shop_drawing",
+    label: "แบบขยายหน้างาน (Shop Drawing)",
+    textValue: "Shop Drawing",
+  },
+  {
+    key: "material_approval",
+    label: "เอกสารอนุมัติวัสดุ (Material Submit)",
+    textValue: "เอกสารอนุมัติวัสดุ",
+  },
+  {
+    key: "daily_report",
+    label: "รายงานหน้างานประจำวัน (Daily Report)",
+    textValue: "รายงานประจำวัน",
+  },
+  {
+    key: "inspection",
+    label: "ใบแจ้งเข้าตรวจงาน (RFI / Inspection)",
+    textValue: "เอกสารตรวจสอบ",
+  },
+  {
+    key: "permit",
+    label: "ใบอนุญาตก่อสร้าง / เอกสารราชการ",
+    textValue: "ใบอนุญาตก่อสร้าง",
+  },
   { key: "others", label: "เอกสารอื่นๆ", textValue: "อื่นๆ" },
 ];
+
+export function calculateRiskScore(metrics: ProjectMetricsBoard) {
+  let score = 100; // เริ่มต้นที่ 100 คะแนนเต็ม
+  let suggestion = "โครงการดำเนินไปได้ด้วยดี";
+
+  // 📉 1. หักคะแนนความล่าช้าภาพรวม (ช้า 1% หัก 2 คะแนน)
+  const scheduleDiff = metrics.plannedProgress - metrics.actualProgress;
+  if (scheduleDiff > 0) {
+    score -= scheduleDiff * 2;
+  }
+
+  // 📉 2. หักคะแนนงานย่อยที่ Delay (1 งาน หัก 3 คะแนน)
+  if (metrics.delayTasksCount > 0) {
+    score -= metrics.delayTasksCount * 3;
+  }
+
+  // 📉 3. หักคะแนนงบประมาณ (ถ้างบแซงหน้าความคืบหน้างานเกิน 10% จะเริ่มโดนหักหนักขึ้น)
+  const budgetDiff = metrics.budgetSpentPercent - metrics.actualProgress;
+  if (budgetDiff > 10) {
+    score -= (budgetDiff - 10) * 1.5;
+  }
+
+  // ป้องกันไม่ให้คะแนนติดลบ
+  score = Math.max(0, Math.round(score));
+
+  // 📊 4. ตัดเกรดและกำหนดสี
+  let grade = "";
+  let riskLevel = "";
+  let colorClass = "";
+
+  if (score >= 90) {
+    grade = "A";
+    riskLevel = "ความเสี่ยงต่ำ";
+    colorClass = "text-emerald-400";
+  } else if (score >= 80) {
+    grade = "B+";
+    riskLevel = "ความเสี่ยงปานกลาง";
+    colorClass = "text-emerald-400";
+  } else if (score >= 70) {
+    grade = "B";
+    riskLevel = "ความเสี่ยงปานกลาง";
+    colorClass = "text-yellow-400";
+  } else if (score >= 60) {
+    grade = "C";
+    riskLevel = "ความเสี่ยงสูง";
+    colorClass = "text-orange-400";
+    suggestion = "ต้องรีบเร่งงาน งบเริ่มบานปลาย";
+  } else {
+    grade = "D";
+    riskLevel = "วิกฤต";
+    colorClass = "text-red-500";
+    suggestion = "หยุดประเมินแผนด่วน! Overbudget หรือช้าเกินรับได้";
+  }
+
+  // 💬 ปรับคำแนะนำให้ตรงกับปัญหาหลัก (ถ้าเกรดระดับ B, B+)
+  if (grade === "B+" || grade === "B") {
+    if (budgetDiff > 20) {
+      suggestion = "เฝ้าระวังงบประมาณ (ใช้เงินเร็วกว่าเนื้องาน)";
+    } else if (metrics.delayTasksCount >= 3) {
+      suggestion = "เฝ้าระวังงานย่อยค้างสะสม (Delay)";
+    } else if (scheduleDiff > 0) {
+      suggestion = "เร่งรัดแผนงานหลักที่ล่าช้า";
+    }
+  }
+
+  return { score, grade, riskLevel, suggestion, colorClass };
+}

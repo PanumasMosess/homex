@@ -738,6 +738,86 @@ export async function deleteDocFile(id: number, organizationId: number) {
   }
 }
 
+export async function getTaskStatusCountsBoard(projectId: number) {
+  try {
+    const currentDate = new Date();
+
+    const [todo, progress, done, delay] = await Promise.all([
+      prisma.task.count({
+        where: {
+          projectId: projectId,
+          status: "TODO",
+        },
+      }),
+
+      prisma.task.count({
+        where: {
+          projectId: projectId,
+          status: "PROGRESS",
+        },
+      }),
+
+      prisma.task.count({
+        where: {
+          projectId: projectId,
+          status: "DONE",
+        },
+      }),
+
+      prisma.task.count({
+        where: {
+          projectId: projectId,
+          status: { notIn: ["DONE", "DELETED"] },
+          finishPlanned: { lt: currentDate },
+        },
+      }),
+    ]);
+
+    return { todo, progress, done, delay };
+  } catch (error) {
+    console.error("❌ Error fetching task counts:", error);
+    return { todo: 0, progress: 0, done: 0, delay: 0 };
+  }
+}
+
+export async function getProjectPlannedProgress(projectId: number) {
+  try {
+   
+    const projectTimeline = await prisma.task.aggregate({
+      where: { projectId: projectId },
+      _min: { startPlanned: true },
+      _max: { finishPlanned: true },
+    });
+
+    const startDate = projectTimeline._min.startPlanned;
+    const finishDate = projectTimeline._max.finishPlanned;
+
+    if (!startDate || !finishDate) return 0;
+
+    const startMs = startDate.getTime();
+    const finishMs = finishDate.getTime();
+    const currentMs = new Date().getTime(); 
+
+    if (currentMs <= startMs) {
+      return 0; 
+    }
+
+    if (currentMs >= finishMs) {
+      return 100; 
+    }
+
+    const totalDuration = finishMs - startMs;
+    const timePassed = currentMs - startMs;
+
+    const plannedPercent = (timePassed / totalDuration) * 100;
+
+    return Math.round(plannedPercent);
+  } catch (error) {
+    console.error("❌ Error calculating planned progress:", error);
+    return 0;
+  }
+}
+
 // =====================================
 // Task V2 — Start / Submit
 // =====================================
