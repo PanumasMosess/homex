@@ -172,7 +172,7 @@ const TaskV2CardTab = ({
                     }}
                     className="p-1 rounded hover:bg-zinc-700 text-zinc-500 hover:text-zinc-300 transition-colors"
                   >
-                    <Pencil size={12} />
+                    <Pencil size={12} /> ตั้งค่า
                   </button>
                 </>
               )}
@@ -263,7 +263,11 @@ const TaskV2CardTab = ({
         </div>
       </div>
 
-      <hr />
+      <div className="flex items-center gap-3 mb-4">
+        <div className="flex-1 h-px bg-zinc-700/60" />
+        <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">AI Estimation</span>
+        <div className="flex-1 h-px bg-zinc-700/60" />
+      </div>
 
       {/* ===== AI COST ESTIMATION ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
