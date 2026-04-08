@@ -39,6 +39,7 @@ const TaskV2DetailDialog = ({
   onAddToProcurement,
   onStartTask,
   onSubmitTask,
+  onBudgetChange,
 }: TaskV2DetailDialogProps) => {
   const [activeTab, setActiveTab] = useState<V2Tab>("card");
 
@@ -222,6 +223,7 @@ const TaskV2DetailDialog = ({
                       currentBudget={Number(task.budget) || 0}
                       startActual={task.startActual || null}
                       finishActual={task.finishActual || null}
+                      onBudgetChange={onBudgetChange}
                     />
                   )}
                   {activeTab === "prpo" && (
