@@ -497,7 +497,9 @@ export async function toggleSubtaskStatus(
         finishActual: newStatus ? new Date() : null,
         ...(newStatus ? (imageUrl ? { imageUrl } : {}) : { imageUrl: null }),
       },
-      include: { task: { select: { id: true, coverImageUrl: true, startActual: true } } },
+      include: {
+        task: { select: { id: true, coverImageUrl: true, startActual: true } },
+      },
     });
 
     if (newStatus === true) {
@@ -782,7 +784,6 @@ export async function getTaskStatusCountsBoard(projectId: number) {
 
 export async function getProjectPlannedProgress(projectId: number) {
   try {
-   
     const projectTimeline = await prisma.task.aggregate({
       where: { projectId: projectId },
       _min: { startPlanned: true },
@@ -796,14 +797,14 @@ export async function getProjectPlannedProgress(projectId: number) {
 
     const startMs = startDate.getTime();
     const finishMs = finishDate.getTime();
-    const currentMs = new Date().getTime(); 
+    const currentMs = new Date().getTime();
 
     if (currentMs <= startMs) {
-      return 0; 
+      return 0;
     }
 
     if (currentMs >= finishMs) {
-      return 100; 
+      return 100;
     }
 
     const totalDuration = finishMs - startMs;
@@ -844,7 +845,11 @@ export async function startTaskV2(
     return { success: true, error: false, message: "เริ่มงานเรียบร้อย" };
   } catch (error: any) {
     console.error("startTaskV2 Error:", error);
-    return { success: false, error: true, message: "เกิดข้อผิดพลาดในการเริ่มงาน" };
+    return {
+      success: false,
+      error: true,
+      message: "เกิดข้อผิดพลาดในการเริ่มงาน",
+    };
   }
 }
 
@@ -863,7 +868,11 @@ export async function submitTaskV2(
       select: { id: true, status: true },
     });
     if (subtasks.length > 0 && subtasks.some((s) => !s.status)) {
-      return { success: false, error: true, message: "ยังมี Subtask ที่ยังไม่เสร็จ กรุณาทำให้ครบก่อนส่งงาน" };
+      return {
+        success: false,
+        error: true,
+        message: "ยังมี Subtask ที่ยังไม่เสร็จ กรุณาทำให้ครบก่อนส่งงาน",
+      };
     }
 
     await prisma.task.update({
@@ -879,6 +888,88 @@ export async function submitTaskV2(
     return { success: true, error: false, message: "ส่งงานเรียบร้อย" };
   } catch (error: any) {
     console.error("submitTaskV2 Error:", error);
-    return { success: false, error: true, message: "เกิดข้อผิดพลาดในการส่งงาน" };
+    return {
+      success: false,
+      error: true,
+      message: "เกิดข้อผิดพลาดในการส่งงาน",
+    };
   }
+}
+
+export async function getTaskDataForAIAnalysis(projectId: number) {
+  const currentDate = new Date();
+
+  const rawTasks = await prisma.task.findMany({
+    where: {
+      projectId: projectId,
+      status: { notIn: ["DONE", "DELETED"] },
+    },
+    select: {
+      id: true,
+      taskName: true,
+      status: true,
+      progressPercent: true,
+      budget: true,
+      estimatedBudget: true,
+      startPlanned: true,
+      finishPlanned: true,
+      aiRisks: true,
+      phase: true,
+
+      actualCosts: { 
+        select: {
+          category: true,
+          amount: true,
+          description: true,
+        },
+      },
+
+      details: {
+        where: { status: false },
+        select: {
+          detailName: true,
+          weightPercent: true,
+          progressPercent: true,
+          finishPlanned: true,
+        },
+      },
+    },
+    orderBy: { finishPlanned: "asc" },
+  });
+
+  const formattedTasks = rawTasks.map((task) => {
+    
+    const formattedActualCosts = task.actualCosts.map((cost) => ({
+      category: cost.category,
+      amount: cost.amount ? Number(cost.amount) : 0,
+      description: cost.description,
+    }));
+
+    return {
+      id: task.id,
+      taskName: task.taskName,
+      status: task.status || "TODO",
+      progressPercent: task.progressPercent,
+      
+      budget: task.budget ? Number(task.budget) : 0,
+      estimatedBudget: task.estimatedBudget ? Number(task.estimatedBudget) : 0,
+      
+      startPlanned: task.startPlanned,
+      finishPlanned: task.finishPlanned,
+      aiRisks: task.aiRisks,
+      phase: task.phase,
+
+      actualCosts: formattedActualCosts,
+      details: task.details,
+
+      // ทำซ้ำชื่อนี้ไว้เผื่อ Type ในหน้า UI ของคุณเรียกใช้ชื่อนี้ครับ
+      taskActualCosts: formattedActualCosts,
+      taskDetails: task.details,
+    };
+  });
+
+  return {
+    referenceDate: currentDate.toISOString(),
+    tasks: formattedTasks,
+  };
 }

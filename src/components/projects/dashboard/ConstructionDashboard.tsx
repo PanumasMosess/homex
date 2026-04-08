@@ -1,26 +1,27 @@
 "use client";
 
 import StatusBoard from "@/components/dashboard/StatusBoard";
-import { ConstructionDashboardProp } from "@/lib/type";
+import { ActionRequiredTask, ConstructionDashboardProp } from "@/lib/type";
 import {
   Calendar,
-  Download,
   TrendingDown,
   ListTodo,
   AlertCircle,
   Video,
-  FileText,
   CheckCircle2,
   Clock,
   CircleDashed,
-  MoreHorizontal,
 } from "lucide-react";
 import RiskScoreDashboard from "./RiskScoreDashboard";
 import { useEffect, useState } from "react";
 import {
   getProjectPlannedProgress,
+  getTaskDataForAIAnalysis,
   getTaskStatusCountsBoard,
 } from "@/lib/actions/actionProject";
+import { analyzeProjectActions } from "@/lib/ai/geminiAI";
+import ActionRequiredList from "./ActionRequiredList";
+
 
 export default function ConstructionDashboard({
   projectId,
@@ -31,6 +32,7 @@ export default function ConstructionDashboard({
   expenses,
 }: ConstructionDashboardProp) {
   const [isLoading, setIsLoading] = useState(true);
+  const [isAnalyzing, setIsAnalyzing] = useState(true); 
   const [counts, setCounts] = useState({
     todo: 0,
     progress: 0,
@@ -38,23 +40,40 @@ export default function ConstructionDashboard({
     delay: 0,
   });
   const [planProgress, setPlanProgress] = useState(0);
+  const [actionTasks, setActionTasks] = useState<any[]>([]);
+  const [aiActions, setAiActions] = useState<any[]>([]); 
 
   useEffect(() => {
     const fetchData = async () => {
       try {
         setIsLoading(true);
+        setIsAnalyzing(true);
 
-        const [statusData, planData] = await Promise.all([
+        // 1. ดึงข้อมูลพื้นฐานจาก Database
+        const [statusData, planData, actionData] = await Promise.all([
           getTaskStatusCountsBoard(projectId),
           getProjectPlannedProgress(projectId),
+          getTaskDataForAIAnalysis(projectId),
         ]);
 
         setCounts(statusData);
         setPlanProgress(planData);
+        setActionTasks(actionData.tasks);
+
+        if (actionData.tasks.length > 0) {
+          const analysisResult = await analyzeProjectActions(
+            actionData.tasks,
+            actionData.referenceDate,
+          );
+          setAiActions(analysisResult);
+        } else {
+          setAiActions([]);
+        }
       } catch (error) {
         console.error("❌ Fetch Data Error:", error);
       } finally {
         setIsLoading(false);
+        setIsAnalyzing(false);
       }
     };
 
@@ -87,16 +106,6 @@ export default function ConstructionDashboard({
             อัปเดตล่าสุด: {currentDateTime} น. โดย System
           </p>
         </div>
-        <div className="flex gap-3">
-          {/* <button className="flex items-center gap-2 bg-[#1c2128] hover:bg-[#2d333b] text-sm px-4 py-2 rounded-lg border border-zinc-700 transition-colors">
-            <Calendar className="w-4 h-4" />
-            เดือนนี้
-          </button>
-          <button className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white text-sm px-4 py-2 rounded-lg transition-colors shadow-lg shadow-blue-500/20">
-            <Download className="w-4 h-4" />
-            Export Report
-          </button> */}
-        </div>
       </div>
 
       {/* KPI Cards (4 Columns) */}
@@ -112,14 +121,11 @@ export default function ConstructionDashboard({
               <span className="text-3xl font-bold text-white">
                 {projectProgress ?? 0}%
               </span>
-              {/* <span className="bg-red-950/50 text-red-400 text-[10px] px-2 py-0.5 rounded border border-red-900/50">
-                -2% จากแผน
-              </span> */}
             </div>
             <div className="w-full bg-zinc-800 rounded-full h-1.5">
               <div
                 className="bg-blue-600 h-1.5 rounded-full"
-                style={{ width: "37%" }}
+                style={{ width: `${projectProgress ?? 0}%` }}
               ></div>
             </div>
           </div>
@@ -148,7 +154,9 @@ export default function ConstructionDashboard({
             <div className="w-full bg-zinc-800 rounded-full h-1.5 flex overflow-hidden">
               <div
                 className="bg-orange-500 h-1.5"
-                style={{ width: "80%" }}
+                style={{
+                  width: `${projectInfo?.budget ? ((expenses ?? 0) / projectInfo.budget) * 100 : 0}%`,
+                }}
               ></div>
             </div>
           </div>
@@ -178,85 +186,8 @@ export default function ConstructionDashboard({
 
       {/* Middle Section (2 Columns: Actions 2/3, Phases 1/3) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* Left: Action Required */}
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5 lg:col-span-2">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <AlertCircle className="w-4 h-4 text-red-500" />
-              สิ่งที่ต้องจัดการด่วน (Action Required)
-            </h2>
-            <button className="text-xs text-blue-400 hover:text-blue-300">
-              ดูทั้งหมด
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            {/* Action Item 1 */}
-            {/* <div className="flex gap-4 items-start pb-4 border-b border-zinc-800/50">
-              <div className="w-10 h-10 rounded-full bg-red-950/50 border border-red-900/50 flex items-center justify-center shrink-0">
-                <Calendar className="w-4 h-4 text-red-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-medium text-white mb-1">
-                    ประกอบโครงเหล็กพร้อมรถเครน ล่าช้า
-                  </h4>
-                  <span className="text-[10px] text-zinc-500">
-                    2 ชม. ที่แล้ว
-                  </span>
-                </div>
-                <p className="text-xs text-zinc-400 mb-2">
-                  Gantt Chart แจ้งเตือน: งานล่าช้ากว่าแผน 3 วัน
-                  กระทบงานเทพื้นชั้น 1
-                </p>
-                <span className="bg-zinc-800 text-zinc-300 text-[10px] px-2 py-1 rounded">
-                  หมวด: Structure
-                </span>
-              </div>
-            </div> */}
-
-            {/* Action Item 2 */}
-            <div className="flex gap-4 items-start pb-4 border-b border-zinc-800/50">
-              {/* <div className="w-10 h-10 rounded-full bg-orange-950/50 border border-orange-900/50 flex items-center justify-center shrink-0">
-                <Video className="w-4 h-4 text-orange-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-medium text-white mb-1">
-                    AI ตรวจพบเครื่องจักรหยุดทำงาน
-                  </h4>
-                  <span className="text-[10px] text-zinc-500">10:30 น.</span>
-                </div>
-                <p className="text-xs text-zinc-400 mb-2">
-                  กล้องหน้าตรวจงาน (SN: 866492840)
-                  ตรวจพบรถเครนหยุดทำงานผิดปกติเกิน 1 ชม.
-                </p>
-                <span className="bg-orange-950 text-orange-400 border border-orange-900/50 text-[10px] px-2 py-1 rounded">
-                  ดูภาพ CCTV
-                </span>
-              </div> */}
-            </div>
-
-            {/* Action Item 3 */}
-            <div className="flex gap-4 items-start">
-              {/* <div className="w-10 h-10 rounded-full bg-blue-950/50 border border-blue-900/50 flex items-center justify-center shrink-0">
-                <FileText className="w-4 h-4 text-blue-400" />
-              </div>
-              <div className="flex-1">
-                <div className="flex justify-between items-start">
-                  <h4 className="text-sm font-medium text-white mb-1">
-                    รออนุมัติแบบ As-Built ชั้น 1-3
-                  </h4>
-                  <span className="text-[10px] text-zinc-500">เมื่อวานนี้</span>
-                </div>
-                <p className="text-xs text-zinc-400">
-                  ไฟแนนซ์อัปโหลดเอกสารใหม่
-                  ต้องการการอนุมัติก่อนเริ่มงานระบบประปา
-                </p>
-              </div> */}
-            </div>
-          </div>
-        </div>
+        {/* 🌟 Left: Action Required (ดึงจาก AI) 🌟 */}
+        <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
 
         {/* Right: Phases */}
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
@@ -266,62 +197,11 @@ export default function ConstructionDashboard({
               ภาพรวมรายเฟส (Phases)
             </h2>
           </div>
-
           <div className="space-y-6">
-            {/* <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2 text-sm text-emerald-400">
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Foundation (งานฐานราก)</span>
-                </div>
-                <span className="text-sm font-bold text-emerald-400">100%</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-2">
-                <div
-                  className="bg-emerald-500 h-2 rounded-full"
-                  style={{ width: "100%" }}
-                ></div>
-              </div>
-            </div> */}
-
-            {/* Phase 2 */}
-            {/* <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2 text-sm text-blue-400">
-                  <Clock className="w-4 h-4" />
-                  <span>Structure (งานโครงสร้าง)</span>
-                </div>
-                <span className="text-sm font-bold text-blue-400">67%</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-2">
-                <div
-                  className="bg-blue-600 h-2 rounded-full"
-                  style={{ width: "67%" }}
-                ></div>
-              </div>
-            </div> */}
-
-            {/* Phase 3 */}
-            {/* <div>
-              <div className="flex justify-between items-center mb-2">
-                <div className="flex items-center gap-2 text-sm text-zinc-400">
-                  <CircleDashed className="w-4 h-4" />
-                  <span>System (งานระบบ)</span>
-                </div>
-                <span className="text-sm font-bold text-zinc-400">10%</span>
-              </div>
-              <div className="w-full bg-zinc-800 rounded-full h-2">
-                <div
-                  className="bg-zinc-600 h-2 rounded-full"
-                  style={{ width: "10%" }}
-                ></div>
-              </div>
-            </div> */}
+            <div className="text-xs text-zinc-500 text-center">
+              ยังไม่มีข้อมูลเฟส
+            </div>
           </div>
-
-          {/* <button className="w-full mt-8 bg-[#1c2128] hover:bg-[#2d333b] border border-zinc-700 text-xs text-white py-2.5 rounded-lg transition-colors">
-            เปิดดู Gantt Chart เต็ม
-          </button> */}
         </div>
       </div>
 
@@ -333,32 +213,7 @@ export default function ConstructionDashboard({
             <Video className="w-4 h-4 text-purple-400" />
             อัปเดตหน้างานล่าสุด
           </h2>
-          <div className="flex gap-3">
-            {/* <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center font-bold text-white shrink-0">
-              อส
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <h4 className="text-sm font-medium text-white">
-                  สมบุญ ศรีประเสริฐ
-                </h4>
-                <span className="bg-emerald-950/50 text-emerald-400 border border-emerald-900/50 text-[10px] px-2 py-0.5 rounded flex items-center gap-1">
-                  <CheckCircle2 className="w-3 h-3" /> อัปเดตงาน
-                </span>
-              </div>
-              <p className="text-[10px] text-zinc-500 mb-2">4 ชั่วโมงที่แล้ว</p>
-              <p className="text-sm text-zinc-300 mb-3">
-                สำเร็จรายการย่อย "งานเดินท่อเชื่อมต่อระบบ" สำหรับถังแซท 5000
-                ลิตร
-              </p>
-              <div className="w-full h-32 bg-[#1c2128] border border-zinc-800 rounded-lg flex items-center justify-center overflow-hidden relative">
-                <div className="absolute inset-0 bg-gradient-to-t from-[#161b22] to-transparent"></div>
-                <span className="text-zinc-500 text-xs z-10 flex items-center gap-2">
-                  <Video className="w-4 h-4" /> Site Photo Uploaded
-                </span>
-              </div>
-            </div> */}
-          </div>
+          <div className="flex gap-3"></div>
         </div>
 
         {/* Live View */}
@@ -377,34 +232,7 @@ export default function ConstructionDashboard({
               </span>
             </div>
           </div>
-
-          <div className="grid grid-cols-2 gap-3 h-48">
-            {/* <div className="relative rounded-lg overflow-hidden border border-zinc-800 group cursor-pointer">
-              <div className="absolute inset-0 bg-zinc-800 bg-[url('https://images.unsplash.com/photo-1541888086425-d81bb19240f5?q=80&w=800&auto=format&fit=crop')] bg-cover bg-center opacity-60 mix-blend-overlay"></div>
-              <div className="absolute top-2 right-2 bg-emerald-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded">
-                ONLINE
-              </div>
-              <div className="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent">
-                <h4 className="text-xs text-white font-medium">
-                  กล้องหน้าตรวจงาน
-                </h4>
-                <p className="text-[9px] text-zinc-400">AI: หยุดทำงาน (1h)</p>
-              </div>
-            </div>
-
-            <div className="relative rounded-lg overflow-hidden border border-zinc-800 group cursor-pointer">
-              <div className="absolute inset-0 bg-zinc-800 bg-[url('https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop')] bg-cover bg-center opacity-60 mix-blend-overlay"></div>
-              <div className="absolute top-2 right-2 bg-emerald-500 text-black text-[9px] font-bold px-1.5 py-0.5 rounded">
-                ONLINE
-              </div>
-              <div className="absolute bottom-0 left-0 w-full p-2 bg-gradient-to-t from-black/80 to-transparent">
-                <h4 className="text-xs text-white font-medium">
-                  กล้องไซต์งาน A
-                </h4>
-                <p className="text-[9px] text-zinc-400">AI: ปกติ</p>
-              </div>
-            </div> */}
-          </div>
+          <div className="grid grid-cols-2 gap-3 h-48"></div>
         </div>
       </div>
     </div>

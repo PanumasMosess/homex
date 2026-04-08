@@ -5,6 +5,7 @@ import {
   sendbase64toS3Data,
   sendbase64toS3DataVdo,
 } from "../actions/actionIndex";
+import { ActionRequiredTask } from "../type";
 
 const ai_gemini = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -763,5 +764,60 @@ export async function askGeminiToCountAction(imageUrl: string) {
   } catch (error: any) {
     console.error("Gemini Count Error:", error);
     return { success: false, error: error.message || "ระบบ AI ขัดข้อง" };
+  }
+}
+
+export async function analyzeProjectActions(
+  tasks: ActionRequiredTask[],
+  referenceDate: string,
+) {
+  const prompt = `
+    คุณคือระบบ AI อัจฉริยะสำหรับตรวจสอบหน้างานก่อสร้าง
+    วันนี้คือวันที่: ${referenceDate}
+    
+    จงวิเคราะห์ข้อมูล Tasks ต่อไปนี้และดึง "สิ่งที่ต้องจัดการด่วน (Action Required)" ออกมา
+    โดยเน้นที่:
+    1. งานที่ล่าช้า (Delayed): ดูจาก finishPlanned เทียบกับ referenceDate
+    2. งบบานปลาย (Budget): ดูจาก budget เทียบกับ estimatedBudget (ถ้างบ budget มากกว่า estimatedBudget และ estimatedBudget > 0)
+    3. ความเสี่ยงจากหน้างาน (Risks): วิเคราะห์จากฟิลด์ aiRisks (ถ้ามีข้อมูลให้แจ้งเตือน)
+
+    ข้อมูลโครงการ (JSON):
+    ${JSON.stringify(tasks)}
+
+    ให้ตอบกลับเป็น JSON Array โครงสร้างตามนี้เท่านั้น (ห้ามมี Markdown หรือ Text อื่นปน):
+    [
+      {
+        "id": "string (เช่น delay-12 หรือ ai-26)",
+        "type": "DELAY" | "BUDGET" | "AI_DETECTION",
+        "title": "string (ชื่อการแจ้งเตือนสั้นๆ)",
+        "description": "string (รายละเอียดและผลกระทบ)",
+        "tag": "string (เช่น หมวด: Structure หรือ AI Insight)",
+        "time": "string (จำลองเวลาแจ้งเตือน เช่น '2 ชม. ที่แล้ว' หรือ '10:30 น.')",
+        "priority": "HIGH" | "MEDIUM",
+        "hasCCTV": boolean (ให้เป็น true ถ้าเป็น type AI_DETECTION)
+      }
+    ]
+  `;
+
+  try {
+    // 2. เรียกใช้ AI ด้วย SDK ตัวใหม่
+    const response = await ai_gemini.models.generateContent({
+      model: model_version,
+      contents: prompt,
+      config: {
+        // บังคับให้ AI ตอบกลับมาเป็น JSON Format 100%
+        responseMimeType: "application/json",
+      },
+    });
+
+    // 3. แปลงข้อความที่ได้กลับมาเป็น JavaScript Object (Array)
+    if (response.text) {
+      return JSON.parse(response.text);
+    }
+
+    return [];
+  } catch (error) {
+    console.error("❌ AI Analysis Error:", error);
+    return []; // ถ้าพังให้คืนค่า Array ว่าง หน้าเว็บจะได้ไม่พัง
   }
 }
