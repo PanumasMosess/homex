@@ -877,3 +877,40 @@ export interface ProjectMetricsBoard {
   budgetSpentPercent: number;
   delayTasksCount: number;
 }
+
+export interface TaskDetailAction {
+  detailName: string;
+  weightPercent: number;
+  progressPercent: number;
+  finishPlanned: string | Date | null;
+}
+
+export interface TaskActualCostAction {
+  category: string;
+  amount: number;
+  description: string | null;
+}
+
+export interface ActionRequiredTask {
+  id: number;
+  taskName: string | null;
+  status: string;
+  progressPercent: number;
+  budget: number;
+  estimatedBudget: number;
+  startPlanned: string | Date | null;
+  finishPlanned: string | Date | null;
+  aiRisks: string | null;
+  phase: string | null;
+
+  actualCosts: TaskActualCostAction[];
+  details: TaskDetailAction[];
+
+  taskActualCosts: TaskActualCostAction[];
+  taskDetails: TaskDetailAction[];
+}
+
+export interface ActionRequiredListProps {
+  isAnalyzing: boolean;
+  aiActions: any[];
+}
