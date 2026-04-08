@@ -22,7 +22,6 @@ import {
 import { analyzeProjectActions } from "@/lib/ai/geminiAI";
 import ActionRequiredList from "./ActionRequiredList";
 
-
 export default function ConstructionDashboard({
   projectId,
   organizationId,
@@ -32,7 +31,7 @@ export default function ConstructionDashboard({
   expenses,
 }: ConstructionDashboardProp) {
   const [isLoading, setIsLoading] = useState(true);
-  const [isAnalyzing, setIsAnalyzing] = useState(true); 
+  const [isAnalyzing, setIsAnalyzing] = useState(true);
   const [counts, setCounts] = useState({
     todo: 0,
     progress: 0,
@@ -41,7 +40,7 @@ export default function ConstructionDashboard({
   });
   const [planProgress, setPlanProgress] = useState(0);
   const [actionTasks, setActionTasks] = useState<any[]>([]);
-  const [aiActions, setAiActions] = useState<any[]>([]); 
+  const [aiActions, setAiActions] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -49,7 +48,6 @@ export default function ConstructionDashboard({
         setIsLoading(true);
         setIsAnalyzing(true);
 
-        // 1. ดึงข้อมูลพื้นฐานจาก Database
         const [statusData, planData, actionData] = await Promise.all([
           getTaskStatusCountsBoard(projectId),
           getProjectPlannedProgress(projectId),
@@ -59,6 +57,8 @@ export default function ConstructionDashboard({
         setCounts(statusData);
         setPlanProgress(planData);
         setActionTasks(actionData.tasks);
+
+        setIsLoading(false);
 
         if (actionData.tasks.length > 0) {
           const analysisResult = await analyzeProjectActions(

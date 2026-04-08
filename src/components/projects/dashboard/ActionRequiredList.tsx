@@ -81,12 +81,7 @@ const ActionRequiredList = ({
                   <div className="flex gap-2">
                     <span className="bg-zinc-800 text-zinc-300 text-[10px] px-2 py-1 rounded">
                       {action.tag}
-                    </span>
-                    {action.hasCCTV && (
-                      <span className="bg-orange-950 text-orange-400 border border-orange-900/50 text-[10px] px-2 py-1 rounded cursor-pointer hover:bg-orange-900/80 transition-colors">
-                        ดูภาพ CCTV
-                      </span>
-                    )}
+                    </span>              
                   </div>
                 </div>
               </div>
