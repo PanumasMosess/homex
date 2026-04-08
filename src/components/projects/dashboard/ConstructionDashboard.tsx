@@ -69,9 +69,9 @@ export default function ConstructionDashboard({
     };
 
     fetchData();
-  }, [!mounted || isLoading]);
+  }, [ isLoading]);
 
-  if (isLoading) {
+  if (!mounted || isLoading) {
     return (
       <div className="min-h-screen bg-[#0e1116] flex flex-col items-center justify-center text-zinc-400">
         <CircleDashed className="w-10 h-10 animate-spin text-blue-500 mb-4" />
