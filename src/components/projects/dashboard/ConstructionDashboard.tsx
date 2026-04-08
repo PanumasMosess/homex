@@ -33,6 +33,7 @@ export default function ConstructionDashboard({
   const [aiActions, setAiActions] = useState<any[]>([]);
 
   useEffect(() => {
+    setMounted(true);
     const fetchData = async () => {
       try {
         // เริ่มต้นการดึงข้อมูล
