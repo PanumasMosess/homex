@@ -812,6 +812,7 @@ export interface TaskV2DetailDialogProps {
   onAddToProcurement: (material: TaskV2Material) => Promise<boolean>;
   onStartTask: (startDate: string) => Promise<void>;
   onSubmitTask: (finishDate: string) => Promise<void>;
+  onBudgetChange?: (newBudget: number) => void;
 }
 
 export interface CreateTaskV2ModalProps {

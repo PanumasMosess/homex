@@ -23,6 +23,7 @@ interface TaskV2CardTabProps {
   currentBudget: number;
   startActual: string | null;
   finishActual: string | null;
+  onBudgetChange?: (newBudget: number) => void;
 }
 
 const TaskV2CardTab = ({
@@ -31,6 +32,7 @@ const TaskV2CardTab = ({
   currentBudget,
   startActual,
   finishActual,
+  onBudgetChange,
 }: TaskV2CardTabProps) => {
   const { costEstimation, durationEstimate, risks } = aiData;
 
@@ -81,6 +83,7 @@ const TaskV2CardTab = ({
       if (res.success) {
         setBudget(val);
         setIsEditingBudget(false);
+        onBudgetChange?.(val);
         toast.success("บันทึกราคากลางสุทธิสำเร็จ");
       } else {
         toast.error(res.message || "บันทึกไม่สำเร็จ");
