@@ -336,6 +336,18 @@ const TaskV2Section = ({
     [selected, setTasks]
   );
 
+  const handleBudgetChange = useCallback(
+    (newBudget: number) => {
+      if (!selected) return;
+      setTasks((prev: any[]) =>
+        prev.map((t) =>
+          t.id === selected.id ? { ...t, budget: newBudget } : t
+        )
+      );
+    },
+    [selected, setTasks]
+  );
+
   const handleAddToProcurement = useCallback(
     async (material: any): Promise<boolean> => {
       if (!selected) return false;
@@ -533,6 +545,7 @@ const TaskV2Section = ({
         onAddToProcurement={handleAddToProcurement}
         onStartTask={handleStartTask}
         onSubmitTask={handleSubmitTask}
+        onBudgetChange={handleBudgetChange}
       />
     </div>
   );
