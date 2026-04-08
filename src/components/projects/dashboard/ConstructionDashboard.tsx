@@ -2,7 +2,7 @@
 
 import StatusBoard from "@/components/dashboard/StatusBoard";
 import { ConstructionDashboardProp } from "@/lib/type";
-import { TrendingDown, ListTodo, Video, CircleDashed } from "lucide-react";
+import { TrendingDown, ListTodo, Video } from "lucide-react";
 import RiskScoreDashboard from "./RiskScoreDashboard";
 import { useEffect, useState } from "react";
 import {
@@ -17,7 +17,7 @@ export default function ConstructionDashboard({
   projectId,
   projectInfo,
   projectProgress,
-  expenses,
+  expenses = 0,
 }: ConstructionDashboardProp) {
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,11 +35,11 @@ export default function ConstructionDashboard({
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // เริ่มต้นการดึงข้อมูล
         setIsLoading(true);
         setIsAnalyzing(true);
+        setMounted(true);
 
-        // ดึงข้อมูลพื้นฐานจาก Database พร้อมกัน
+        // 1. ดึงข้อมูลพื้นฐาน
         const [statusData, planData, actionData] = await Promise.all([
           getTaskStatusCountsBoard(projectId),
           getProjectPlannedProgress(projectId),
@@ -56,29 +56,27 @@ export default function ConstructionDashboard({
             actionData.tasks,
             actionData.referenceDate,
           );
+
           setAiActions(analysisResult);
+
+          setIsAnalyzing(false);
         } else {
           setAiActions([]);
+          setIsAnalyzing(false);
         }
       } catch (error) {
         console.error("❌ Fetch Data Error:", error);
+        setIsAnalyzing(false); // ปิดถ้า Error เพื่อไม่ให้หมุนค้าง
       } finally {
         setIsLoading(false);
-        setIsAnalyzing(false);
       }
     };
 
     fetchData();
-  }, [ isLoading]);
+  }, [projectId]);
 
-  if (!mounted || isLoading) {
-    return (
-      <div className="min-h-screen bg-[#0e1116] flex flex-col items-center justify-center text-zinc-400">
-        <CircleDashed className="w-10 h-10 animate-spin text-blue-500 mb-4" />
-        <p className="text-sm animate-pulse">กำลังจัดเตรียมข้อมูลแดชบอร์ด...</p>
-      </div>
-    );
-  }
+  // ป้องกัน Server/Client mismatch แต่ไม่แสดง Loading บังทั้งจอ
+  if (!mounted) return null;
 
   const currentDateTime = new Intl.DateTimeFormat("th-TH", {
     day: "numeric",
@@ -91,74 +89,96 @@ export default function ConstructionDashboard({
 
   return (
     <div className="min-h-screen bg-[#0e1116] text-zinc-100 p-6 font-sans">
-      {/* Header Section */}
+      {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold text-white">
-              {projectInfo?.name}
+              {projectInfo?.name || "กำลังโหลด..."}
             </h1>
-            <span className="bg-blue-900/50 text-blue-400 text-xs px-2 py-1 rounded border border-blue-800/50">
-              {projectInfo?.code}
-            </span>
+            {projectInfo?.code && (
+              <span className="bg-blue-900/50 text-blue-400 text-xs px-2 py-1 rounded border border-blue-800/50">
+                {projectInfo.code}
+              </span>
+            )}
           </div>
           <p className="text-xs text-zinc-400 mt-1">
-            อัปเดตล่าสุด: {currentDateTime} น. โดย System
+            อัปเดตล่าสุด: {currentDateTime} น.
           </p>
         </div>
       </div>
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* Card 1: Progress */}
+        {/* Progress Card */}
         <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-sm text-zinc-400">ความคืบหน้าโครงการ</h3>
             <TrendingDown className="w-4 h-4 text-blue-500" />
           </div>
           <div>
-            <div className="flex items-baseline gap-2 mb-2">
+            {isLoading ? (
+              <div className="h-8 w-20 bg-zinc-800 animate-pulse rounded"></div>
+            ) : (
               <span className="text-3xl font-bold text-white">
                 {projectProgress ?? 0}%
               </span>
-            </div>
-            <div className="w-full bg-zinc-800 rounded-full h-1.5">
+            )}
+            <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-2">
               <div
-                className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
-                style={{ width: `${Math.min(100, projectProgress ?? 0)}%` }}
-              ></div>
-            </div>
-          </div>
-        </div>
-
-        {/* Card 2: Budget */}
-        <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
-          <div className="flex justify-between items-start mb-4">
-            <h3 className="text-sm text-zinc-400">งบประมาณที่ใช้ไป</h3>
-            <div className="w-4 h-4 bg-orange-500 rounded-sm"></div>
-          </div>
-          <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-3xl font-bold text-white">
-                {expenses?.toLocaleString()}
-              </span>
-              <span className="text-sm text-zinc-400">บาท.</span>
-            </div>
-            <p className="text-[10px] text-zinc-500 mb-2 font-mono">
-              จากงบรวม {projectInfo?.budget?.toLocaleString()} บาท
-            </p>
-            <div className="w-full bg-zinc-800 rounded-full h-1.5 flex overflow-hidden">
-              <div
-                className="bg-orange-500 h-1.5 transition-all duration-500"
+                className="bg-blue-600 h-1.5 rounded-full transition-all duration-1000"
                 style={{
-                  width: `${projectInfo?.budget ? Math.min(100, ((expenses ?? 0) / projectInfo.budget) * 100) : 0}%`,
+                  width: `${isLoading ? 0 : Math.min(100, projectProgress ?? 0)}%`,
                 }}
               ></div>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Tasks */}
+        {/* Budget Card */}
+        <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
+          <div className="flex justify-between items-start mb-4">
+            <h3 className="text-sm text-zinc-400">งบประมาณที่ใช้ไป</h3>
+            <div className="w-4 h-4 bg-orange-500 rounded-sm"></div>{" "}
+            {/* กลับมาใช้สี่เหลี่ยมสีส้มเหมือนเดิม */}
+          </div>
+          <div>
+            <div className="flex items-baseline gap-2 mb-2">
+              <span className="text-3xl font-bold text-white">
+                {(expenses ?? 0).toLocaleString()}
+              </span>
+              <span className="text-sm text-zinc-400">บาท.</span>
+            </div>
+
+            {/* เพิ่มบรรทัดบอกงบรวมและ % ที่หายไปกลับมา */}
+            <p className="text-[10px] text-zinc-500 mb-2">
+              จากงบรวม {projectInfo?.budget?.toLocaleString() ?? 0} บาท
+              (ใช้ไปแล้ว{" "}
+              {projectInfo?.budget
+                ? (((expenses ?? 0) / projectInfo.budget) * 100).toFixed(1)
+                : 0}
+              %)
+            </p>
+
+            <div className="w-full bg-zinc-800 rounded-full h-1.5 flex overflow-hidden">
+              <div
+                className="bg-orange-500 h-1.5 transition-all duration-1000"
+                style={{
+                  width: `${
+                    projectInfo?.budget
+                      ? Math.min(
+                          100,
+                          ((expenses ?? 0) / projectInfo.budget) * 100,
+                        )
+                      : 0
+                  }%`,
+                }}
+              ></div>
+            </div>
+          </div>
+        </div>
+
+        {/* StatusBoard มี isLoading ในตัวอยู่แล้ว */}
         <StatusBoard
           todo={counts.todo}
           progress={counts.progress}
@@ -167,60 +187,49 @@ export default function ConstructionDashboard({
           isLoading={isLoading}
         />
 
-        {/* Card 4: AI Risk Score */}
+        {/* RiskScoreDashboard จะคำนวณใหม่เมื่อ isLoading จบ */}
         <RiskScoreDashboard
           actualProgress={projectProgress ?? 0}
           plannedProgress={planProgress ?? 0}
-          budgetSpentPercent={Number(
+          budgetSpentPercent={
             projectInfo?.budget
-              ? (((expenses ?? 0) / projectInfo.budget) * 100).toFixed(1)
-              : 0,
-          )}
+              ? ((expenses ?? 0) / projectInfo.budget) * 100
+              : 0
+          }
           delayTasksCount={counts.delay}
         />
       </div>
 
-      {/* Middle Section */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
+        {/* กล่อง AI จะหมุน Loading เฉพาะในตัวเองตามค่า isAnalyzing */}
         <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
 
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
-          <div className="flex justify-between items-center mb-6">
-            <h2 className="text-base font-semibold flex items-center gap-2">
-              <ListTodo className="w-4 h-4 text-blue-400" />
-              ภาพรวมรายเฟส (Phases)
-            </h2>
-          </div>
-          <div className="space-y-6">
-            <div className="text-xs text-zinc-500 text-center py-10 italic">
-              ยังไม่มีข้อมูลเฟสที่กำลังดำเนินการ
-            </div>
+          <h2 className="text-base font-semibold flex items-center gap-2 mb-4">
+            <ListTodo className="w-4 h-4 text-blue-400" />
+            ภาพรวมรายเฟส (Phases)
+          </h2>
+          <div className="flex flex-col items-center justify-center h-40 italic text-xs text-zinc-600">
+            ยังไม่มีข้อมูลเฟสที่กำลังดำเนินการ
           </div>
         </div>
       </div>
 
-      {/* Bottom Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
           <h2 className="text-base font-semibold flex items-center gap-2 mb-5 text-purple-400">
-            <Video className="w-4 h-4" />
-            อัปเดตหน้างานล่าสุด
+            <Video className="w-4 h-4" /> อัปเดตหน้างานล่าสุด
           </h2>
-          <div className="flex items-center justify-center h-40 border border-dashed border-zinc-800 rounded-lg">
-            <span className="text-xs text-zinc-600 font-mono">
-              NO RECENT FEED
-            </span>
+          <div className="h-32 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-700">
+            NO RECENT FEED
           </div>
         </div>
 
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
-          <div className="flex justify-between items-center mb-5">
-            <h2 className="text-base font-semibold flex items-center gap-2 text-emerald-400">
-              <Video className="w-4 h-4" />
-              สภาพหน้างานสด (Live View)
-            </h2>
-          </div>
-          <div className="grid grid-cols-2 gap-3 h-48">
+          <h2 className="text-base font-semibold flex items-center gap-2 mb-5 text-emerald-400">
+            <Video className="w-4 h-4" /> สภาพหน้างานสด (Live View)
+          </h2>
+          <div className="grid grid-cols-2 gap-3 h-32">
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg animate-pulse"></div>
             <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg animate-pulse"></div>
           </div>
