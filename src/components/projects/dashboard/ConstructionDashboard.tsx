@@ -8,10 +8,15 @@ import { useEffect, useState } from "react";
 import {
   getProjectPlannedProgress,
   getTaskDataForAIAnalysis,
+  getTaskDataForAIAnalysisSum,
   getTaskStatusCountsBoard,
 } from "@/lib/actions/actionProject";
-import { analyzeProjectActions } from "@/lib/ai/geminiAI";
+import {
+  analyzeProjectActions,
+  analyzeProjectOverview,
+} from "@/lib/ai/geminiAI";
 import ActionRequiredList from "./ActionRequiredList";
+import ExecutiveSummary from "./ExecutiveSummary";
 
 export default function ConstructionDashboard({
   projectId,
@@ -22,6 +27,8 @@ export default function ConstructionDashboard({
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [isAnalyzing, setIsAnalyzing] = useState(true);
+  const [aiSummary, setAiSummary] = useState<any>(null);
+  const [isAnalyzingSummary, setIsAnalyzingSummary] = useState(true);
 
   const [counts, setCounts] = useState({
     todo: 0,
@@ -40,16 +47,19 @@ export default function ConstructionDashboard({
         setMounted(true);
 
         // 1. ดึงข้อมูลพื้นฐาน
-        const [statusData, planData, actionData] = await Promise.all([
-          getTaskStatusCountsBoard(projectId),
-          getProjectPlannedProgress(projectId),
-          getTaskDataForAIAnalysis(projectId),
-        ]);
+        const [statusData, planData, actionData, summaryData] =
+          await Promise.all([
+            getTaskStatusCountsBoard(projectId),
+            getProjectPlannedProgress(projectId),
+            getTaskDataForAIAnalysis(projectId),
+            getTaskDataForAIAnalysisSum(projectId),
+          ]);
 
         setCounts(statusData);
         setPlanProgress(planData);
-
         setIsLoading(false);
+
+        const aiPromises = [];
 
         if (actionData?.tasks?.length > 0) {
           const analysisResult = await analyzeProjectActions(
@@ -63,6 +73,17 @@ export default function ConstructionDashboard({
         } else {
           setAiActions([]);
           setIsAnalyzing(false);
+        }
+
+        if (summaryData?.tasks?.length > 0) {
+          aiPromises.push(
+            analyzeProjectOverview(summaryData.tasks, summaryData.referenceDate)
+              .then((res) => setAiSummary(res))
+              .finally(() => setIsAnalyzingSummary(false)),
+          );
+        } else {
+          setAiSummary(null);
+          setIsAnalyzingSummary(false);
         }
       } catch (error) {
         console.error("❌ Fetch Data Error:", error);
@@ -200,18 +221,16 @@ export default function ConstructionDashboard({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
-        {/* กล่อง AI จะหมุน Loading เฉพาะในตัวเองตามค่า isAnalyzing */}
-        <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+        <div className="w-full">
+          <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
+        </div>
 
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
-          <h2 className="text-base font-semibold flex items-center gap-2 mb-4">
-            <ListTodo className="w-4 h-4 text-blue-400" />
-            ภาพรวมรายเฟส (Phases)
-          </h2>
-          <div className="flex flex-col items-center justify-center h-40 italic text-xs text-zinc-600">
-            ยังไม่มีข้อมูลเฟสที่กำลังดำเนินการ
-          </div>
+        <div className="w-full">
+          <ExecutiveSummary
+            isAnalyzing={isAnalyzingSummary}
+            summaryData={aiSummary}
+          />
         </div>
       </div>
 

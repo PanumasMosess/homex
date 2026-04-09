@@ -915,3 +915,16 @@ export interface ActionRequiredListProps {
   isAnalyzing: boolean;
   aiActions: any[];
 }
+
+export interface AIExecutiveSummaryData {
+  healthStatus: "GOOD" | "WARNING" | "CRITICAL";
+  executiveSummary: string;
+  budgetAnalysis: string;
+  topRisks: string[];
+  recommendation: string;
+}
+
+export interface ExecutiveSummaryProps {
+  isAnalyzing: boolean;
+  summaryData: AIExecutiveSummaryData | null;
+}
