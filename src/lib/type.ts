@@ -928,3 +928,14 @@ export interface ExecutiveSummaryProps {
   isAnalyzing: boolean;
   summaryData: AIExecutiveSummaryData | null;
 }
+
+export interface CalendarViewProps {
+  data: any[];
+  dependencies?: any[];
+  projectStart?: Date | string | null;
+}
+
+export interface CalendarDay {
+  date: Date;
+  currentMonth: boolean;
+}

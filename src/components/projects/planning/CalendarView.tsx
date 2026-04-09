@@ -1,156 +1,290 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
-import { 
-  ChevronLeft, 
-  ChevronRight, 
-  Calendar as CalendarIcon, 
-} from "lucide-react";
+import { useState, useMemo, useRef } from "react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
 import { Button } from "@heroui/react";
+import type { CalendarViewProps, CalendarDay } from "@/lib/type";
 
-interface CalendarViewProps {
-  data: any[];
-  projectStart: Date | null;
-}
 
-// กำหนด Interface ให้ชัดเจนเพื่อแก้ปัญหา 'any'
-interface CalendarDay {
-  date: Date;
-  currentMonth: boolean;
-}
-
-export default function CalendarView({ data, projectStart }: CalendarViewProps) {
+export default function CalendarView({ data, dependencies = [], projectStart }: CalendarViewProps) {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const monthInputRef = useRef<HTMLInputElement>(null);
 
-  const allTasks = useMemo(() => data?.flatMap((p) => p.tasks || []) || [], [data]);
+  const tasks = useMemo(() => {
+    return data?.flatMap((p) => p.tasks || []) || [];
+  }, [data]);
 
-  // แก้ไขส่วนการสร้าง Grid และระบุ Type: CalendarDay[]
+  const computedProjectStart = useMemo(() => {
+    if (projectStart) return new Date(projectStart);
+    if (tasks.length === 0) return new Date();
+
+    const startDates = tasks.map(t => new Date(t.startDate).getTime());
+    return new Date(Math.min(...startDates));
+  }, [projectStart, tasks]);
+
+  const todayStr = new Date().toDateString();
+
+  function applyDependencyShift(tasks: any[], dependencies: any[]) {
+    const map = new Map(tasks.map(t => [t.id, { ...t }]));
+    let changed = true;
+
+    while (changed) {
+      changed = false;
+
+      dependencies.forEach(dep => {
+        const task = map.get(dep.taskId);
+        const prev = map.get(dep.dependsOnId);
+
+        if (!task || !prev) return;
+
+        const prevEnd = new Date(prev.startDate);
+        prevEnd.setDate(prevEnd.getDate() + prev.durationDay);
+
+        if (new Date(task.startDate) < prevEnd) {
+          task.startDate = new Date(prevEnd);
+          changed = true;
+        }
+      });
+    }
+
+    return Array.from(map.values());
+  }
+
+  const adjustedTasks = useMemo(() => {
+    return applyDependencyShift(tasks, dependencies);
+  }, [tasks, dependencies]);
+
   const calendarGrid = useMemo<CalendarDay[]>(() => {
     const year = currentMonth.getFullYear();
     const month = currentMonth.getMonth();
+
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    
+
     const days: CalendarDay[] = [];
-    const prevMonthLastDay = new Date(year, month, 0).getDate();
-    
-    // เดือนก่อนหน้า
+    const prevLast = new Date(year, month, 0).getDate();
+
     for (let i = firstDay - 1; i >= 0; i--) {
-      days.push({ date: new Date(year, month - 1, prevMonthLastDay - i), currentMonth: false });
+      days.push({ date: new Date(year, month - 1, prevLast - i), currentMonth: false });
     }
-    // เดือนปัจจุบัน
+
     for (let i = 1; i <= daysInMonth; i++) {
       days.push({ date: new Date(year, month, i), currentMonth: true });
     }
-    // เดือนถัดไป (แก้ Error nextDate)
-    const remainingSlots = 42 - days.length;
-    for (let i = 1; i <= remainingSlots; i++) {
-      days.push({ date: new Date(year, month + 1, i), currentMonth: false });
+
+    while (days.length < 42) {
+      days.push({
+        date: new Date(year, month + 1, days.length - (firstDay + daysInMonth) + 1),
+        currentMonth: false,
+      });
     }
+
     return days;
   }, [currentMonth]);
 
-  const renderWeekTasks = (weekStartIndex: number) => {
-    const weekDays = calendarGrid.slice(weekStartIndex, weekStartIndex + 7);
-    const weekStart = new Date(weekDays[0].date).setHours(0,0,0,0);
-    const weekEnd = new Date(weekDays[6].date).setHours(23,59,59,999);
+  const buildTracks = (tasks: any[]) => {
+    const tracks: any[][] = [];
 
-    const weekTasks = allTasks.filter(task => {
+    const sorted = [...tasks].sort(
+      (a, b) => new Date(a.startDate).getTime() - new Date(b.startDate).getTime()
+    );
+
+    sorted.forEach(task => {
       const s = new Date(task.startDate).getTime();
-      const e = new Date(s + (task.durationDay * 86400000)).getTime();
+      const e = s + task.durationDay * 86400000;
+
+      let placed = false;
+
+      for (let i = 0; i < tracks.length; i++) {
+        const overlap = tracks[i].find(t => {
+          const ts = new Date(t.startDate).getTime();
+          const te = ts + t.durationDay * 86400000;
+          return s < te && e > ts;
+        });
+
+        if (!overlap) {
+          tracks[i].push(task);
+          placed = true;
+          break;
+        }
+      }
+
+      if (!placed) tracks.push([task]);
+    });
+
+    return tracks;
+  };
+
+  const getColor = (task: any) => {
+    if (task.progress === 100) return "bg-[#10b981] text-white"; // เขียว
+    if (task.progress > 0) return "bg-[#3b82f6] text-white";     // น้ำเงิน
+    return "bg-[#3f3f46] text-slate-300";                        // เทา (ยังไม่ทำ)
+  };
+
+  const renderWeek = (startIdx: number) => {
+    const weekDays = calendarGrid.slice(startIdx, startIdx + 7);
+
+    const weekStart = new Date(weekDays[0].date).setHours(0, 0, 0, 0);
+    const weekEnd = new Date(weekDays[6].date).setHours(23, 59, 59, 999);
+
+    const weekTasks = adjustedTasks.filter(t => {
+      const s = new Date(t.startDate).getTime();
+      const e = s + t.durationDay * 86400000;
       return s <= weekEnd && e >= weekStart;
     });
 
+    const tracks = buildTracks(weekTasks);
+
     return (
-      <div className="absolute inset-0 mt-9 flex flex-col gap-1.5 px-0.5">
-        {weekTasks.map((task) => {
-          const taskStart = new Date(task.startDate).getTime();
-          const taskEnd = taskStart + (task.durationDay * 86400000);
-          
-          const startIdx = Math.max(0, Math.floor((taskStart - weekStart) / 86400000));
-          const endIdx = Math.min(6, Math.floor((taskEnd - weekStart) / 86400000));
-          
-          const left = `${(startIdx * 100) / 7}%`;
-          const width = `${((endIdx - startIdx + 1) * 100) / 7}%`;
+      <div className="absolute inset-0 mt-8 px-1">
+        {tracks.slice(0, 3).map((track, i) => (
+          <div key={i} className="relative h-6 mb-1">
+            {track.map(task => {
+              const s = new Date(task.startDate).getTime();
+              const e = s + task.durationDay * 86400000;
 
-          // ใช้สีตามสถานะที่ดูง่าย (เสร็จสิ้น=เขียว, ล่าช้า=แดง)
-          let statusColor = "bg-rose-600 border-rose-700"; 
-          if (task.progress === 100) statusColor = "bg-[#10b981] border-[#059669]";
-          else if (task.progress > 0) statusColor = "bg-blue-600 border-blue-700";
+              const start = Math.max(0, Math.floor((s - weekStart) / 86400000));
+              const end = Math.min(6, Math.floor((e - weekStart) / 86400000));
 
-          return (
-            <div 
-              key={`${task.id}-${weekStartIndex}`}
-              className={`relative h-6 ${statusColor} border-l-4 text-white text-[10px] font-bold flex items-center px-2 shadow-md z-10`}
-              style={{ marginLeft: left, width: width }}
-            >
-              {/* ชื่อโชว์แค่จุดที่สมควร (เริ่มงาน หรือ วันแรกของสัปดาห์) */}
-              {(startIdx === 0 || taskStart === new Date(weekDays[startIdx].date).setHours(0,0,0,0)) && (
-                <span className="truncate drop-shadow-sm">{task.name}</span>
-              )}
-            </div>
-          );
-        })}
+              const left = `${(start * 100) / 7}%`;
+              const width = `${((end - start + 1) * 100) / 7}%`;
+
+              const isContinuedFromLastWeek = s < weekStart;
+
+              return (
+                <div
+                  key={task.id}
+                  style={{ left, width }}
+                  className={`absolute h-6 px-2 flex items-center text-[10px] font-bold rounded-md shadow-sm border-l-4 border-white/20 transition-all hover:brightness-110 ${getColor(task)}`}
+                >
+                  <div className="flex items-center gap-1 w-full overflow-hidden">
+                    {isContinuedFromLastWeek && (
+                      <span className="opacity-70 flex-shrink-0">›</span>
+                    )}
+
+                    <span className="truncate drop-shadow-sm">
+                      {task.name}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ))}
       </div>
     );
   };
 
   return (
-    <div className="bg-[#0b0e14] rounded-xl border border-slate-800 shadow-2xl overflow-hidden font-sans">
-      <div className="p-5 flex justify-between items-center bg-[#11151c] border-b border-slate-800">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-blue-500/10 rounded-xl text-blue-500 border border-blue-500/20">
-            <CalendarIcon size={22} />
-          </div>
-          <h2 className="text-lg font-black text-white leading-none">PROJECT SCHEDULE</h2>
+    <div className="bg-default-50 dark:bg-zinc-900 rounded-xl border border-default-200 dark:border-zinc-700">
+
+      <div className="flex justify-between p-4 bg-default-100 dark:bg-zinc-800 border-b border-default-200 dark:border-zinc-700">
+        <div className="font-bold flex items-center gap-2">
+          <CalendarIcon size={16} /> Calendar
         </div>
 
         <div className="flex items-center gap-2">
-          <div className="flex bg-[#0b0e14] rounded-lg p-1 border border-slate-700 items-center">
-            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1))} className="p-1.5 hover:bg-slate-800 text-slate-400">
-              <ChevronLeft size={18} />
-            </button>
-            <div className="px-4 text-xs font-black text-slate-200 min-w-[140px] text-center uppercase">
-              {currentMonth.toLocaleDateString("th-TH", { month: "long", year: "numeric" })}
+          <ChevronLeft
+            className="cursor-pointer hover:text-primary"
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1))}
+          />
+
+          <div
+            className="relative mx-2 cursor-pointer"
+            onClick={() => monthInputRef.current?.showPicker()}
+          >
+            <input
+              ref={monthInputRef}
+              type="month"
+              className="absolute inset-0 opacity-0 pointer-events-none"
+              value={`${currentMonth.getFullYear()}-${String(
+                currentMonth.getMonth() + 1
+              ).padStart(2, "0")}`}
+              onChange={(e) => {
+                const [y, m] = e.target.value.split("-");
+                if (y && m) {
+                  setCurrentMonth(new Date(parseInt(y), parseInt(m) - 1));
+                }
+              }}
+            />
+
+            <div className="font-bold text-sm hover:text-primary transition">
+              {currentMonth.toLocaleDateString("th-TH", {
+                month: "long",
+                year: "numeric",
+              })}
             </div>
-            <button onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1))} className="p-1.5 hover:bg-slate-800 text-slate-400">
-              <ChevronRight size={18} />
-            </button>
           </div>
-          <Button size="sm" color="primary" className="font-bold text-xs" onClick={() => setCurrentMonth(new Date())}>วันนี้</Button>
+
+          <ChevronRight
+            className="cursor-pointer hover:text-primary"
+            onClick={() => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1))}
+          />
+
+          <div className="h-6 w-[1px] bg-default-300 dark:bg-zinc-700 mx-2" />
+
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="bordered"
+              onClick={() => setCurrentMonth(computedProjectStart)}
+            >
+              เริ่มโครงการ
+            </Button>
+
+            <Button
+              size="sm"
+              color="primary"
+              onClick={() => setCurrentMonth(new Date())}
+            >
+              วันนี้
+            </Button>
+          </div>
         </div>
       </div>
-
-      <div className="grid grid-cols-7 bg-[#11151c] border-b border-slate-800">
-        {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((day, i) => (
-          <div key={day} className={`py-2 text-[10px] font-black text-center tracking-widest ${i === 0 ? 'text-rose-500' : i === 6 ? 'text-blue-500' : 'text-slate-500'}`}>
-            {day}
-          </div>
+      <div className="grid grid-cols-7 text-xs text-center bg-default-100 dark:bg-zinc-800">
+        {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map(d => (
+          <div key={d} className="py-2 text-default-500">{d}</div>
         ))}
       </div>
 
-      <div className="grid grid-cols-7 relative border-collapse">
-        {calendarGrid.map((day, idx) => (
-          <div key={idx} className={`min-h-[130px] border-r border-b border-slate-800/40 p-3 ${!day.currentMonth ? 'bg-[#0d1117]/50' : ''}`}>
-            <span className={`text-xs font-black ${day.currentMonth ? 'text-slate-400' : 'text-slate-700'}`}>
-              {day.date.getDate()}
-            </span>
-          </div>
-        ))}
+      <div className="grid grid-cols-7 relative">
+        {calendarGrid.map((day, i) => {
+          const isToday = day.date.toDateString() === todayStr;
+
+          return (
+            <div
+              key={i}
+              className={`min-h-[120px] border border-default-200 dark:border-zinc-700 p-2
+              ${!day.currentMonth && "opacity-40"}
+              ${isToday && "bg-primary/10"}`}
+            >
+              <div className="text-xs font-bold text-default-700 dark:text-white">
+                {day.date.getDate()}
+              </div>
+            </div>
+          );
+        })}
 
         <div className="absolute inset-0 pointer-events-none">
-          {[0, 7, 14, 21, 28, 35].map(weekIdx => (
-            <div key={weekIdx} className="relative h-[130px]">
-              {renderWeekTasks(weekIdx)}
+          {[0, 7, 14, 21, 28, 35].map(i => (
+            <div key={i} className="relative h-[120px]">
+              {renderWeek(i)}
             </div>
           ))}
         </div>
       </div>
 
-      <div className="p-4 bg-[#11151c] border-t border-slate-800 flex justify-center gap-8 text-[10px] font-black uppercase">
-        <div className="flex items-center gap-2 text-[#10b981]"><div className="w-2 h-2 rounded-full bg-[#10b981]" /> เสร็จสิ้น</div>
-        <div className="flex items-center gap-2 text-blue-500"><div className="w-2 h-2 rounded-full bg-blue-500" /> ดำเนินการ</div>
-        <div className="flex items-center gap-2 text-rose-500"><div className="w-2 h-2 rounded-full bg-rose-500" /> ล่าช้า (Delayed)</div>
+      <div className="flex gap-6 justify-center text-xs p-3 border-t border-default-200 dark:border-zinc-700">
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 bg-emerald-500 rounded-full" /> เสร็จแล้ว
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 bg-blue-500 rounded-full" /> กำลังทำ
+        </div>
+        <div className="flex items-center gap-1">
+          <div className="w-2 h-2 bg-zinc-400 rounded-full" /> ยังไม่ทำ
+        </div>
       </div>
     </div>
   );
