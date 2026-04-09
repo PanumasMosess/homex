@@ -973,3 +973,80 @@ export async function getTaskDataForAIAnalysis(projectId: number) {
     tasks: formattedTasks,
   };
 }
+
+export async function getTaskDataForAIAnalysisSum(projectId: number) {
+  const currentDate = new Date();
+
+  const rawTasks = await prisma.task.findMany({
+    where: {
+      projectId: projectId,
+    },
+    select: {
+      id: true,
+      taskName: true,
+      status: true,
+      progressPercent: true,
+      budget: true,
+      estimatedBudget: true,
+      startPlanned: true,
+      finishPlanned: true,
+      aiRisks: true,
+      phase: true,
+
+      actualCosts: { 
+        select: {
+          category: true,
+          amount: true,
+          description: true,
+        },
+      },
+
+      details: {
+        where: { status: false },
+        select: {
+          detailName: true,
+          weightPercent: true,
+          progressPercent: true,
+          finishPlanned: true,
+        },
+      },
+    },
+    orderBy: { finishPlanned: "asc" },
+  });
+
+  const formattedTasks = rawTasks.map((task) => {
+    
+    const formattedActualCosts = task.actualCosts.map((cost) => ({
+      category: cost.category,
+      amount: cost.amount ? Number(cost.amount) : 0,
+      description: cost.description,
+    }));
+
+    return {
+      id: task.id,
+      taskName: task.taskName,
+      status: task.status || "TODO",
+      progressPercent: task.progressPercent,
+      
+      budget: task.budget ? Number(task.budget) : 0,
+      estimatedBudget: task.estimatedBudget ? Number(task.estimatedBudget) : 0,
+      
+      startPlanned: task.startPlanned,
+      finishPlanned: task.finishPlanned,
+      aiRisks: task.aiRisks,
+      phase: task.phase,
+
+      actualCosts: formattedActualCosts,
+      details: task.details,
+
+      // ทำซ้ำชื่อนี้ไว้เผื่อ Type ในหน้า UI ของคุณเรียกใช้ชื่อนี้ครับ
+      taskActualCosts: formattedActualCosts,
+      taskDetails: task.details,
+    };
+  });
+
+  return {
+    referenceDate: currentDate.toISOString(),
+    tasks: formattedTasks,
+  };
+}

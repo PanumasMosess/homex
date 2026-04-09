@@ -821,3 +821,52 @@ export async function analyzeProjectActions(
     return []; // ถ้าพังให้คืนค่า Array ว่าง หน้าเว็บจะได้ไม่พัง
   }
 }
+
+export async function analyzeProjectOverview(
+  tasks: ActionRequiredTask[],
+  referenceDate: string,
+) {
+  const prompt = `
+    คุณคือ Project Director ผู้เชี่ยวชาญด้านบริหารงานก่อสร้าง
+    วันนี้คือวันที่: ${referenceDate}
+    
+    จงวิเคราะห์ข้อมูลงานทั้งหมด (Tasks) ของโครงการนี้ และสรุป "ภาพรวมโครงการ (Executive Summary)"
+    โดยวิเคราะห์จาก:
+    1. ความคืบหน้าโดยรวม (งานที่เสร็จแล้ว vs งานที่ล่าช้า vs งานที่กำลังทำ)
+    2. สถานะงบประมาณ (เทียบ budget ที่ตั้งไว้ กับ estimatedBudget หรือ actualCosts)
+    3. ความเสี่ยงหลักของโครงการในภาพรวม (พิจารณาจาก aiRisks และ status)
+
+    ข้อมูลโครงการ (JSON):
+    ${JSON.stringify(tasks)}
+
+    ให้ตอบกลับเป็น JSON Format โครงสร้างตามนี้เท่านั้น (ห้ามมี Text อื่นปน):
+    {
+      "healthStatus": "GOOD" | "WARNING" | "CRITICAL",
+      "executiveSummary": "string (สรุปภาพรวมสั้นๆ กระชับ เข้าใจง่าย 3-4 บรรทัด)",
+      "budgetAnalysis": "string (วิเคราะห์สถานะการเงิน เช่น เป็นไปตามแผน, มีแนวโน้มบานปลายเพราะอะไร)",
+      "topRisks": [
+        "string (ความเสี่ยงหลักข้อที่ 1)",
+        "string (ความเสี่ยงหลักข้อที่ 2)"
+      ],
+      "recommendation": "string (คำแนะนำสำหรับผู้บริหารว่าควรโฟกัสเรื่องอะไรเป็นพิเศษในสัปดาห์นี้)"
+    }
+  `;
+
+  try {
+    const response = await ai_gemini.models.generateContent({
+      model: model_version,
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+      },
+    });
+
+    if (response.text) {
+      return JSON.parse(response.text);
+    }
+    return null;
+  } catch (error) {
+    console.error("❌ AI Overview Analysis Error:", error);
+    return null;
+  }
+}
