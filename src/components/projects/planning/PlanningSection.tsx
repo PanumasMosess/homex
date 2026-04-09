@@ -51,27 +51,33 @@ export default function PlanningSection({
         <div className="flex bg-default-100 dark:bg-zinc-800 rounded-xl p-1 text-sm">
           <button
             onClick={() => setView("gantt")}
-            className={`px-3 py-1 rounded-lg transition ${view === "gantt"
-                ? "bg-primary text-white"
-                : "text-default-500 hover:bg-default-200 dark:hover:bg-zinc-700"
-              }`}
+            className={`px-3 py-1 rounded-lg ${view === "gantt" ? "bg-primary text-white" : ""}`}
           >
             Gantt
           </button>
+          {/* <button
+            onClick={() => setView("gantt")}
+            className={`px-3 py-1 rounded-lg transition ${view === "gantt"
+              ? "bg-primary text-white"
+              : "text-default-500 hover:bg-default-200 dark:hover:bg-zinc-700"
+              }`}
+          >
+            Gantt
+          </button> */}
 
           {/* <button
             onClick={() => setView("calendar")}
             className={`px-3 py-1 rounded-lg ${view === "calendar" ? "bg-primary text-white" : ""}`}
           >
             Calendar
-          </button>
+          </button> */}
 
           <button
             onClick={() => setView("workload")}
             className={`px-3 py-1 rounded-lg ${view === "workload" ? "bg-primary text-white" : ""}`}
           >
             Workload
-          </button> */}
+          </button>
         </div>
       </div>
 
@@ -83,8 +89,8 @@ export default function PlanningSection({
       ) : (
         <>
           {view === "gantt" && <GanttView data={data} projectId={projectId} projectStart={projectStart} />}
-          {view === "calendar" && <CalendarView />}
-          {view === "workload" && <WorkloadView />}
+          {view === "calendar" && <CalendarView data={data} projectStart={projectStart} />}
+          {view === "workload" && <WorkloadView data={data} projectStart={projectStart} />}
         </>
       )}
     </div>
