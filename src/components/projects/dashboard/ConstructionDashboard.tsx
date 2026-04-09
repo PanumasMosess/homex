@@ -38,15 +38,22 @@ export default function ConstructionDashboard({
   });
   const [planProgress, setPlanProgress] = useState(0);
   const [aiActions, setAiActions] = useState<any[]>([]);
-
+  // 🌟 1. แยก mounted ออกมาเดี่ยวๆ เพื่อให้ UI โครงร่างแสดงทันทีที่เปิดเพจ
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // 🌟 2. ดึงข้อมูลเมื่อ projectId เปลี่ยน
+  useEffect(() => {
+    if (!projectId) return;
+
     const fetchData = async () => {
       try {
+
         setIsLoading(true);
         setIsAnalyzing(true);
-        setMounted(true);
+        setIsAnalyzingSummary(true);
 
-        // 1. ดึงข้อมูลพื้นฐาน
         const [statusData, planData, actionData, summaryData] =
           await Promise.all([
             getTaskStatusCountsBoard(projectId),
@@ -62,37 +69,42 @@ export default function ConstructionDashboard({
         const aiPromises = [];
 
         if (actionData?.tasks?.length > 0) {
-          const analysisResult = await analyzeProjectActions(
+          const actionPromise = analyzeProjectActions(
             actionData.tasks,
-            actionData.projectInfo, 
+            actionData.projectInfo,
             actionData.referenceDate,
-          );
+          )
+            .then((res) => setAiActions(res))
+            .catch((err) => console.error(err))
+            .finally(() => setIsAnalyzing(false)); 
 
-          setAiActions(analysisResult);
-
-          setIsAnalyzing(false);
+          aiPromises.push(actionPromise);
         } else {
           setAiActions([]);
           setIsAnalyzing(false);
         }
 
         if (summaryData?.tasks?.length > 0) {
-          aiPromises.push(
-            analyzeProjectOverview(
-              summaryData.tasks,
-              summaryData.projectInfo,
-              summaryData.referenceDate,
-            )
-              .then((res) => setAiSummary(res))
-              .finally(() => setIsAnalyzingSummary(false)),
-          );
+          const summaryPromise = analyzeProjectOverview(
+            summaryData.tasks,
+            summaryData.projectInfo,
+            summaryData.referenceDate,
+          )
+            .then((res) => setAiSummary(res))
+            .catch((err) => console.error(err))
+            .finally(() => setIsAnalyzingSummary(false)); 
+
+          aiPromises.push(summaryPromise);
         } else {
           setAiSummary(null);
           setIsAnalyzingSummary(false);
         }
+
+        await Promise.all(aiPromises);
       } catch (error) {
         console.error("❌ Fetch Data Error:", error);
-        setIsAnalyzing(false); // ปิดถ้า Error เพื่อไม่ให้หมุนค้าง
+        setIsAnalyzing(false);
+        setIsAnalyzingSummary(false);
       } finally {
         setIsLoading(false);
       }
@@ -101,7 +113,7 @@ export default function ConstructionDashboard({
     fetchData();
   }, [projectId]);
 
-  // ป้องกัน Server/Client mismatch แต่ไม่แสดง Loading บังทั้งจอ
+  // ป้องกัน Server/Client mismatch
   if (!mounted) return null;
 
   const currentDateTime = new Intl.DateTimeFormat("th-TH", {
