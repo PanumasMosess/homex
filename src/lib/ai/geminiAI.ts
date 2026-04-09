@@ -769,19 +769,30 @@ export async function askGeminiToCountAction(imageUrl: string) {
 
 export async function analyzeProjectActions(
   tasks: ActionRequiredTask[],
+  projectInfo: {
+    name: string;
+    status: string;
+    overallProgress: number;
+    totalBudget: number;
+  },
   referenceDate: string,
 ) {
   const prompt = `
-    คุณคือระบบ AI อัจฉริยะสำหรับตรวจสอบหน้างานก่อสร้าง
+    คุณคือระบบ AI อัจฉริยะสำหรับตรวจสอบและบริหารความเสี่ยงหน้างานก่อสร้าง
     วันนี้คือวันที่: ${referenceDate}
     
-    จงวิเคราะห์ข้อมูล Tasks ต่อไปนี้และดึง "สิ่งที่ต้องจัดการด่วน (Action Required)" ออกมา
-    โดยเน้นที่:
-    1. งานที่ล่าช้า (Delayed): ดูจาก finishPlanned เทียบกับ referenceDate
-    2. งบบานปลาย (Budget): ดูจาก budget เทียบกับ estimatedBudget (ถ้างบ budget มากกว่า estimatedBudget และ estimatedBudget > 0)
-    3. ความเสี่ยงจากหน้างาน (Risks): วิเคราะห์จากฟิลด์ aiRisks (ถ้ามีข้อมูลให้แจ้งเตือน)
+    ข้อมูลพื้นฐานของโครงการ (ภาพรวม):
+    - ชื่อโครงการ: ${projectInfo.name}
+    - ความคืบหน้าโดยรวม: ${projectInfo.overallProgress}%
+    - งบประมาณรวมทั้งโครงการ: ${projectInfo.totalBudget.toLocaleString()} บาท
 
-    ข้อมูลโครงการ (JSON):
+    จงวิเคราะห์ข้อมูล Tasks ย่อยต่อไปนี้ และสกัด "สิ่งที่ต้องจัดการด่วน (Action Required)" ออกมา
+    โดยพิจารณาความสำคัญ (Priority) เทียบกับภาพรวมของโครงการด้วย:
+    1. งานที่ล่าช้า (Delayed): ดูจาก finishPlanned เทียบกับ referenceDate (ถ้างบรวมหรือเวลาโดยรวมตึงเครียด ให้ปรับ Priority เป็น HIGH)
+    2. งบบานปลาย (Budget): ดูจาก budget (งบที่ตั้งไว้ให้ task) เทียบกับ estimatedBudget หรือ actualCosts ว่าเกินเพดานหรือไม่
+    3. ความเสี่ยงจากหน้างาน (Risks): วิเคราะห์จากฟิลด์ aiRisks อย่างละเอียด
+
+    ข้อมูลงานย่อย (Tasks JSON):
     ${JSON.stringify(tasks)}
 
     ให้ตอบกลับเป็น JSON Array โครงสร้างตามนี้เท่านั้น (ห้ามมี Markdown หรือ Text อื่นปน):
@@ -789,8 +800,8 @@ export async function analyzeProjectActions(
       {
         "id": "string (เช่น delay-12 หรือ ai-26)",
         "type": "DELAY" | "BUDGET" | "AI_DETECTION",
-        "title": "string (ชื่อการแจ้งเตือนสั้นๆ)",
-        "description": "string (รายละเอียดและผลกระทบ)",
+        "title": "string (ชื่อการแจ้งเตือนสั้นๆ กระชับ)",
+        "description": "string (รายละเอียด ผลกระทบ และสิ่งที่ควรทำ)",
         "tag": "string (เช่น หมวด: Structure หรือ AI Insight)",
         "time": "string (จำลองเวลาแจ้งเตือน เช่น '2 ชม. ที่แล้ว' หรือ '10:30 น.')",
         "priority": "HIGH" | "MEDIUM",
@@ -800,17 +811,14 @@ export async function analyzeProjectActions(
   `;
 
   try {
-    // 2. เรียกใช้ AI ด้วย SDK ตัวใหม่
     const response = await ai_gemini.models.generateContent({
-      model: model_version,
+      model: model_version, 
       contents: prompt,
       config: {
-        // บังคับให้ AI ตอบกลับมาเป็น JSON Format 100%
         responseMimeType: "application/json",
       },
     });
 
-    // 3. แปลงข้อความที่ได้กลับมาเป็น JavaScript Object (Array)
     if (response.text) {
       return JSON.parse(response.text);
     }
@@ -823,38 +831,50 @@ export async function analyzeProjectActions(
 }
 
 export async function analyzeProjectOverview(
-  tasks: ActionRequiredTask[],
+  tasks: any[],
+  projectInfo: {
+    name: string;
+    status: string;
+    overallProgress: number;
+    totalBudget: number;
+  },
   referenceDate: string,
 ) {
   const prompt = `
     คุณคือ Project Director ผู้เชี่ยวชาญด้านบริหารงานก่อสร้าง
     วันนี้คือวันที่: ${referenceDate}
     
+    ข้อมูลพื้นฐานของโครงการ:
+    - ชื่อโครงการ: ${projectInfo.name}
+    - สถานะโครงการ: ${projectInfo.status}
+    - ความคืบหน้าโดยรวม: ${projectInfo.overallProgress}%
+    - งบประมาณรวมทั้งโครงการ: ${projectInfo.totalBudget.toLocaleString()} บาท
+
     จงวิเคราะห์ข้อมูลงานทั้งหมด (Tasks) ของโครงการนี้ และสรุป "ภาพรวมโครงการ (Executive Summary)"
     โดยวิเคราะห์จาก:
-    1. ความคืบหน้าโดยรวม (งานที่เสร็จแล้ว vs งานที่ล่าช้า vs งานที่กำลังทำ)
-    2. สถานะงบประมาณ (เทียบ budget ที่ตั้งไว้ กับ estimatedBudget หรือ actualCosts)
-    3. ความเสี่ยงหลักของโครงการในภาพรวม (พิจารณาจาก aiRisks และ status)
+    1. ความคืบหน้าโดยรวม: พิจารณาจากความคืบหน้ารวมที่ ${projectInfo.overallProgress}% ประกอบกับงานย่อย (งานที่เสร็จแล้ว vs งานที่ล่าช้า vs งานที่กำลังทำ)
+    2. สถานะงบประมาณ: เอางบประมาณรวม ${projectInfo.totalBudget.toLocaleString()} บาท เป็นเพดานหลัก เทียบกับ actualCosts และ estimatedBudget ในแต่ละ Task ว่าใช้เงินไปสมเหตุสมผลไหม และมีแนวโน้มจะบานปลายหรือไม่
+    3. ความเสี่ยงหลัก: วิเคราะห์เจาะลึกจาก aiRisks และ status ของงานย่อยที่อาจส่งผลกระทบต่อภาพรวม
 
-    ข้อมูลโครงการ (JSON):
+    ข้อมูลงานย่อย (Tasks JSON):
     ${JSON.stringify(tasks)}
 
     ให้ตอบกลับเป็น JSON Format โครงสร้างตามนี้เท่านั้น (ห้ามมี Text อื่นปน):
     {
       "healthStatus": "GOOD" | "WARNING" | "CRITICAL",
       "executiveSummary": "string (สรุปภาพรวมสั้นๆ กระชับ เข้าใจง่าย 3-4 บรรทัด)",
-      "budgetAnalysis": "string (วิเคราะห์สถานะการเงิน เช่น เป็นไปตามแผน, มีแนวโน้มบานปลายเพราะอะไร)",
+      "budgetAnalysis": "string (วิเคราะห์สถานะการเงินในภาพรวมเทียบกับงบหลัก เช่น เป็นไปตามแผน, งบเหลือน้อย, หรือมีแนวโน้มบานปลายเพราะงานส่วนไหน)",
       "topRisks": [
         "string (ความเสี่ยงหลักข้อที่ 1)",
         "string (ความเสี่ยงหลักข้อที่ 2)"
       ],
-      "recommendation": "string (คำแนะนำสำหรับผู้บริหารว่าควรโฟกัสเรื่องอะไรเป็นพิเศษในสัปดาห์นี้)"
+      "recommendation": "string (คำแนะนำเชิงรุกสำหรับผู้บริหาร ว่าควรเข้าไปโฟกัสหรือแก้ปัญหาจุดไหนเป็นพิเศษในสัปดาห์นี้)"
     }
   `;
 
   try {
     const response = await ai_gemini.models.generateContent({
-      model: model_version,
+      model: model_version, // ตรวจสอบตัวแปรให้ตรงกับที่คุณประกาศไว้
       contents: prompt,
       config: {
         responseMimeType: "application/json",

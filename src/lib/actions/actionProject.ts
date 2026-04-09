@@ -898,47 +898,56 @@ export async function submitTaskV2(
 
 export async function getTaskDataForAIAnalysis(projectId: number) {
   const currentDate = new Date();
+  const [project, rawTasks] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        projectName: true,
+        status: true,
+        progressPercent: true,
+        budget: true, // ดึงงบรวม
+      },
+    }),
+    prisma.task.findMany({
+      where: {
+        projectId: projectId,
+        status: { notIn: ["DONE", "DELETED"] }, 
+      },
+      select: {
+        id: true,
+        taskName: true,
+        status: true,
+        progressPercent: true,
+        budget: true,
+        estimatedBudget: true,
+        startPlanned: true,
+        finishPlanned: true,
+        aiRisks: true,
+        phase: true,
 
-  const rawTasks = await prisma.task.findMany({
-    where: {
-      projectId: projectId,
-      status: { notIn: ["DONE", "DELETED"] },
-    },
-    select: {
-      id: true,
-      taskName: true,
-      status: true,
-      progressPercent: true,
-      budget: true,
-      estimatedBudget: true,
-      startPlanned: true,
-      finishPlanned: true,
-      aiRisks: true,
-      phase: true,
+        actualCosts: {
+          select: {
+            category: true,
+            amount: true,
+            description: true,
+          },
+        },
 
-      actualCosts: { 
-        select: {
-          category: true,
-          amount: true,
-          description: true,
+        details: {
+          where: { status: false },
+          select: {
+            detailName: true,
+            weightPercent: true,
+            progressPercent: true,
+            finishPlanned: true,
+          },
         },
       },
-
-      details: {
-        where: { status: false },
-        select: {
-          detailName: true,
-          weightPercent: true,
-          progressPercent: true,
-          finishPlanned: true,
-        },
-      },
-    },
-    orderBy: { finishPlanned: "asc" },
-  });
+      orderBy: { finishPlanned: "asc" },
+    }),
+  ]);
 
   const formattedTasks = rawTasks.map((task) => {
-    
     const formattedActualCosts = task.actualCosts.map((cost) => ({
       category: cost.category,
       amount: cost.amount ? Number(cost.amount) : 0,
@@ -950,10 +959,10 @@ export async function getTaskDataForAIAnalysis(projectId: number) {
       taskName: task.taskName,
       status: task.status || "TODO",
       progressPercent: task.progressPercent,
-      
+
       budget: task.budget ? Number(task.budget) : 0,
       estimatedBudget: task.estimatedBudget ? Number(task.estimatedBudget) : 0,
-      
+
       startPlanned: task.startPlanned,
       finishPlanned: task.finishPlanned,
       aiRisks: task.aiRisks,
@@ -962,7 +971,6 @@ export async function getTaskDataForAIAnalysis(projectId: number) {
       actualCosts: formattedActualCosts,
       details: task.details,
 
-      // ทำซ้ำชื่อนี้ไว้เผื่อ Type ในหน้า UI ของคุณเรียกใช้ชื่อนี้ครับ
       taskActualCosts: formattedActualCosts,
       taskDetails: task.details,
     };
@@ -970,6 +978,12 @@ export async function getTaskDataForAIAnalysis(projectId: number) {
 
   return {
     referenceDate: currentDate.toISOString(),
+    projectInfo: {
+      name: project?.projectName || "Unknown Project",
+      status: project?.status || "UNKNOWN",
+      overallProgress: project?.progressPercent || 0,
+      totalBudget: project?.budget ? Number(project.budget) : 0,
+    },
     tasks: formattedTasks,
   };
 }
@@ -977,45 +991,55 @@ export async function getTaskDataForAIAnalysis(projectId: number) {
 export async function getTaskDataForAIAnalysisSum(projectId: number) {
   const currentDate = new Date();
 
-  const rawTasks = await prisma.task.findMany({
-    where: {
-      projectId: projectId,
-    },
-    select: {
-      id: true,
-      taskName: true,
-      status: true,
-      progressPercent: true,
-      budget: true,
-      estimatedBudget: true,
-      startPlanned: true,
-      finishPlanned: true,
-      aiRisks: true,
-      phase: true,
+  const [project, rawTasks] = await Promise.all([
+    prisma.project.findUnique({
+      where: { id: projectId },
+      select: {
+        projectName: true,
+        status: true,
+        progressPercent: true,
+        budget: true,
+      },
+    }),
+    prisma.task.findMany({
+      where: {
+        projectId: projectId,
+      },
+      select: {
+        id: true,
+        taskName: true,
+        status: true,
+        progressPercent: true,
+        budget: true,
+        estimatedBudget: true,
+        startPlanned: true,
+        finishPlanned: true,
+        aiRisks: true,
+        phase: true,
 
-      actualCosts: { 
-        select: {
-          category: true,
-          amount: true,
-          description: true,
+        actualCosts: {
+          select: {
+            category: true,
+            amount: true,
+            description: true,
+          },
+        },
+
+        details: {
+          where: { status: false },
+          select: {
+            detailName: true,
+            weightPercent: true,
+            progressPercent: true,
+            finishPlanned: true,
+          },
         },
       },
-
-      details: {
-        where: { status: false },
-        select: {
-          detailName: true,
-          weightPercent: true,
-          progressPercent: true,
-          finishPlanned: true,
-        },
-      },
-    },
-    orderBy: { finishPlanned: "asc" },
-  });
+      orderBy: { finishPlanned: "asc" },
+    }),
+  ]);
 
   const formattedTasks = rawTasks.map((task) => {
-    
     const formattedActualCosts = task.actualCosts.map((cost) => ({
       category: cost.category,
       amount: cost.amount ? Number(cost.amount) : 0,
@@ -1027,10 +1051,10 @@ export async function getTaskDataForAIAnalysisSum(projectId: number) {
       taskName: task.taskName,
       status: task.status || "TODO",
       progressPercent: task.progressPercent,
-      
+
       budget: task.budget ? Number(task.budget) : 0,
       estimatedBudget: task.estimatedBudget ? Number(task.estimatedBudget) : 0,
-      
+
       startPlanned: task.startPlanned,
       finishPlanned: task.finishPlanned,
       aiRisks: task.aiRisks,
@@ -1039,7 +1063,6 @@ export async function getTaskDataForAIAnalysisSum(projectId: number) {
       actualCosts: formattedActualCosts,
       details: task.details,
 
-      // ทำซ้ำชื่อนี้ไว้เผื่อ Type ในหน้า UI ของคุณเรียกใช้ชื่อนี้ครับ
       taskActualCosts: formattedActualCosts,
       taskDetails: task.details,
     };
@@ -1047,6 +1070,12 @@ export async function getTaskDataForAIAnalysisSum(projectId: number) {
 
   return {
     referenceDate: currentDate.toISOString(),
+    projectInfo: {
+      name: project?.projectName || "Unknown Project",
+      status: project?.status || "UNKNOWN",
+      overallProgress: project?.progressPercent || 0,
+      totalBudget: project?.budget ? Number(project.budget) : 0, // 🌟 งบโปรเจกต์รวม
+    },
     tasks: formattedTasks,
   };
 }
