@@ -28,9 +28,7 @@ export const calculateTimeline = async (tasks: any[], projectStart: string) => {
 
         if (end > start) start = end;
       });
-    }
-
-    else {
+    } else {
       const samePhaseTasks = sorted.filter(
         (t) => t.phaseAi === task.phaseAi && t.orderAi < task.orderAi,
       );
@@ -65,6 +63,11 @@ export async function getPlanningData(projectId: number) {
       },
       include: {
         dependencies: true,
+        taskContractors: {
+          include: {
+            contractor: true,
+          },
+        },
       },
     });
 
@@ -103,6 +106,7 @@ export async function getPlanningData(projectId: number) {
         phase: t.phaseAi || "ไม่มี Phase",
         order: t.orderAi || 0,
         startDate: start,
+        taskContractors: t.taskContractors,
       };
     });
     mapped.sort(
