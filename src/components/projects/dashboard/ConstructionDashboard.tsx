@@ -64,6 +64,7 @@ export default function ConstructionDashboard({
         if (actionData?.tasks?.length > 0) {
           const analysisResult = await analyzeProjectActions(
             actionData.tasks,
+            actionData.projectInfo, 
             actionData.referenceDate,
           );
 
@@ -77,7 +78,11 @@ export default function ConstructionDashboard({
 
         if (summaryData?.tasks?.length > 0) {
           aiPromises.push(
-            analyzeProjectOverview(summaryData.tasks, summaryData.referenceDate)
+            analyzeProjectOverview(
+              summaryData.tasks,
+              summaryData.projectInfo,
+              summaryData.referenceDate,
+            )
               .then((res) => setAiSummary(res))
               .finally(() => setIsAnalyzingSummary(false)),
           );
