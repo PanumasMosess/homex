@@ -65,12 +65,12 @@ export default function PlanningSection({
             Gantt
           </button> */}
 
-          {/* <button
+          <button
             onClick={() => setView("calendar")}
             className={`px-3 py-1 rounded-lg ${view === "calendar" ? "bg-primary text-white" : ""}`}
           >
             Calendar
-          </button> */}
+          </button>
 
           <button
             onClick={() => setView("workload")}
