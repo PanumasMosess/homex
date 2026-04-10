@@ -15,14 +15,16 @@ const LiveCameraCard = ({
   camera,
   onEdit,
   onDelete,
+  hideAiButton,
 }: {
   camera: any;
   onEdit?: (cam: any) => void;
   onDelete?: (cam: any) => void;
+  hideAiButton?: boolean;
 }) => {
   const [liveToken, setLiveToken] = useState("");
   const [liveUrl, setLiveUrl] = useState("");
-  const [isModalOpen, setIsModalOpen] = useState(false); // 🌟 คุมสถานะขยายจอจากตรงนี้
+  const [isModalOpen, setIsModalOpen] = useState(false); 
   const [liveAreaDomain, setLiveAreaDomain] = useState(
     "https://open.ezviz.com",
   );
@@ -137,7 +139,7 @@ const LiveCameraCard = ({
           </div>
 
           <div className="flex items-center gap-1.5">
-            {camera.status === "online" && liveToken && (
+            {!hideAiButton && camera.status === "online" && liveToken && (
               <Button
                 size="sm"
                 variant={isAiEnabled ? "solid" : "flat"}
