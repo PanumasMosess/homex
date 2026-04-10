@@ -246,28 +246,49 @@ const ProjectDetail = ({
     return filteredTasks.slice(0, visibleCount);
   }, [filteredTasks, visibleCount]);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => {
-            if (prev >= filteredTasks.length) return prev;
-            return prev + 10;
-          });
-        }
-      },
-      { threshold: 0.1 },
-    );
+  // useEffect(() => {
+  //   const observer = new IntersectionObserver(
+  //     (entries) => {
+  //       if (entries[0].isIntersecting) {
+  //         setVisibleCount((prev) => {
+  //           if (prev >= filteredTasks.length) return prev;
+  //           return prev + 10;
+  //         });
+  //       }
+  //     },
+  //     { threshold: 0.1 },
+  //   );
 
-    const currentTarget = observerTarget.current;
-    if (currentTarget) {
-      observer.observe(currentTarget);
+  //   const currentTarget = observerTarget.current;
+  //   if (currentTarget) {
+  //     observer.observe(currentTarget);
+  //   }
+
+  //   return () => {
+  //     if (currentTarget) observer.unobserve(currentTarget);
+  //   };
+  // }, [filteredTasks.length, visibleCount]);
+
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useCallback((node: HTMLDivElement | null) => {
+    if (observer.current) observer.current.disconnect();
+
+    if (node) {
+      observer.current = new IntersectionObserver(
+        (entries) => {
+          if (entries[0].isIntersecting) {
+            setVisibleCount((prev) => {
+              // โหลดเพิ่มทีละ 10
+              return prev + 10;
+            });
+          }
+        },
+        { threshold: 0.1 },
+      );
+
+      observer.current.observe(node);
     }
-
-    return () => {
-      if (currentTarget) observer.unobserve(currentTarget);
-    };
-  }, [filteredTasks.length, visibleCount]);
+  }, []);
 
   const projectProgress = useMemo(() => {
     if (tasks.length === 0) return 0;
@@ -1092,7 +1113,7 @@ const ProjectDetail = ({
             {view === "card" &&
               visibleCount < filteredTasks.length &&
               filteredTasks.length > 0 && (
-                <div ref={observerTarget} className="flex justify-center py-10">
+                <div ref={lastElementRef} className="flex justify-center py-10">
                   <Spinner color="primary" />
                 </div>
               )}
