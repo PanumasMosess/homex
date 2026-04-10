@@ -250,20 +250,24 @@ const ProjectDetail = ({
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries[0].isIntersecting) {
-          setVisibleCount((prev) => prev + 10);
+          setVisibleCount((prev) => {
+            if (prev >= filteredTasks.length) return prev;
+            return prev + 10;
+          });
         }
       },
       { threshold: 0.1 },
     );
 
-    if (observerTarget.current) {
-      observer.observe(observerTarget.current);
+    const currentTarget = observerTarget.current;
+    if (currentTarget) {
+      observer.observe(currentTarget);
     }
 
     return () => {
-      if (observerTarget.current) observer.unobserve(observerTarget.current);
+      if (currentTarget) observer.unobserve(currentTarget);
     };
-  }, [observerTarget, displayedTasks.length]);
+  }, [filteredTasks.length, visibleCount]);
 
   const projectProgress = useMemo(() => {
     if (tasks.length === 0) return 0;
@@ -1085,7 +1089,8 @@ const ProjectDetail = ({
                 </>
               )}
             </div>
-            {visibleCount < filteredTasks.length &&
+            {view === "card" &&
+              visibleCount < filteredTasks.length &&
               filteredTasks.length > 0 && (
                 <div ref={observerTarget} className="flex justify-center py-10">
                   <Spinner color="primary" />
