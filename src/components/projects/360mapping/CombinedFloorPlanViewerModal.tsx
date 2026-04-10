@@ -220,16 +220,18 @@ export default function CombinedFloorPlanViewerModal({
                             />
                           </button>
                         </Tooltip>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeletePoint(point);
-                            if (isSelected) setSelectedMedia(null);
-                          }}
-                          className="absolute -top-2 -right-2 bg-danger text-white p-1 rounded-full opacity-0 group-hover/pin:opacity-100 transition-opacity z-40"
-                        >
-                          <CloseIcon size={10} strokeWidth={3} />
-                        </button>
+                        {handleDeletePoint && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeletePoint(point);
+                              if (isSelected) setSelectedMedia(null);
+                            }}
+                            className="absolute -top-2 -right-2 bg-danger text-white p-1 rounded-full opacity-0 group-hover/pin:opacity-100 transition-opacity z-40"
+                          >
+                            <CloseIcon size={10} strokeWidth={3} />
+                          </button>
+                        )}
                         {isSelected && (
                           <div className="absolute w-10 h-10 bg-warning/40 rounded-full animate-ping opacity-75 -z-10"></div>
                         )}
@@ -371,14 +373,16 @@ export default function CombinedFloorPlanViewerModal({
                           </p>
                         )}
                       </div>
-                      <Button
-                        color="primary"
-                        className="w-full font-bold shadow-lg"
-                        startContent={<PlusCircle size={16} />}
-                        onPress={() => handleAddNewHistory(selectedMedia)}
-                      >
-                        อัปโหลดรูปปัจจุบัน
-                      </Button>
+                      {handleAddNewHistory && (
+                        <Button
+                          color="primary"
+                          className="w-full font-bold shadow-lg"
+                          startContent={<PlusCircle size={16} />}
+                          onPress={() => handleAddNewHistory(selectedMedia)}
+                        >
+                          อัปโหลดรูปปัจจุบัน
+                        </Button>
+                      )}
                     </div>
                   </>
                 ) : (

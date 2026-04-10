@@ -928,3 +928,8 @@ export interface ExecutiveSummaryProps {
   isAnalyzing: boolean;
   summaryData: AIExecutiveSummaryData | null;
 }
+
+export interface ReadOnlyMapping360Props {
+  projectId: number;
+  organizationId: number;
+}

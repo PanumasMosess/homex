@@ -2,7 +2,7 @@
 
 import StatusBoard from "@/components/dashboard/StatusBoard";
 import { ConstructionDashboardProp } from "@/lib/type";
-import { TrendingDown, ListTodo, Video } from "lucide-react";
+import { TrendingDown, Video } from "lucide-react";
 import RiskScoreDashboard from "./RiskScoreDashboard";
 import { useEffect, useState } from "react";
 import {
@@ -17,9 +17,11 @@ import {
 } from "@/lib/ai/geminiAI";
 import ActionRequiredList from "./ActionRequiredList";
 import ExecutiveSummary from "./ExecutiveSummary";
+import ReadOnlyMapping360 from "./ReadOnlyMapping360";
 
 export default function ConstructionDashboard({
   projectId,
+  organizationId,
   projectInfo,
   projectProgress,
   expenses = 0,
@@ -49,7 +51,6 @@ export default function ConstructionDashboard({
 
     const fetchData = async () => {
       try {
-
         setIsLoading(true);
         setIsAnalyzing(true);
         setIsAnalyzingSummary(true);
@@ -76,7 +77,7 @@ export default function ConstructionDashboard({
           )
             .then((res) => setAiActions(res))
             .catch((err) => console.error(err))
-            .finally(() => setIsAnalyzing(false)); 
+            .finally(() => setIsAnalyzing(false));
 
           aiPromises.push(actionPromise);
         } else {
@@ -92,7 +93,7 @@ export default function ConstructionDashboard({
           )
             .then((res) => setAiSummary(res))
             .catch((err) => console.error(err))
-            .finally(() => setIsAnalyzingSummary(false)); 
+            .finally(() => setIsAnalyzingSummary(false));
 
           aiPromises.push(summaryPromise);
         } else {
@@ -252,12 +253,17 @@ export default function ConstructionDashboard({
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
-          <h2 className="text-base font-semibold flex items-center gap-2 mb-5 text-purple-400">
-            <Video className="w-4 h-4" /> อัปเดตหน้างานล่าสุด
+        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5 flex flex-col h-[400px]">
+          <h2 className="text-base font-semibold flex items-center gap-2 mb-4 text-purple-400">
+            <Video className="w-4 h-4" /> อัปเดตหน้างานล่าสุด (360° View)
           </h2>
-          <div className="h-32 border border-dashed border-zinc-800 rounded-lg flex items-center justify-center text-xs text-zinc-700">
-            NO RECENT FEED
+
+          {/* 🌟 เรียกใช้ Component Read-Only ตรงนี้ 🌟 */}
+          <div className="flex-1 overflow-hidden">
+            <ReadOnlyMapping360
+              projectId={Number(projectId)}
+              organizationId={Number(organizationId || 0)}
+            />
           </div>
         </div>
 
