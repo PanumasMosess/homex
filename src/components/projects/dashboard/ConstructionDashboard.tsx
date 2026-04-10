@@ -18,6 +18,7 @@ import {
 import ActionRequiredList from "./ActionRequiredList";
 import ExecutiveSummary from "./ExecutiveSummary";
 import ReadOnlyMapping360 from "./ReadOnlyMapping360";
+import ReadOnlyLiveView from "./ReadOnlyLiveView";
 
 export default function ConstructionDashboard({
   projectId,
@@ -128,7 +129,6 @@ export default function ConstructionDashboard({
 
   return (
     <div className="min-h-screen bg-[#0e1116] text-zinc-100 p-6 font-sans">
-      {/* Header */}
       <div className="flex justify-between items-start mb-6">
         <div>
           <div className="flex items-center gap-3">
@@ -147,9 +147,7 @@ export default function ConstructionDashboard({
         </div>
       </div>
 
-      {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        {/* Progress Card */}
         <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-sm text-zinc-400">ความคืบหน้าโครงการ</h3>
@@ -174,12 +172,10 @@ export default function ConstructionDashboard({
           </div>
         </div>
 
-        {/* Budget Card */}
         <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
             <h3 className="text-sm text-zinc-400">งบประมาณที่ใช้ไป</h3>
             <div className="w-4 h-4 bg-orange-500 rounded-sm"></div>{" "}
-            {/* กลับมาใช้สี่เหลี่ยมสีส้มเหมือนเดิม */}
           </div>
           <div>
             <div className="flex items-baseline gap-2 mb-2">
@@ -188,8 +184,6 @@ export default function ConstructionDashboard({
               </span>
               <span className="text-sm text-zinc-400">บาท.</span>
             </div>
-
-            {/* เพิ่มบรรทัดบอกงบรวมและ % ที่หายไปกลับมา */}
             <p className="text-[10px] text-zinc-500 mb-2">
               จากงบรวม {projectInfo?.budget?.toLocaleString() ?? 0} บาท
               (ใช้ไปแล้ว{" "}
@@ -198,7 +192,6 @@ export default function ConstructionDashboard({
                 : 0}
               %)
             </p>
-
             <div className="w-full bg-zinc-800 rounded-full h-1.5 flex overflow-hidden">
               <div
                 className="bg-orange-500 h-1.5 transition-all duration-1000"
@@ -217,7 +210,6 @@ export default function ConstructionDashboard({
           </div>
         </div>
 
-        {/* StatusBoard มี isLoading ในตัวอยู่แล้ว */}
         <StatusBoard
           todo={counts.todo}
           progress={counts.progress}
@@ -226,7 +218,6 @@ export default function ConstructionDashboard({
           isLoading={isLoading}
         />
 
-        {/* RiskScoreDashboard จะคำนวณใหม่เมื่อ isLoading จบ */}
         <RiskScoreDashboard
           actualProgress={projectProgress ?? 0}
           plannedProgress={planProgress ?? 0}
@@ -257,8 +248,6 @@ export default function ConstructionDashboard({
           <h2 className="text-base font-semibold flex items-center gap-2 mb-4 text-purple-400">
             <Video className="w-4 h-4" /> อัปเดตหน้างานล่าสุด (360° View)
           </h2>
-
-          {/* 🌟 เรียกใช้ Component Read-Only ตรงนี้ 🌟 */}
           <div className="flex-1 overflow-hidden">
             <ReadOnlyMapping360
               projectId={Number(projectId)}
@@ -267,13 +256,12 @@ export default function ConstructionDashboard({
           </div>
         </div>
 
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
-          <h2 className="text-base font-semibold flex items-center gap-2 mb-5 text-emerald-400">
+        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5 flex flex-col h-[400px]">
+          <h2 className="text-base font-semibold flex items-center gap-2 mb-4 text-emerald-400">
             <Video className="w-4 h-4" /> สภาพหน้างานสด (Live View)
           </h2>
-          <div className="grid grid-cols-2 gap-3 h-32">
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg animate-pulse"></div>
-            <div className="bg-zinc-900/50 border border-zinc-800 rounded-lg animate-pulse"></div>
+          <div className="flex-1 overflow-hidden">
+            <ReadOnlyLiveView projectId={Number(projectId)} />
           </div>
         </div>
       </div>
