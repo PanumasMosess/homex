@@ -939,3 +939,7 @@ export interface CalendarDay {
   date: Date;
   currentMonth: boolean;
 }
+export interface ReadOnlyMapping360Props {
+  projectId: number;
+  organizationId: number;
+}
