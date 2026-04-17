@@ -11,6 +11,7 @@ import { calcDurationDays } from "../setting_data";
 import { ActionState } from "@/lib/type";
 import { createFeedPost, deleteSubtaskFeed } from "./actionFeed";
 import { auth } from "@/auth";
+import { copyFileS3 } from "./actionIndex";
 
 export async function createProject(
   _prevState: ActionState,
@@ -911,7 +912,7 @@ export async function getTaskDataForAIAnalysis(projectId: number) {
     prisma.task.findMany({
       where: {
         projectId: projectId,
-        status: { notIn: ["DONE", "DELETED"] }, 
+        status: { notIn: ["DONE", "DELETED"] },
       },
       select: {
         id: true,
@@ -1078,4 +1079,350 @@ export async function getTaskDataForAIAnalysisSum(projectId: number) {
     },
     tasks: formattedTasks,
   };
+}
+
+export async function startCloneProject(
+  projectId: number,
+  options: {
+    users: boolean;
+    files: boolean;
+    cameras: boolean;
+    point360: boolean;
+  },
+) {
+  try {
+    const job = await prisma.project_clone_progress.create({
+      data: {
+        projectId,
+        progress: 0,
+        status: "PENDING",
+      },
+    });
+
+    cloneProjectBackground(job.id, projectId, options);
+
+    return {
+      success: true,
+      jobId: job.id,
+    };
+  } catch (e: any) {
+    return {
+      success: false,
+      message: e.message,
+    };
+  }
+}
+
+// ======================================================
+// GET Clone Progress
+// ======================================================
+export async function getCloneProgress(jobId: number) {
+  return await prisma.project_clone_progress.findUnique({
+    where: { id: jobId },
+  });
+}
+
+// ======================================================
+// BACKGROUND CLONE
+// ======================================================
+async function cloneProjectBackground(
+  jobId: number,
+  projectId: number,
+  options: any,
+) {
+  try {
+    await prisma.project_clone_progress.update({
+      where: { id: jobId },
+      data: { status: "RUNNING", progress: 5 },
+    });
+
+    await prisma.$transaction(async (tx) => {
+      const old = await tx.project.findUnique({
+        where: { id: projectId },
+      });
+
+      if (!old) throw new Error("ไม่พบโปรเจค");
+
+      const rootId = old.rootProjectId ?? old.id;
+
+      const lastPhase = await tx.project.findFirst({
+        where: {
+          OR: [{ id: rootId }, { rootProjectId: rootId }],
+        },
+        orderBy: {
+          phaseNumber: "desc",
+        },
+        select: {
+          phaseNumber: true,
+        },
+      });
+
+      const nextPhase = (lastPhase?.phaseNumber || 1) + 1;
+
+      // ===============================
+      // generate project code
+      // ===============================
+      const date = new Date();
+      const dateStr = `${date.getFullYear()}${String(
+        date.getMonth() + 1,
+      ).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
+
+      const prefix = `PJ-${old.organizationId}-${dateStr}-`;
+
+      const lastRunning = await tx.projects_running.findFirst({
+        where: {
+          organizationId: old.organizationId,
+          runningCode: { startsWith: prefix },
+        },
+        orderBy: { runningCode: "desc" },
+        select: { runningCode: true },
+      });
+
+      let nextSequence = 1;
+
+      if (lastRunning?.runningCode) {
+        const num = parseInt(lastRunning.runningCode.replace(prefix, ""), 10);
+        if (!isNaN(num)) nextSequence = num + 1;
+      }
+
+      const newProjectCode = `${prefix}${String(nextSequence).padStart(
+        4,
+        "0",
+      )}`;
+
+      await tx.projects_running.create({
+        data: {
+          runningCode: newProjectCode,
+          organizationId: old.organizationId,
+        },
+      });
+
+      // ===============================
+      // COPY COVER
+      // ===============================
+      let coverImage: string | null = null;
+      let coverVideo: string | null = null;
+
+      if (old.coverImageUrl) {
+        const res = await copyFileS3(old.coverImageUrl, "img_projects");
+        if (!res.success) throw new Error(res.error);
+        coverImage = res.url;
+      }
+
+      if (old.coverVideoUrl) {
+        const res = await copyFileS3(old.coverVideoUrl, "vdo_projects");
+        if (!res.success) throw new Error(res.error);
+        coverVideo = res.url;
+      }
+
+      const baseName = old.projectName
+        ? old.projectName.replace(/\s*\(Phase \d+\)|\s*\(เฟส \d+\)/g, "").trim()
+        : "Project";
+
+      const newProjectName = `${baseName} (เฟส ${nextPhase})`;
+
+      // ===============================
+      // CREATE PROJECT
+      // ===============================
+      const newProject = await tx.project.create({
+        data: {
+          projectName: newProjectName,
+          customerName: old.customerName,
+          projectDesc: old.projectDesc,
+          address: old.address,
+          mapUrl: old.mapUrl,
+          budget: old.budget,
+
+          coverImageUrl: coverImage,
+          coverVideoUrl: coverVideo,
+
+          phaseNumber: nextPhase,
+          parentProjectId: old.id,
+          rootProjectId: old.rootProjectId ?? old.id,
+
+          organizationId: old.organizationId,
+          createdById: old.createdById,
+
+          projectCode: newProjectCode,
+        },
+      });
+
+      await prisma.project_clone_progress.update({
+        where: { id: jobId },
+        data: { progress: 20 },
+      });
+
+      // ===============================
+      // USERS
+      // ===============================
+      if (options.users) {
+        const users = await tx.project_user.findMany({
+          where: { projectId },
+        });
+
+        await tx.project_user.createMany({
+          data: users.map((u) => ({
+            projectId: newProject.id,
+            userId: u.userId,
+            organizationId: u.organizationId,
+          })),
+        });
+      }
+
+      await prisma.project_clone_progress.update({
+        where: { id: jobId },
+        data: { progress: 40 },
+      });
+
+      // ===============================
+      // FILES
+      // ===============================
+      if (options.files) {
+        const files = await tx.project_file.findMany({
+          where: { projectId },
+        });
+
+        for (const f of files) {
+          const res = await copyFileS3(f.fileUrl, "doc_project");
+          if (!res.success) throw new Error(res.error);
+
+          await tx.project_file.create({
+            data: {
+              fileName: f.fileName,
+              fileUrl: res.url,
+              fileType: f.fileType,
+              note: f.note,
+              fileStatus: f.fileStatus,
+              organizationId: f.organizationId,
+              projectId: newProject.id,
+              uploadedById: f.uploadedById,
+            },
+          });
+        }
+
+        const imgs = await tx.project_img.findMany({
+          where: { projectId },
+        });
+
+        for (const img of imgs) {
+          const res = await copyFileS3(img.imgUrl, "doc_project");
+          if (!res.success) throw new Error(res.error);
+
+          await tx.project_img.create({
+            data: {
+              imgName: img.imgName,
+              imgUrl: res.url,
+              imgType: img.imgType,
+              note: img.note,
+              organizationId: img.organizationId,
+              projectId: newProject.id,
+              uploadedById: img.uploadedById,
+            },
+          });
+        }
+      }
+
+      await prisma.project_clone_progress.update({
+        where: { id: jobId },
+        data: { progress: 70 },
+      });
+
+      // ===============================
+      // 📷 CAMERA
+      // ===============================
+      if (options.cameras) {
+        const cams = await tx.camera.findMany({
+          where: { projectId },
+        });
+
+        await tx.camera.createMany({
+          data: cams.map((c) => ({
+            cameraName: c.cameraName,
+            cameraSN: c.cameraSN,
+            cameraLocation: c.cameraLocation,
+            status: c.status,
+            organizationId: c.organizationId,
+            projectId: newProject.id,
+            userId: c.userId,
+          })),
+        });
+      }
+
+      await prisma.project_clone_progress.update({
+        where: { id: jobId },
+        data: { progress: 85 },
+      });
+
+      // ===============================
+      // 🌍 360
+      // ===============================
+      if (options.point360) {
+        const fps = await tx.floorplan.findMany({
+          where: { projectId },
+          include: {
+            points: {
+              include: {
+                histories: true,
+              },
+            },
+          },
+        });
+
+        for (const fp of fps) {
+          const res = await copyFileS3(fp.imageUrl, "floorplan");
+          if (!res.success) throw new Error(res.error);
+
+          const newFp = await tx.floorplan.create({
+            data: {
+              name: fp.name,
+              imageUrl: res.url,
+              organizationId: fp.organizationId,
+              projectId: newProject.id,
+              userId: fp.userId,
+            },
+          });
+
+          // loop point ทีละตัว
+          for (const p of fp.points) {
+            const newPoint = await tx.point360.create({
+              data: {
+                title: p.title,
+                location: p.location,
+                x: p.x,
+                y: p.y,
+                organizationId: p.organizationId,
+                projectId: newProject.id,
+                floorPlanId: newFp.id,
+                userId: p.userId,
+              },
+            });
+
+            // clone history
+            for (const h of p.histories) {
+              const resImg = await copyFileS3(h.imageUrl, "point360");
+              if (!resImg.success) throw new Error(resImg.error);
+
+              await tx.point360history.create({
+                data: {
+                  imageUrl: resImg.url,
+                  pointId: newPoint.id,
+                  createdAt: h.createdAt,
+                },
+              });
+            }
+          }
+        }
+      }
+    });
+
+    await prisma.project_clone_progress.update({
+      where: { id: jobId },
+      data: { progress: 100, status: "DONE" },
+    });
+  } catch (err) {
+    await prisma.project_clone_progress.update({
+      where: { id: jobId },
+      data: { status: "ERROR" },
+    });
+  }
 }

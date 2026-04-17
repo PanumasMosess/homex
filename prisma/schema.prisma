@@ -210,7 +210,15 @@ model project {
   createdAt DateTime @default(now())
   updatedAt DateTime @default(now())
 
+  phaseNumber Int? // ลำดับ phase 1,2,3,...
+  rootProjectId Int?  // โปรเจคต้นทางสุด
+
   // ---------- relations ----------
+
+  parentProjectId Int?  // มาจาก project ไหน
+  parentProject   project? @relation("project_parent", fields: [parentProjectId], references: [id])
+  childProjects   project[] @relation("project_parent")
+  
   organizationId Int // FK -> organization.id
   organization   organization @relation(fields: [organizationId], references: [id])
 
@@ -973,4 +981,13 @@ model task_actual_cost {
   creator        user         @relation("actual_cost_creator", fields: [createdById], references: [id])
 
   @@index([taskId])
+}
+
+model project_clone_progress {
+  id        Int      @id @default(autoincrement())
+  progress  Int      @default(0)
+  status    String   @default("PENDING")
+  createdAt DateTime @default(now())
+
+  projectId Int
 }
