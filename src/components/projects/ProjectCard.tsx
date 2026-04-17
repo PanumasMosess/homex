@@ -1,4 +1,4 @@
-import { deleteProject } from "@/lib/actions/actionProject";
+import { deleteProject, startCloneProject, getCloneProgress} from "@/lib/actions/actionProject";
 import {
   diffDaysInclusive,
   fmtDate,
@@ -36,11 +36,13 @@ import {
   Trash2,
   Edit,
   Users,
+  Copy,
 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { toast } from "react-toastify";
 import UpdateProjectMembers from "./forms/updateProjectMembers";
+import { motion } from "framer-motion";
 
 const ProjectCard = ({
   project,
@@ -58,7 +60,78 @@ const ProjectCard = ({
   const [isDeleting, setIsDeleting] = useState(false);
   const dueInfo = getDueInfo(finishPlanned, project.status, project.progress);
   const [memberOpen, setMemberOpen] = useState(false);
-  
+  const [step, setStep] = useState(1);
+  const [progress, setProgress] = useState(0);
+  const [isCloning, setIsCloning] = useState(false);
+  const [cloneOpen, setCloneOpen] = useState(false);
+
+  const [cloneOptions, setCloneOptions] = useState<{
+    users: boolean;
+    files: boolean;
+    cameras: boolean;
+    point360: boolean;
+  }>({
+    users: true,
+    files: true,
+    cameras: true,
+    point360: true,
+  });
+
+  const handleClone = async () => {
+    try {
+      setStep(2);
+      setIsCloning(true);
+
+      const res = await startCloneProject(project.id, cloneOptions);
+
+      if (!res.success || !res.jobId) {
+        throw new Error(res.message);
+      }
+
+      const jobId = res.jobId;
+
+      const interval = setInterval(async () => {
+        const job = await getCloneProgress(jobId);
+        if (!job) return;
+
+        setProgress(job.progress);
+
+        if (job.status === "DONE") {
+          clearInterval(interval);
+          setStep(3);
+          setIsCloning(false);
+        }
+
+        if (job.status === "ERROR") {
+          clearInterval(interval);
+          setIsCloning(false);
+        }
+      }, 800);
+
+    } catch (err) {
+      console.error(err);
+      setIsCloning(false);
+    }
+  };
+
+  const items: {
+    key: keyof typeof cloneOptions;
+    label: string;
+    icon: string;
+  }[] = [
+      { key: "users", label: "ทีมงาน", icon: "👥" },
+      { key: "files", label: "เอกสาร / รูปภาพ", icon: "📁" },
+      { key: "cameras", label: "กล้อง", icon: "📷" },
+      { key: "point360", label: "360° / แปลน", icon: "🌐" },
+    ];
+
+  useEffect(() => {
+    if (cloneOpen) {
+      setStep(1);
+      setProgress(0);
+    }
+  }, [cloneOpen]);
+
   const plannedDays =
     project.durationDays != null
       ? Number(project.durationDays)
@@ -167,6 +240,13 @@ const ProjectCard = ({
                   }}
                 >
                   แก้ไขโครงการ
+                </DropdownItem>
+                <DropdownItem
+                  key="clone"
+                  startContent={<Copy size={18} />}
+                  onPress={() => setCloneOpen(true)}
+                >
+                  สร้าง Phase ถัดไป
                 </DropdownItem>
                 <DropdownItem
                   key="delete"
@@ -337,6 +417,116 @@ const ProjectCard = ({
                 >
                   ยืนยันลบ
                 </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
+
+      <Modal isOpen={cloneOpen} onOpenChange={setCloneOpen} backdrop="blur">
+        <ModalContent>
+          {(onClose) => (
+            <>
+              <ModalHeader>
+                {step === 1 && "สร้าง Phase ใหม่"}
+                {step === 2 && "กำลังสร้าง..."}
+                {step === 3 && "สำเร็จ 🎉"}
+              </ModalHeader>
+
+              <ModalBody>
+                {step === 1 && (
+                  <div className={`flex flex-col gap-3 ${isCloning ? "opacity-50 pointer-events-none" : ""}`}>
+                    {items.map((item) => {
+                      const checked = cloneOptions[item.key];
+                      return (
+                        <div
+                          key={item.key}
+                          onClick={() =>
+                            setCloneOptions({
+                              ...cloneOptions,
+                              [item.key]: !checked,
+                            })
+                          }
+                          className={`flex items-center justify-between p-3 rounded-xl cursor-pointer transition border ${checked
+                            ? "border-primary bg-primary/10"
+                            : "border-white/10 hover:bg-white/5"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <span>{item.icon}</span>
+                            <span>{item.label}</span>
+                          </div>
+
+                          <input type="checkbox" checked={checked} readOnly />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {step === 2 && (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                      className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full"
+                    />
+                    <Progress value={progress} className="w-full" />
+                    <p className="text-sm text-default-500">
+                      กำลังสร้างเฟสใหม่... {progress}%
+                    </p>
+                  </div>
+                )}
+
+                {step === 3 && (
+                  <div className="flex flex-col items-center gap-4 py-6">
+                    <motion.div
+                      initial={{ scale: 0 }}
+                      animate={{ scale: 1 }}
+                      className="text-6xl"
+                    >
+                      ✅
+                    </motion.div>
+                    <p className="text-lg font-semibold">
+                      สร้างสำเร็จแล้ว
+                    </p>
+                    <p className="text-sm text-default-500">
+                      ระบบได้สร้างเฟสใหม่เรียบร้อย
+                    </p>
+                  </div>
+                )}
+              </ModalBody>
+
+              <ModalFooter>
+                {step === 1 && (
+                  <>
+                    <Button variant="light" onPress={onClose}>
+                      ยกเลิก
+                    </Button>
+
+                    <Button
+                      color="primary"
+                      onPress={handleClone}
+                      isDisabled={isCloning}
+                    >
+                      สร้าง
+                    </Button>
+                  </>
+                )}
+
+                {step === 3 && (
+                  <Button
+                    color="primary"
+                    onPress={() => {
+                      onClose();
+                      router.refresh();
+                      setStep(1);
+                      setProgress(0);
+                    }}
+                  >
+                    เสร็จสิ้น
+                  </Button>
+                )}
               </ModalFooter>
             </>
           )}

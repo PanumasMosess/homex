@@ -4,6 +4,7 @@ import {
   S3Client,
   PutObjectCommand,
   DeleteObjectCommand,
+  CopyObjectCommand,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import crypto from "crypto";
@@ -183,4 +184,47 @@ export const handleImageUpload = async (
   }
 
   return result.url.split("?")[0];
+};
+
+export const copyFileS3 = async (
+  fileUrl: string,
+  path: string,
+): Promise<
+  { success: true; url: string } | { success: false; error: string }
+> => {
+  try {
+    const url = new URL(fileUrl);
+    let key = url.pathname.substring(1);
+    
+    if (key.startsWith(`${process.env.S3_BUCKET}/`)) {
+      key = key.replace(`${process.env.S3_BUCKET}/`, "");
+    }
+
+    const ext = key.split(".").pop() || "png";
+
+    const randomBytes = crypto.randomBytes(16);
+    const newKey = `${path}/${randomBytes.toString("hex")}.${ext}`;
+
+    const command = new CopyObjectCommand({
+      Bucket: process.env.S3_BUCKET!,
+      CopySource: `${process.env.S3_BUCKET}/${key}`,
+      Key: newKey,
+      ACL: "public-read",
+    });
+
+    await s3Client.send(command);
+
+    const publicUrl = `https://sgp1.digitaloceanspaces.com/${process.env.S3_BUCKET}/${newKey}`;
+
+    return {
+      success: true,
+      url: publicUrl,
+    };
+  } catch (error) {
+    console.error("❌ copyFileS3 error:", error);
+    return {
+      success: false,
+      error: "copy file ไม่สำเร็จ",
+    };
+  }
 };
