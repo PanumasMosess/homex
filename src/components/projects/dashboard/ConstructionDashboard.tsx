@@ -2,9 +2,11 @@
 
 import StatusBoard from "@/components/dashboard/StatusBoard";
 import { ConstructionDashboardProp } from "@/lib/type";
-import { TrendingDown, Video } from "lucide-react";
+import { TrendingDown, Video, Sparkles } from "lucide-react"; 
 import RiskScoreDashboard from "./RiskScoreDashboard";
 import { useEffect, useState } from "react";
+import { Button } from "@heroui/react";
+
 import {
   getProjectPlannedProgress,
   getTaskDataForAIAnalysis,
@@ -29,9 +31,16 @@ export default function ConstructionDashboard({
 }: ConstructionDashboardProp) {
   const [mounted, setMounted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const [isAnalyzing, setIsAnalyzing] = useState(true);
+
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isAnalyzingSummary, setIsAnalyzingSummary] = useState(false);
+  
   const [aiSummary, setAiSummary] = useState<any>(null);
-  const [isAnalyzingSummary, setIsAnalyzingSummary] = useState(true);
+  const [aiActions, setAiActions] = useState<any[]>([]);
+
+  const [rawActionData, setRawActionData] = useState<any>(null);
+  const [rawSummaryData, setRawSummaryData] = useState<any>(null);
+  const [hasAnalyzed, setHasAnalyzed] = useState(false); // เช็คว่าเคยกดปุ่มหรือยัง
 
   const [counts, setCounts] = useState({
     todo: 0,
@@ -40,21 +49,18 @@ export default function ConstructionDashboard({
     delay: 0,
   });
   const [planProgress, setPlanProgress] = useState(0);
-  const [aiActions, setAiActions] = useState<any[]>([]);
-  // 🌟 1. แยก mounted ออกมาเดี่ยวๆ เพื่อให้ UI โครงร่างแสดงทันทีที่เปิดเพจ
+
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  // 🌟 2. ดึงข้อมูลเมื่อ projectId เปลี่ยน
+  // 🌟 1. ดึงข้อมูลดิบอย่างเดียว (ไม่เรียก AI)
   useEffect(() => {
     if (!projectId) return;
 
     const fetchData = async () => {
       try {
         setIsLoading(true);
-        setIsAnalyzing(true);
-        setIsAnalyzingSummary(true);
 
         const [statusData, planData, actionData, summaryData] =
           await Promise.all([
@@ -66,47 +72,13 @@ export default function ConstructionDashboard({
 
         setCounts(statusData);
         setPlanProgress(planData);
-        setIsLoading(false);
+        
+        // เก็บข้อมูลไว้รอผู้ใช้กดปุ่ม
+        setRawActionData(actionData);
+        setRawSummaryData(summaryData);
 
-        const aiPromises = [];
-
-        if (actionData?.tasks?.length > 0) {
-          const actionPromise = analyzeProjectActions(
-            actionData.tasks,
-            actionData.projectInfo,
-            actionData.referenceDate,
-          )
-            .then((res) => setAiActions(res))
-            .catch((err) => console.error(err))
-            .finally(() => setIsAnalyzing(false));
-
-          aiPromises.push(actionPromise);
-        } else {
-          setAiActions([]);
-          setIsAnalyzing(false);
-        }
-
-        if (summaryData?.tasks?.length > 0) {
-          const summaryPromise = analyzeProjectOverview(
-            summaryData.tasks,
-            summaryData.projectInfo,
-            summaryData.referenceDate,
-          )
-            .then((res) => setAiSummary(res))
-            .catch((err) => console.error(err))
-            .finally(() => setIsAnalyzingSummary(false));
-
-          aiPromises.push(summaryPromise);
-        } else {
-          setAiSummary(null);
-          setIsAnalyzingSummary(false);
-        }
-
-        await Promise.all(aiPromises);
       } catch (error) {
         console.error("❌ Fetch Data Error:", error);
-        setIsAnalyzing(false);
-        setIsAnalyzingSummary(false);
       } finally {
         setIsLoading(false);
       }
@@ -115,7 +87,51 @@ export default function ConstructionDashboard({
     fetchData();
   }, [projectId]);
 
-  // ป้องกัน Server/Client mismatch
+  // 🌟 2. ฟังก์ชันเมื่อผู้ใช้กดปุ่ม "วิเคราะห์ด้วย AI"
+  const handleRunAI = async () => {
+    setHasAnalyzed(true); // โชว์กล่อง AI
+    setIsAnalyzing(true); // ให้กล่องขึ้นสถานะโหลด
+    setIsAnalyzingSummary(true);
+
+    const aiPromises = [];
+
+    // เรียก AI Action Required
+    if (rawActionData?.tasks?.length > 0) {
+      const actionPromise = analyzeProjectActions(
+        rawActionData.tasks,
+        rawActionData.projectInfo,
+        rawActionData.referenceDate,
+      )
+        .then((res) => setAiActions(res))
+        .catch((err) => console.error(err))
+        .finally(() => setIsAnalyzing(false));
+
+      aiPromises.push(actionPromise);
+    } else {
+      setAiActions([]);
+      setIsAnalyzing(false);
+    }
+
+    // เรียก AI Executive Summary
+    if (rawSummaryData?.tasks?.length > 0) {
+      const summaryPromise = analyzeProjectOverview(
+        rawSummaryData.tasks,
+        rawSummaryData.projectInfo,
+        rawSummaryData.referenceDate,
+      )
+        .then((res) => setAiSummary(res))
+        .catch((err) => console.error(err))
+        .finally(() => setIsAnalyzingSummary(false));
+
+      aiPromises.push(summaryPromise);
+    } else {
+      setAiSummary(null);
+      setIsAnalyzingSummary(false);
+    }
+
+    await Promise.all(aiPromises);
+  };
+
   if (!mounted) return null;
 
   const currentDateTime = new Intl.DateTimeFormat("th-TH", {
@@ -230,18 +246,44 @@ export default function ConstructionDashboard({
         />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
-        <div className="w-full">
-          <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
+      {/* 🌟 3. ปรับโครงสร้างการแสดงผล AI 🌟 */}
+      {!hasAnalyzed ? (
+        // สถานะ: ยังไม่ได้กดปุ่มวิเคราะห์ ให้โชว์ปุ่มเรียก AI
+        <div className="mb-6 flex flex-col items-center justify-center p-10 bg-[#161b22] border border-zinc-800/80 rounded-xl space-y-4">
+          <div className="p-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl border border-blue-500/10">
+            <Sparkles className="w-8 h-8 text-blue-400 animate-pulse" />
+          </div>
+          <div className="text-center max-w-sm">
+            <h3 className="text-lg font-bold text-white mb-2">สรุปภาพรวมและวิเคราะห์ความเสี่ยง</h3>
+            <p className="text-sm text-zinc-400 leading-relaxed">
+              ให้ AI อัจฉริยะช่วยประมวลผลข้อมูลหน้างาน งบประมาณ และความคืบหน้า เพื่อค้นหางานที่ต้องจัดการด่วน
+            </p>
+          </div>
+          <Button
+            color="primary"
+            className="font-bold shadow-lg mt-2"
+            onPress={handleRunAI}
+            startContent={<Sparkles size={18} />}
+            isDisabled={isLoading} // ป้องกันการกดก่อนโหลดข้อมูลดิบเสร็จ
+          >
+            วิเคราะห์โครงการด้วย AI ทันที
+          </Button>
         </div>
+      ) : (
+        // สถานะ: กดปุ่มแล้ว ให้โชว์กล่อง AI ทั้ง 2 อัน
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+          <div className="w-full">
+            <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
+          </div>
 
-        <div className="w-full">
-          <ExecutiveSummary
-            isAnalyzing={isAnalyzingSummary}
-            summaryData={aiSummary}
-          />
+          <div className="w-full">
+            <ExecutiveSummary
+              isAnalyzing={isAnalyzingSummary}
+              summaryData={aiSummary}
+            />
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5 flex flex-col h-[400px]">
