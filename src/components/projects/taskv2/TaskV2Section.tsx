@@ -348,6 +348,18 @@ const TaskV2Section = ({
     [selected, setTasks]
   );
 
+  const handleDeleteTask = useCallback(async () => {
+    if (!selected) return;
+    const res = await updateTaskStatus(selected.id, "DELETED");
+    if (res.success) {
+      setTasks((prev: any[]) => prev.filter((t) => t.id !== selected.id));
+      setSelectedId(null);
+      toast.success("ลบงานเรียบร้อย");
+    } else {
+      toast.error(res.error || "ลบไม่สำเร็จ");
+    }
+  }, [selected, setTasks]);
+
   const handleAddToProcurement = useCallback(
     async (material: any): Promise<boolean> => {
       if (!selected) return false;
@@ -546,6 +558,7 @@ const TaskV2Section = ({
         onStartTask={handleStartTask}
         onSubmitTask={handleSubmitTask}
         onBudgetChange={handleBudgetChange}
+        onDeleteTask={handleDeleteTask}
       />
     </div>
   );
