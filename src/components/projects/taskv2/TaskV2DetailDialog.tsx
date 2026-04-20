@@ -169,16 +169,8 @@ const TaskV2DetailDialog = ({
                     {getStatusLabel(task.status)}
                   </Chip>
                   {onDeleteTask && (
-                    <Button
-                      isIconOnly
-                      size="sm"
-                      color="danger"
-                      variant="flat"
-                      onPress={() => setIsDeleteModalOpen(true)}
-                      title="ลบงาน"
-                    >
-                      <Trash2 size={16} />
-                    </Button>
+
+                    <Button size="sm" color="danger" variant="flat" onPress={() => setIsDeleteModalOpen(true)} > 🗑️ ลบ </Button>
                   )}
                 </div>
               </div>
