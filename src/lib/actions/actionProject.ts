@@ -300,10 +300,26 @@ export async function updateProject(
 
 export const updateTaskStatus = async (taskId: number, newStatus: string) => {
   try {
-    await prisma.task.update({
+    const task = await prisma.task.update({
       where: { id: taskId },
       data: { status: newStatus },
     });
+
+    if (newStatus === "DELETED") {
+      const session = await auth();
+      const feedUserId = session?.user?.id ? parseInt(session.user.id) : 0;
+
+      if (feedUserId && task) {
+        await createFeedPost({
+          feedType: "TASK_DELETED",
+          content: `ลบ Task "${task.taskName}"`,
+          organizationId: task.organizationId,
+          projectId: task.projectId,
+          userId: feedUserId,
+          taskId: task.id,
+        });
+      }
+    }
 
     return { success: true };
   } catch (error: any) {
