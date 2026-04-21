@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Camera, Layers, ChevronDown, ChevronUp } from "lucide-react";
 import { Spinner } from "@heroui/react";
 import { getFloorPlansByProject } from "@/lib/actions/actiom360";
-import CombinedFloorPlanViewerModal from "../360mapping/CombinedFloorPlanViewerModal";
+import CombinedFloorPlanViewerModal from "../../360mapping/CombinedFloorPlanViewerModal";
 import { ReadOnlyMapping360Props } from "@/lib/type";
 
 const ReadOnlyMapping360 = ({

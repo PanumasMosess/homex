@@ -79,7 +79,7 @@ import ProcurementSection from "./procurement/ProcurementSection";
 import DasboardMapping360 from "./360mapping/DasboardMapping360";
 import TaskV2Section from "./taskv2/TaskV2Section";
 import PlanningSection from "./planning/PlanningSection";
-import ConstructionDashboard from "./dashboard/ConstructionDashboard";
+import ConstructionDashboard from "./dashboard/projects/ConstructionDashboard";
 
 const ProjectDetail = ({
   organizationId,

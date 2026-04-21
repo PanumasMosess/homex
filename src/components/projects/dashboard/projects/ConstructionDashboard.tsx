@@ -2,7 +2,7 @@
 
 import StatusBoard from "@/components/dashboard/StatusBoard";
 import { ConstructionDashboardProp } from "@/lib/type";
-import { TrendingDown, Video, Sparkles } from "lucide-react"; 
+import { TrendingDown, Video, Sparkles } from "lucide-react";
 import RiskScoreDashboard from "./RiskScoreDashboard";
 import { useEffect, useState } from "react";
 import { Button } from "@heroui/react";
@@ -34,7 +34,7 @@ export default function ConstructionDashboard({
 
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isAnalyzingSummary, setIsAnalyzingSummary] = useState(false);
-  
+
   const [aiSummary, setAiSummary] = useState<any>(null);
   const [aiActions, setAiActions] = useState<any[]>([]);
 
@@ -72,11 +72,10 @@ export default function ConstructionDashboard({
 
         setCounts(statusData);
         setPlanProgress(planData);
-        
+
         // เก็บข้อมูลไว้รอผู้ใช้กดปุ่ม
         setRawActionData(actionData);
         setRawSummaryData(summaryData);
-
       } catch (error) {
         console.error("❌ Fetch Data Error:", error);
       } finally {
@@ -144,42 +143,48 @@ export default function ConstructionDashboard({
   }).format(new Date());
 
   return (
-    <div className="min-h-screen bg-[#0e1116] text-zinc-100 p-6 font-sans">
+    // 🌟 เปลี่ยน p-6 เป็น p-3 sm:p-6 (ลดขอบมือถือ)
+    <div className="min-h-screen bg-[#0e1116] text-zinc-100 p-3 sm:p-6 font-sans">
       <div className="flex justify-between items-start mb-6">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">
+            {/* 🌟 เพิ่ม truncate ให้ชื่อโปรเจกต์ไม่ล้นจอมือถือ */}
+            <h1 className="text-xl sm:text-2xl font-bold text-white truncate max-w-[200px] sm:max-w-full">
               {projectInfo?.name || "กำลังโหลด..."}
             </h1>
             {projectInfo?.code && (
-              <span className="bg-blue-900/50 text-blue-400 text-xs px-2 py-1 rounded border border-blue-800/50">
+              <span className="bg-blue-900/50 text-blue-400 text-[10px] sm:text-xs px-2 py-1 rounded border border-blue-800/50">
                 {projectInfo.code}
               </span>
             )}
           </div>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-[10px] sm:text-xs text-zinc-400 mt-1">
             อัปเดตล่าสุด: {currentDateTime} น.
           </p>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-        <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
+      {/* 🌟 เปลี่ยน grid-cols-1 เป็น grid-cols-2 (ให้มือถือเรียง 2 การ์ดต่อแถว) */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 mb-6">
+        <div className="bg-[#161b22] border border-zinc-800/80 p-4 sm:p-5 rounded-xl flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="text-sm text-zinc-400">ความคืบหน้าโครงการ</h3>
-            <TrendingDown className="w-4 h-4 text-blue-500" />
+            <h3 className="text-[10px] sm:text-sm text-zinc-400">
+              ความคืบหน้าโครงการ
+            </h3>
+            <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-blue-500" />
           </div>
           <div>
             {isLoading ? (
-              <div className="h-8 w-20 bg-zinc-800 animate-pulse rounded"></div>
+              <div className="h-6 sm:h-8 w-16 sm:w-20 bg-zinc-800 animate-pulse rounded"></div>
             ) : (
-              <span className="text-3xl font-bold text-white">
+              // 🌟 ปรับขนาด Text
+              <span className="text-xl sm:text-3xl font-bold text-white">
                 {projectProgress ?? 0}%
               </span>
             )}
-            <div className="w-full bg-zinc-800 rounded-full h-1.5 mt-2">
+            <div className="w-full bg-zinc-800 rounded-full h-1 sm:h-1.5 mt-2">
               <div
-                className="bg-blue-600 h-1.5 rounded-full transition-all duration-1000"
+                className="bg-blue-600 h-1 sm:h-1.5 rounded-full transition-all duration-1000"
                 style={{
                   width: `${isLoading ? 0 : Math.min(100, projectProgress ?? 0)}%`,
                 }}
@@ -188,19 +193,22 @@ export default function ConstructionDashboard({
           </div>
         </div>
 
-        <div className="bg-[#161b22] border border-zinc-800/80 p-5 rounded-xl flex flex-col justify-between">
+        <div className="bg-[#161b22] border border-zinc-800/80 p-4 sm:p-5 rounded-xl flex flex-col justify-between">
           <div className="flex justify-between items-start mb-4">
-            <h3 className="text-sm text-zinc-400">งบประมาณที่ใช้ไป</h3>
-            <div className="w-4 h-4 bg-orange-500 rounded-sm"></div>{" "}
+            <h3 className="text-[10px] sm:text-sm text-zinc-400">
+              งบประมาณที่ใช้ไป
+            </h3>
+            <div className="w-3 h-3 sm:w-4 sm:h-4 bg-orange-500 rounded-sm"></div>{" "}
           </div>
           <div>
-            <div className="flex items-baseline gap-2 mb-2">
-              <span className="text-3xl font-bold text-white">
+            <div className="flex items-baseline gap-1 sm:gap-2 mb-2">
+              {/* 🌟 ปรับขนาด Text และเพิ่ม truncate กันตัวเลขยาวทะลุกล่อง */}
+              <span className="text-lg sm:text-3xl font-bold text-white truncate">
                 {(expenses ?? 0).toLocaleString()}
               </span>
-              <span className="text-sm text-zinc-400">บาท.</span>
+              <span className="text-[9px] sm:text-sm text-zinc-400">บาท.</span>
             </div>
-            <p className="text-[10px] text-zinc-500 mb-2">
+            <p className="text-[9px] sm:text-[10px] text-zinc-500 mb-2 line-clamp-1">
               จากงบรวม {projectInfo?.budget?.toLocaleString() ?? 0} บาท
               (ใช้ไปแล้ว{" "}
               {projectInfo?.budget
@@ -208,9 +216,9 @@ export default function ConstructionDashboard({
                 : 0}
               %)
             </p>
-            <div className="w-full bg-zinc-800 rounded-full h-1.5 flex overflow-hidden">
+            <div className="w-full bg-zinc-800 rounded-full h-1 sm:h-1.5 flex overflow-hidden">
               <div
-                className="bg-orange-500 h-1.5 transition-all duration-1000"
+                className="bg-orange-500 h-1 sm:h-1.5 transition-all duration-1000"
                 style={{
                   width: `${
                     projectInfo?.budget
@@ -246,34 +254,37 @@ export default function ConstructionDashboard({
         />
       </div>
 
-      {/* 🌟 3. ปรับโครงสร้างการแสดงผล AI 🌟 */}
       {!hasAnalyzed ? (
-        // สถานะ: ยังไม่ได้กดปุ่มวิเคราะห์ ให้โชว์ปุ่มเรียก AI
-        <div className="mb-6 flex flex-col items-center justify-center p-10 bg-[#161b22] border border-zinc-800/80 rounded-xl space-y-4">
-          <div className="p-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl border border-blue-500/10">
-            <Sparkles className="w-8 h-8 text-blue-400 animate-pulse" />
+        <div className="mb-6 flex flex-col items-center justify-center p-6 sm:p-10 bg-[#161b22] border border-zinc-800/80 rounded-xl space-y-4">
+          <div className="p-3 sm:p-4 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-2xl border border-blue-500/10">
+            <Sparkles className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400 animate-pulse" />
           </div>
           <div className="text-center max-w-sm">
-            <h3 className="text-lg font-bold text-white mb-2">สรุปภาพรวมและวิเคราะห์ความเสี่ยง</h3>
-            <p className="text-sm text-zinc-400 leading-relaxed">
-              ให้ AI อัจฉริยะช่วยประมวลผลข้อมูลหน้างาน งบประมาณ และความคืบหน้า เพื่อค้นหางานที่ต้องจัดการด่วน
+            <h3 className="text-base sm:text-lg font-bold text-white mb-2">
+              สรุปภาพรวมและวิเคราะห์ความเสี่ยง
+            </h3>
+            <p className="text-xs sm:text-sm text-zinc-400 leading-relaxed">
+              ให้ AI อัจฉริยะช่วยประมวลผลข้อมูลหน้างาน งบประมาณ และความคืบหน้า
+              เพื่อค้นหางานที่ต้องจัดการด่วน
             </p>
           </div>
           <Button
             color="primary"
-            className="font-bold shadow-lg mt-2"
+            className="font-bold shadow-lg mt-2 w-full sm:w-auto"
             onPress={handleRunAI}
             startContent={<Sparkles size={18} />}
-            isDisabled={isLoading} // ป้องกันการกดก่อนโหลดข้อมูลดิบเสร็จ
+            isDisabled={isLoading}
           >
             วิเคราะห์โครงการด้วย AI ทันที
           </Button>
         </div>
       ) : (
-        // สถานะ: กดปุ่มแล้ว ให้โชว์กล่อง AI ทั้ง 2 อัน
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
           <div className="w-full">
-            <ActionRequiredList isAnalyzing={isAnalyzing} aiActions={aiActions} />
+            <ActionRequiredList
+              isAnalyzing={isAnalyzing}
+              aiActions={aiActions}
+            />
           </div>
 
           <div className="w-full">
@@ -285,9 +296,10 @@ export default function ConstructionDashboard({
         </div>
       )}
 
+      {/* 🌟 กล่องมีเดีย: ย่อความสูงลงนิดนึงเวลาเปิดมือถือ h-[350px] sm:h-[400px] */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5 flex flex-col h-[400px]">
-          <h2 className="text-base font-semibold flex items-center gap-2 mb-4 text-purple-400">
+        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col h-[350px] sm:h-[400px]">
+          <h2 className="text-sm sm:text-base font-semibold flex items-center gap-2 mb-4 text-purple-400">
             <Video className="w-4 h-4" /> อัปเดตหน้างานล่าสุด (360° View)
           </h2>
           <div className="flex-1 overflow-hidden">
@@ -298,8 +310,8 @@ export default function ConstructionDashboard({
           </div>
         </div>
 
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5 flex flex-col h-[400px]">
-          <h2 className="text-base font-semibold flex items-center gap-2 mb-4 text-emerald-400">
+        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col h-[350px] sm:h-[400px]">
+          <h2 className="text-sm sm:text-base font-semibold flex items-center gap-2 mb-4 text-emerald-400">
             <Video className="w-4 h-4" /> สภาพหน้างานสด (Live View)
           </h2>
           <div className="flex-1 overflow-hidden">
