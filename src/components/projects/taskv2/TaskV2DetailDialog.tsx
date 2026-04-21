@@ -7,6 +7,7 @@ import {
   ModalBody,
   Chip,
   Progress,
+  Button,
 } from "@heroui/react";
 import {
   FileText,
@@ -15,6 +16,7 @@ import {
   Clock,
   CalendarDays,
   Wallet,
+  Trash2,
 } from "lucide-react";
 import type {
   TaskV2DetailDialogProps,
@@ -24,6 +26,7 @@ import TaskV2CardTab from "./TaskV2CardTab";
 import TaskV2ProcurementTab from "./TaskV2ProcurementTab";
 import TaskV2QCFieldTab from "./TaskV2QCFieldTab";
 import TaskV2ActualBudgetTab from "./TaskV2ActualBudgetTab";
+import DeleteTaskModal from "../DeleteTaskModal";
 
 type V2Tab = "card" | "prpo" | "qcfield" | "actual_budget";
 
@@ -40,8 +43,22 @@ const TaskV2DetailDialog = ({
   onStartTask,
   onSubmitTask,
   onBudgetChange,
+  onDeleteTask,
 }: TaskV2DetailDialogProps) => {
   const [activeTab, setActiveTab] = useState<V2Tab>("card");
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  const handleConfirmDelete = async () => {
+    if (!onDeleteTask) return;
+    setIsDeletingTask(true);
+    try {
+      await onDeleteTask();
+      setIsDeleteModalOpen(false);
+    } finally {
+      setIsDeletingTask(false);
+    }
+  };
 
   const handleChecklistToggle = useCallback(
     (index: number) => {
@@ -142,15 +159,20 @@ const TaskV2DetailDialog = ({
                     Project: {projectInfo.name} ({projectInfo.code})
                   </p>
                 </div>
-                <Chip
-                  color={getStatusColor(task.status)}
-                  variant="flat"
-                  size="sm"
-                  className="shrink-0"
-                  startContent={<Clock size={12} />}
-                >
-                  {getStatusLabel(task.status)}
-                </Chip>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Chip
+                    color={getStatusColor(task.status)}
+                    variant="flat"
+                    size="sm"
+                    startContent={<Clock size={12} />}
+                  >
+                    {getStatusLabel(task.status)}
+                  </Chip>
+                  {onDeleteTask && (
+
+                    <Button size="sm" color="danger" variant="flat" onPress={() => setIsDeleteModalOpen(true)} > 🗑️ ลบ </Button>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-1 pt-2">
@@ -252,6 +274,14 @@ const TaskV2DetailDialog = ({
           </ModalBody>
         )}
       </ModalContent>
+
+      <DeleteTaskModal
+        isOpen={isDeleteModalOpen}
+        onOpenChange={setIsDeleteModalOpen}
+        taskName={task?.taskName}
+        isDeleting={isDeletingTask}
+        onConfirm={handleConfirmDelete}
+      />
     </Modal>
   );
 };

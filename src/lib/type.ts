@@ -813,6 +813,7 @@ export interface TaskV2DetailDialogProps {
   onStartTask: (startDate: string) => Promise<void>;
   onSubmitTask: (finishDate: string) => Promise<void>;
   onBudgetChange?: (newBudget: number) => void;
+  onDeleteTask?: () => Promise<void>;
 }
 
 export interface CreateTaskV2ModalProps {
