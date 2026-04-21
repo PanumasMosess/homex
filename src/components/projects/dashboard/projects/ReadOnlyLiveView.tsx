@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Spinner } from "@heroui/react";
 import { CameraOff } from "lucide-react";
 import { getCamerasByProject } from "@/lib/actions/actionCamera";
-import LiveCameraCard from "../camera/LiveCameraCard";
+import LiveCameraCard from "../../camera/LiveCameraCard";
 
 interface ReadOnlyLiveViewProps {
   projectId: number;
