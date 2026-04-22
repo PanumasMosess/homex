@@ -439,7 +439,7 @@ const TaskV2DetailDialog = ({
                   ) : (
                     <div className="flex items-center gap-1.5">
                       <p className="text-xs text-zinc-500">
-                        แผน: {formatDate(task.startPlanned)} – {formatDate(task.finishPlanned)} &middot; {projectInfo.name} ({projectInfo.code})
+                        แผน: {formatDate(task.startPlanned)} – {formatDate(task.finishPlanned)} &middot; {projectInfo.name}
                       </p>
                       {onUpdateTaskInfo && (
                         <button
@@ -693,7 +693,7 @@ const TaskV2DetailDialog = ({
                 )}
               </ModalBody>
               <ModalFooter className="border-t border-zinc-800 px-6 py-4 flex flex-col sm:flex-row gap-2">
-                <Button
+                {/* <Button
                   variant="flat"
                   color="default"
                   onPress={() => setShowReanalyzePreview(false)}
@@ -701,7 +701,7 @@ const TaskV2DetailDialog = ({
                   className="sm:flex-1"
                 >
                   ยกเลิก
-                </Button>
+                </Button> */}
                 <Button
                   variant="flat"
                   color="secondary"

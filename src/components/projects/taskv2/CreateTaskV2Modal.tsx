@@ -259,11 +259,13 @@ const CreateTaskV2Modal = ({
                     }}
                   />
 
+           <hr className="h-px border-0 bg-gradient-to-r from-transparent via-gray-400/40 to-transparent" />
+
                   {/* รูปภาพประกอบสำหรับ AI (optional) */}
                   <div className="flex flex-col gap-2">
                     <label className="text-sm font-medium flex items-center gap-2 text-default-600">
                       <ImagePlus className="text-default-400" size={16} />
-                      รูปภาพประกอบ
+                      แนบรูปภาพประกอบ
                       <span className="text-xs text-default-400 font-normal">(ไม่บังคับ)</span>
                     </label>
                     <div className="flex flex-wrap gap-2">
@@ -308,7 +310,7 @@ const CreateTaskV2Modal = ({
                   {/* คำอธิบายเพิ่มเติมสำหรับ AI (optional) */}
                   <Textarea
                     label="คำอธิบายเพิ่มเติม"
-                    placeholder="เช่น พื้นที่ 200 ตร.ม., บ้าน 2 ชั้น, ใช้คอนกรีตผสมเสร็จ..."
+                    placeholder="ใส่คำอธิบายเพิ่มเติม เพื่อการวิเคราะห์ที่แม่นยำขึ้น..."
                     labelPlacement="outside"
                     variant="bordered"
                     minRows={2}
@@ -316,7 +318,7 @@ const CreateTaskV2Modal = ({
                     value={aiDescription}
                     onValueChange={setAiDescription}
                     isDisabled={isBusy}
-                    description="ใส่รายละเอียดเพิ่มเพื่อให้ AI ประเมินแม่นยำขึ้น (ไม่บังคับ)"
+                    description=""
                     startContent={
                       <FileText className="text-default-400 mt-0.5" size={16} />
                     }

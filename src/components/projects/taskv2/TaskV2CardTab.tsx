@@ -178,129 +178,7 @@ const TaskV2CardTab = ({
 
   return (
     <div className="space-y-6">
-      {/* ===== REFERENCE DATA (ข้อมูลอ้างอิงตอนสร้าง) ===== */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 sm:p-5 space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 text-zinc-300">
-            <FileText size={18} className="text-secondary" />
-            <h3 className="font-bold text-sm">ข้อมูลอ้างอิง (Reference Data)</h3>
-          </div>
-          {onUpdateRef && !isEditingRef && (
-            <button
-              onClick={() => {
-                setEditDesc(aiRefDescription || "");
-                setEditImages(aiRefImages || []);
-                setIsEditingRef(true);
-              }}
-              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-zinc-700/60 text-zinc-500 hover:text-zinc-300 transition-colors text-[11px]"
-            >
-              <Pencil size={11} />
-              <span>แก้ไข</span>
-            </button>
-          )}
-        </div>
 
-        {isEditingRef ? (
-          <div className="space-y-3">
-            <Textarea
-              label="คำอธิบายเพิ่มเติม"
-              placeholder="เช่น พื้นที่ 200 ตร.ม., บ้าน 2 ชั้น..."
-              labelPlacement="outside"
-              variant="bordered"
-              minRows={2}
-              maxRows={4}
-              value={editDesc}
-              onValueChange={setEditDesc}
-              classNames={{ input: "text-sm" }}
-            />
-
-            <div className="space-y-2">
-              <p className="text-xs text-zinc-500 flex items-center gap-1.5">
-                <ImageIcon size={13} /> รูปภาพประกอบ
-              </p>
-              <div className="flex flex-wrap gap-2">
-                {editImages.map((url, idx) => (
-                  <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-zinc-700">
-                    <img src={url} alt={`ref ${idx + 1}`} className="w-full h-full object-cover" />
-                    <button
-                      type="button"
-                      onClick={() => setEditImages((prev) => prev.filter((_, i) => i !== idx))}
-                      className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
-                ))}
-                <label className="w-16 h-16 flex flex-col items-center justify-center gap-0.5 border-2 border-dashed border-zinc-600 rounded-lg cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-colors">
-                  {isUploadingImg ? (
-                    <span className="text-[9px] text-zinc-400">อัปโหลด...</span>
-                  ) : (
-                    <>
-                      <ImagePlus size={16} className="text-zinc-400" />
-                      <span className="text-[9px] text-zinc-400">เพิ่มรูป</span>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    multiple
-                    className="hidden"
-                    onChange={handleRefImageUpload}
-                    disabled={isUploadingImg}
-                  />
-                </label>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 pt-1">
-              <Button size="sm" color="success" variant="flat" onPress={handleSaveRef} isLoading={isSavingRef} startContent={!isSavingRef ? <Check size={14} /> : undefined}>
-                บันทึก
-              </Button>
-              <Button size="sm" variant="flat" onPress={() => setIsEditingRef(false)} isDisabled={isSavingRef}>
-                ยกเลิก
-              </Button>
-            </div>
-          </div>
-        ) : (
-          <>
-            {aiRefDescription ? (
-              <div className="text-sm text-zinc-400 bg-zinc-800/50 rounded-lg p-3 leading-relaxed">
-                {aiRefDescription}
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-600">ไม่มีคำอธิบายเพิ่มเติม</p>
-            )}
-
-            {aiRefImages && aiRefImages.length > 0 ? (
-              <div className="space-y-2">
-                <p className="text-xs text-zinc-500 flex items-center gap-1.5">
-                  <ImageIcon size={13} />
-                  รูปภาพประกอบ ({aiRefImages.length} รูป)
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {aiRefImages.map((url, idx) => (
-                    <a
-                      key={idx}
-                      href={url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block w-20 h-20 rounded-lg overflow-hidden border border-zinc-700 hover:border-primary transition-colors"
-                    >
-                      <img
-                        src={url}
-                        alt={`ref ${idx + 1}`}
-                        className="w-full h-full object-cover"
-                      />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            ) : (
-              <p className="text-xs text-zinc-600">ไม่มีรูปภาพประกอบ</p>
-            )}
-          </>
-        )}
-      </div>
 
       {/* ===== ACTUAL COST (ข้อมูลจริง) ===== */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_280px] gap-4">
@@ -469,6 +347,130 @@ const TaskV2CardTab = ({
         <div className="flex-1 h-px bg-zinc-700/60" />
         <span className="text-[10px] uppercase tracking-widest text-zinc-500 font-medium">AI Estimation</span>
         <div className="flex-1 h-px bg-zinc-700/60" />
+      </div>
+
+      {/* ===== REFERENCE DATA (ข้อมูลอ้างอิงตอนสร้าง) ===== */}
+      <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 sm:p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-zinc-300">
+            <FileText size={18} className="text-secondary" />
+            <h3 className="font-bold text-sm">ข้อมูลอ้างอิง (Reference Data)</h3>
+          </div>
+          {onUpdateRef && !isEditingRef && (
+            <button
+              onClick={() => {
+                setEditDesc(aiRefDescription || "");
+                setEditImages(aiRefImages || []);
+                setIsEditingRef(true);
+              }}
+              className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md hover:bg-zinc-700/60 text-zinc-500 hover:text-zinc-300 transition-colors text-[11px]"
+            >
+              <Pencil size={11} />
+              <span>แก้ไข</span>
+            </button>
+          )}
+        </div>
+
+        {isEditingRef ? (
+          <div className="space-y-3">
+            <Textarea
+              label="คำอธิบายเพิ่มเติม"
+              placeholder="เช่น พื้นที่ 200 ตร.ม., บ้าน 2 ชั้น..."
+              labelPlacement="outside"
+              variant="bordered"
+              minRows={2}
+              maxRows={4}
+              value={editDesc}
+              onValueChange={setEditDesc}
+              classNames={{ input: "text-sm" }}
+            />
+
+            <div className="space-y-2">
+              <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+                <ImageIcon size={13} /> รูปภาพประกอบ
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {editImages.map((url, idx) => (
+                  <div key={idx} className="relative group w-16 h-16 rounded-lg overflow-hidden border border-zinc-700">
+                    <img src={url} alt={`ref ${idx + 1}`} className="w-full h-full object-cover" />
+                    <button
+                      type="button"
+                      onClick={() => setEditImages((prev) => prev.filter((_, i) => i !== idx))}
+                      className="absolute top-0.5 right-0.5 bg-black/60 hover:bg-red-500 text-white rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X size={12} />
+                    </button>
+                  </div>
+                ))}
+                <label className="w-16 h-16 flex flex-col items-center justify-center gap-0.5 border-2 border-dashed border-zinc-600 rounded-lg cursor-pointer hover:border-secondary hover:bg-secondary/5 transition-colors">
+                  {isUploadingImg ? (
+                    <span className="text-[9px] text-zinc-400">อัปโหลด...</span>
+                  ) : (
+                    <>
+                      <ImagePlus size={16} className="text-zinc-400" />
+                      <span className="text-[9px] text-zinc-400">เพิ่มรูป</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    multiple
+                    className="hidden"
+                    onChange={handleRefImageUpload}
+                    disabled={isUploadingImg}
+                  />
+                </label>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <Button size="sm" color="success" variant="flat" onPress={handleSaveRef} isLoading={isSavingRef} startContent={!isSavingRef ? <Check size={14} /> : undefined}>
+                บันทึก
+              </Button>
+              <Button size="sm" variant="flat" onPress={() => setIsEditingRef(false)} isDisabled={isSavingRef}>
+                ยกเลิก
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <>
+            {aiRefDescription ? (
+              <div className="text-sm text-zinc-400 bg-zinc-800/50 rounded-lg p-3 leading-relaxed">
+                {aiRefDescription}
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-600">ไม่มีคำอธิบายเพิ่มเติม</p>
+            )}
+
+            {aiRefImages && aiRefImages.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs text-zinc-500 flex items-center gap-1.5">
+                  <ImageIcon size={13} />
+                  รูปภาพประกอบ ({aiRefImages.length} รูป)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {aiRefImages.map((url, idx) => (
+                    <a
+                      key={idx}
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-20 h-20 rounded-lg overflow-hidden border border-zinc-700 hover:border-primary transition-colors"
+                    >
+                      <img
+                        src={url}
+                        alt={`ref ${idx + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-zinc-600">ไม่มีรูปภาพประกอบ</p>
+            )}
+          </>
+        )}
       </div>
 
       {/* ===== AI COST ESTIMATION ===== */}
