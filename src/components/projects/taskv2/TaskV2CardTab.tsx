@@ -55,6 +55,14 @@ const TaskV2CardTab = ({
   const [isSavingRef, setIsSavingRef] = useState(false);
   const [isUploadingImg, setIsUploadingImg] = useState(false);
 
+  // Sync edit state when props change (e.g. after save or re-analyze)
+  useEffect(() => {
+    if (!isEditingRef) {
+      setEditDesc(aiRefDescription || "");
+      setEditImages(aiRefImages || []);
+    }
+  }, [aiRefDescription, aiRefImages, isEditingRef]);
+
   const handleRefImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;

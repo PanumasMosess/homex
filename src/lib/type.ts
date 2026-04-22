@@ -819,6 +819,9 @@ export interface TaskV2DetailDialogProps {
     taskName?: string;
     aiRefDescription?: string | null;
     aiRefImages?: string[] | null;
+    phase?: string | null;
+    startPlanned?: string | null;
+    finishPlanned?: string | null;
   }) => Promise<void>;
 }
 

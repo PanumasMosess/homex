@@ -56,7 +56,7 @@ export async function createTaskV2(
 }
 
 /* ====================================================== */
-/* UPDATE TASK V2 INFO (ชื่อ, คำอธิบาย, รูปอ้างอิง)       */
+/* UPDATE TASK V2 INFO (ชื่อ, คำอธิบาย, รูปอ้างอิง, Phase, Planned dates) */
 /* ====================================================== */
 export async function updateTaskV2Info(
   taskId: number,
@@ -64,6 +64,9 @@ export async function updateTaskV2Info(
     taskName?: string;
     aiRefDescription?: string | null;
     aiRefImages?: string[] | null;
+    phase?: string | null;
+    startPlanned?: string | null;
+    finishPlanned?: string | null;
   }
 ): Promise<ActionState> {
   try {
@@ -84,6 +87,15 @@ export async function updateTaskV2Info(
     }
     if (data.aiRefImages !== undefined) {
       updateData.aiRefImages = data.aiRefImages ? JSON.stringify(data.aiRefImages) : null;
+    }
+    if (data.phase !== undefined) {
+      updateData.phase = data.phase;
+    }
+    if (data.startPlanned !== undefined) {
+      updateData.startPlanned = data.startPlanned ? new Date(data.startPlanned) : null;
+    }
+    if (data.finishPlanned !== undefined) {
+      updateData.finishPlanned = data.finishPlanned ? new Date(data.finishPlanned) : null;
     }
 
     await prisma.task.update({ where: { id: taskId }, data: updateData });
@@ -110,50 +122,62 @@ export async function replaceTaskV2AiData(
       return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
     }
 
-    // 1. Delete old subtasks
-    await prisma.task_detail.deleteMany({ where: { taskId } });
+    await prisma.$transaction(async (tx) => {
+      // 1. Delete old subtasks
+      await tx.task_detail.deleteMany({ where: { taskId } });
 
-    // 2. Save new AI data
-    await prisma.task.update({
-      where: { id: taskId },
-      data: {
-        estimatedBudget: aiData.costEstimation.totalEstimate,
-        aiMaterialPercent: aiData.costEstimation.breakdown.materialPercent,
-        aiMaterialCost: aiData.costEstimation.breakdown.materialCost,
-        aiLaborPercent: aiData.costEstimation.breakdown.laborPercent,
-        aiLaborCost: aiData.costEstimation.breakdown.laborCost,
-        aiMachineryPercent: aiData.costEstimation.breakdown.machineryPercent,
-        aiMachineryCost: aiData.costEstimation.breakdown.machineryCost,
-        estimatedDurationDays: aiData.durationEstimate.totalDays,
-        aiDurationAssumptions: aiData.durationEstimate.assumptions,
-        aiRisks: JSON.stringify(aiData.risks),
-        aiMaterials: JSON.stringify(aiData.materials),
-        phase: aiData.phase,
-        progressPercent: 0,
-      },
+      // 2. Save new AI data + reset status
+      await tx.task.update({
+        where: { id: taskId },
+        data: {
+          ...buildAiUpdateData(aiData),
+          progressPercent: 0,
+          status: "TODO",
+        },
+      });
+
+      // 3. Create new subtasks from checklist
+      if (aiData.checklist && aiData.checklist.length > 0) {
+        const subtaskData = aiData.checklist.map((item, index) => ({
+          detailName: item.name,
+          detailDesc: "",
+          status: false,
+          weightPercent: item.progressPercent,
+          progressPercent: 0,
+          sortOrder: index,
+          taskId,
+          projectId,
+          organizationId,
+        }));
+        await tx.task_detail.createMany({ data: subtaskData });
+      }
     });
-
-    // 3. Create new subtasks from checklist
-    if (aiData.checklist && aiData.checklist.length > 0) {
-      const subtaskData = aiData.checklist.map((item, index) => ({
-        detailName: item.name,
-        detailDesc: "",
-        status: false,
-        weightPercent: item.progressPercent,
-        progressPercent: 0,
-        sortOrder: index,
-        taskId,
-        projectId,
-        organizationId,
-      }));
-      await prisma.task_detail.createMany({ data: subtaskData });
-    }
 
     return { success: true, error: false, message: "วิเคราะห์ใหม่และบันทึกสำเร็จ" };
   } catch (error: any) {
     console.error("replaceTaskV2AiData error:", error);
     return { success: false, error: true, message: error.message || "บันทึกไม่สำเร็จ" };
   }
+}
+
+/* ====================================================== */
+/* HELPER: Build AI data update payload (shared)           */
+/* ====================================================== */
+function buildAiUpdateData(aiData: TaskV2AIResponse) {
+  return {
+    estimatedBudget: aiData.costEstimation.totalEstimate,
+    aiMaterialPercent: aiData.costEstimation.breakdown.materialPercent,
+    aiMaterialCost: aiData.costEstimation.breakdown.materialCost,
+    aiLaborPercent: aiData.costEstimation.breakdown.laborPercent,
+    aiLaborCost: aiData.costEstimation.breakdown.laborCost,
+    aiMachineryPercent: aiData.costEstimation.breakdown.machineryPercent,
+    aiMachineryCost: aiData.costEstimation.breakdown.machineryCost,
+    estimatedDurationDays: aiData.durationEstimate.totalDays,
+    aiDurationAssumptions: aiData.durationEstimate.assumptions,
+    aiRisks: JSON.stringify(aiData.risks),
+    aiMaterials: JSON.stringify(aiData.materials),
+    phase: aiData.phase,
+  };
 }
 
 /* ====================================================== */
@@ -172,20 +196,7 @@ export async function saveTaskV2AiData(
 
     await prisma.task.update({
       where: { id: taskId },
-      data: {
-        estimatedBudget: aiData.costEstimation.totalEstimate,
-        aiMaterialPercent: aiData.costEstimation.breakdown.materialPercent,
-        aiMaterialCost: aiData.costEstimation.breakdown.materialCost,
-        aiLaborPercent: aiData.costEstimation.breakdown.laborPercent,
-        aiLaborCost: aiData.costEstimation.breakdown.laborCost,
-        aiMachineryPercent: aiData.costEstimation.breakdown.machineryPercent,
-        aiMachineryCost: aiData.costEstimation.breakdown.machineryCost,
-        estimatedDurationDays: aiData.durationEstimate.totalDays,
-        aiDurationAssumptions: aiData.durationEstimate.assumptions,
-        aiRisks: JSON.stringify(aiData.risks),
-        aiMaterials: JSON.stringify(aiData.materials),
-        phase: aiData.phase,
-      },
+      data: buildAiUpdateData(aiData),
     });
 
     return { success: true, error: false, message: "บันทึกข้อมูล AI สำเร็จ" };

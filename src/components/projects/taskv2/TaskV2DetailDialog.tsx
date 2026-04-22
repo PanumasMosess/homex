@@ -69,6 +69,17 @@ const TaskV2DetailDialog = ({
   const [editNameValue, setEditNameValue] = useState("");
   const [isSavingName, setIsSavingName] = useState(false);
 
+  // Inline edit: phase
+  const [isEditingPhase, setIsEditingPhase] = useState(false);
+  const [editPhaseValue, setEditPhaseValue] = useState("");
+  const [isSavingPhase, setIsSavingPhase] = useState(false);
+
+  // Inline edit: planned dates
+  const [isEditingDates, setIsEditingDates] = useState(false);
+  const [editStartPlanned, setEditStartPlanned] = useState("");
+  const [editFinishPlanned, setEditFinishPlanned] = useState("");
+  const [isSavingDates, setIsSavingDates] = useState(false);
+
   // Re-analyze
   const [isReanalyzing, setIsReanalyzing] = useState(false);
   const [reanalyzePreview, setReanalyzePreview] = useState<TaskV2AIResponse | null>(null);
@@ -108,6 +119,53 @@ const TaskV2DetailDialog = ({
     }
   };
 
+  // Inline edit: save phase
+  const handleSavePhase = async () => {
+    if (!onUpdateTaskInfo) return;
+    setIsSavingPhase(true);
+    try {
+      await onUpdateTaskInfo({ phase: editPhaseValue.trim() || null });
+      setIsEditingPhase(false);
+    } catch {
+      toast.error("แก้ไข Phase ไม่สำเร็จ");
+    } finally {
+      setIsSavingPhase(false);
+    }
+  };
+
+  // Inline edit: save planned dates
+  const handleSaveDates = async () => {
+    if (!onUpdateTaskInfo) return;
+    setIsSavingDates(true);
+    try {
+      await onUpdateTaskInfo({
+        startPlanned: editStartPlanned || null,
+        finishPlanned: editFinishPlanned || null,
+      });
+      setIsEditingDates(false);
+    } catch {
+      toast.error("แก้ไขวันที่ไม่สำเร็จ");
+    } finally {
+      setIsSavingDates(false);
+    }
+  };
+
+  // Format date for display
+  const formatDate = (d: any) => {
+    if (!d) return "—";
+    try {
+      return new Date(d).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+    } catch { return "—"; }
+  };
+
+  // Format date for input[type=date]
+  const toDateInputValue = (d: any) => {
+    if (!d) return "";
+    try {
+      return new Date(d).toISOString().split("T")[0];
+    } catch { return ""; }
+  };
+
   // Re-analyze: run AI
   const handleReanalyze = async () => {
     if (!task) return;
@@ -123,7 +181,10 @@ const TaskV2DetailDialog = ({
             const res = await fetch(url);
             const blob = await res.blob();
             const arrayBuffer = await blob.arrayBuffer();
-            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            const bytes = new Uint8Array(arrayBuffer);
+            let binary = "";
+            bytes.forEach((b) => (binary += String.fromCharCode(b)));
+            const base64 = btoa(binary);
             return { base64, mimeType: blob.type || "image/jpeg" };
           })
         );
@@ -255,10 +316,52 @@ const TaskV2DetailDialog = ({
             <div className="p-4 sm:p-6 space-y-3 border-b border-zinc-800">
               <div className="flex items-center justify-between gap-3">
                 <div className="flex-1 min-w-0 space-y-1">
-                  <p className="text-xs text-zinc-400 flex items-center gap-1.5">
-                    <CalendarDays size={12} />
-                    {aiData?.phase || "—"} / {projectInfo.code}
-                  </p>
+                  {/* Phase (inline editable) */}
+                  {isEditingPhase ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editPhaseValue}
+                        onValueChange={setEditPhaseValue}
+                        size="sm"
+                        variant="bordered"
+                        autoFocus
+                        placeholder="เช่น Phase 1, งานโครงสร้าง..."
+                        classNames={{
+                          input: "text-xs text-white",
+                          inputWrapper: "bg-zinc-900/80 border-zinc-600 h-7 min-h-7",
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSavePhase();
+                          if (e.key === "Escape") setIsEditingPhase(false);
+                        }}
+                      />
+                      <Button isIconOnly size="sm" color="success" variant="flat" onPress={handleSavePhase} isLoading={isSavingPhase} className="h-7 w-7 min-w-7">
+                        <Check size={12} />
+                      </Button>
+                      <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setIsEditingPhase(false)} className="h-7 w-7 min-w-7">
+                        <X size={12} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs text-zinc-400 flex items-center gap-1.5">
+                        <CalendarDays size={12} />
+                        {aiData?.phase || task?.phase || "—"} / {projectInfo.code}
+                      </p>
+                      {onUpdateTaskInfo && (
+                        <button
+                          onClick={() => {
+                            setEditPhaseValue(aiData?.phase || task?.phase || "");
+                            setIsEditingPhase(true);
+                          }}
+                          className="p-0.5 rounded hover:bg-zinc-700/60 text-zinc-600 hover:text-zinc-300 transition-colors"
+                          title="แก้ไข Phase"
+                        >
+                          <Pencil size={10} />
+                        </button>
+                      )}
+                    </div>
+                  )}
 
                   {/* Inline editable task name */}
                   {isEditingName ? (
@@ -286,7 +389,7 @@ const TaskV2DetailDialog = ({
                       </Button>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 group">
+                    <div className="flex items-center gap-2">
                       <h2 className="text-lg sm:text-xl font-bold leading-tight break-words">
                         {task.taskName || "Untitled"}
                       </h2>
@@ -296,7 +399,7 @@ const TaskV2DetailDialog = ({
                             setEditNameValue(task.taskName || "");
                             setIsEditingName(true);
                           }}
-                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-zinc-700/60 text-zinc-500 hover:text-zinc-300 transition-all"
+                          className="p-1 rounded-md hover:bg-zinc-700/60 text-zinc-600 hover:text-zinc-300 transition-colors"
                           title="แก้ไขชื่องาน"
                         >
                           <Pencil size={13} />
@@ -305,9 +408,54 @@ const TaskV2DetailDialog = ({
                     </div>
                   )}
 
-                  <p className="text-xs text-zinc-500">
-                    Project: {projectInfo.name} ({projectInfo.code})
-                  </p>
+                  {/* Planned dates (inline editable) */}
+                  {isEditingDates ? (
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-zinc-500">เริ่ม:</span>
+                        <input
+                          type="date"
+                          value={editStartPlanned}
+                          onChange={(e) => setEditStartPlanned(e.target.value)}
+                          className="bg-zinc-900/80 border border-zinc-600 text-xs text-white rounded px-1.5 py-0.5 outline-none focus:border-primary"
+                        />
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-zinc-500">เสร็จ:</span>
+                        <input
+                          type="date"
+                          value={editFinishPlanned}
+                          onChange={(e) => setEditFinishPlanned(e.target.value)}
+                          className="bg-zinc-900/80 border border-zinc-600 text-xs text-white rounded px-1.5 py-0.5 outline-none focus:border-primary"
+                        />
+                      </div>
+                      <Button isIconOnly size="sm" color="success" variant="flat" onPress={handleSaveDates} isLoading={isSavingDates} className="h-6 w-6 min-w-6">
+                        <Check size={12} />
+                      </Button>
+                      <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setIsEditingDates(false)} className="h-6 w-6 min-w-6">
+                        <X size={12} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <p className="text-xs text-zinc-500">
+                        แผน: {formatDate(task.startPlanned)} – {formatDate(task.finishPlanned)} &middot; {projectInfo.name} ({projectInfo.code})
+                      </p>
+                      {onUpdateTaskInfo && (
+                        <button
+                          onClick={() => {
+                            setEditStartPlanned(toDateInputValue(task.startPlanned));
+                            setEditFinishPlanned(toDateInputValue(task.finishPlanned));
+                            setIsEditingDates(true);
+                          }}
+                          className="p-0.5 rounded hover:bg-zinc-700/60 text-zinc-600 hover:text-zinc-300 transition-colors"
+                          title="แก้ไขวันที่แผน"
+                        >
+                          <Pencil size={10} />
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Chip

@@ -413,6 +413,7 @@ const TaskV2Section = ({
                 aiMaterials: JSON.stringify(aiData.materials),
                 phase: aiData.phase,
                 progressPercent: 0,
+                status: "TODO",
                 details: aiData.checklist.map((c: any, i: number) => ({
                   id: Date.now() + i,
                   detailName: c.name,
@@ -434,6 +435,9 @@ const TaskV2Section = ({
       taskName?: string;
       aiRefDescription?: string | null;
       aiRefImages?: string[] | null;
+      phase?: string | null;
+      startPlanned?: string | null;
+      finishPlanned?: string | null;
     }) => {
       if (!selected) return;
       const res = await updateTaskV2Info(selected.id, data);
@@ -447,6 +451,9 @@ const TaskV2Section = ({
           if (data.taskName !== undefined) updated.taskName = data.taskName;
           if (data.aiRefDescription !== undefined) updated.aiRefDescription = data.aiRefDescription;
           if (data.aiRefImages !== undefined) updated.aiRefImages = data.aiRefImages ? JSON.stringify(data.aiRefImages) : null;
+          if (data.phase !== undefined) updated.phase = data.phase;
+          if (data.startPlanned !== undefined) updated.startPlanned = data.startPlanned;
+          if (data.finishPlanned !== undefined) updated.finishPlanned = data.finishPlanned;
           return updated;
         })
       );
