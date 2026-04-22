@@ -20,7 +20,7 @@ import {
 import type { TabTask, TaskV2SectionProps, TaskV2AIResponse } from "@/lib/type";
 import { toast } from "react-toastify";
 import { updateTaskStatus, updateMainTask, toggleSubtaskStatus, startTaskV2, submitTaskV2 } from "@/lib/actions/actionProject";
-import { reorderSubtasks, editSubtaskName } from "@/lib/actions/actionTaskV2";
+import { reorderSubtasks, editSubtaskName, replaceTaskV2AiData, updateTaskV2Info } from "@/lib/actions/actionTaskV2";
 import { addMaterialToProcurement } from "@/lib/actions/actionProcurementSuggestion";
 import MainTaskCard from "../MainTaskCard";
 import TaskFilterTabs from "../TaskFilterTabs";
@@ -383,6 +383,78 @@ const TaskV2Section = ({
     [selected, projectInfo.id, organizationId]
   );
 
+  const handleReanalyze = useCallback(
+    async (aiData: any) => {
+      if (!selected) return;
+      const res = await replaceTaskV2AiData(
+        selected.id,
+        Number(projectInfo.id),
+        organizationId,
+        aiData
+      );
+      if (!res.success) throw new Error(res.message || "บันทึกไม่สำเร็จ");
+
+      // Optimistic: refresh tasks data
+      setTasks((prev: any[]) =>
+        prev.map((t) =>
+          t.id === selected.id
+            ? {
+                ...t,
+                estimatedBudget: aiData.costEstimation.totalEstimate,
+                aiMaterialPercent: aiData.costEstimation.breakdown.materialPercent,
+                aiMaterialCost: aiData.costEstimation.breakdown.materialCost,
+                aiLaborPercent: aiData.costEstimation.breakdown.laborPercent,
+                aiLaborCost: aiData.costEstimation.breakdown.laborCost,
+                aiMachineryPercent: aiData.costEstimation.breakdown.machineryPercent,
+                aiMachineryCost: aiData.costEstimation.breakdown.machineryCost,
+                estimatedDurationDays: aiData.durationEstimate.totalDays,
+                aiDurationAssumptions: aiData.durationEstimate.assumptions,
+                aiRisks: JSON.stringify(aiData.risks),
+                aiMaterials: JSON.stringify(aiData.materials),
+                phase: aiData.phase,
+                progressPercent: 0,
+                details: aiData.checklist.map((c: any, i: number) => ({
+                  id: Date.now() + i,
+                  detailName: c.name,
+                  weightPercent: c.progressPercent,
+                  status: false,
+                  sortOrder: i,
+                  finishActual: null,
+                })),
+              }
+            : t
+        )
+      );
+    },
+    [selected, setTasks, projectInfo.id, organizationId]
+  );
+
+  const handleUpdateTaskInfo = useCallback(
+    async (data: {
+      taskName?: string;
+      aiRefDescription?: string | null;
+      aiRefImages?: string[] | null;
+    }) => {
+      if (!selected) return;
+      const res = await updateTaskV2Info(selected.id, data);
+      if (!res.success) throw new Error(res.message || "อัปเดตไม่สำเร็จ");
+
+      // Optimistic update
+      setTasks((prev: any[]) =>
+        prev.map((t) => {
+          if (t.id !== selected.id) return t;
+          const updated = { ...t };
+          if (data.taskName !== undefined) updated.taskName = data.taskName;
+          if (data.aiRefDescription !== undefined) updated.aiRefDescription = data.aiRefDescription;
+          if (data.aiRefImages !== undefined) updated.aiRefImages = data.aiRefImages ? JSON.stringify(data.aiRefImages) : null;
+          return updated;
+        })
+      );
+      toast.success("อัปเดตข้อมูลสำเร็จ");
+    },
+    [selected, setTasks]
+  );
+
   const handleDragEnd = useCallback(
     async (e: DragEndEvent) => {
       const { active, over } = e;
@@ -559,6 +631,8 @@ const TaskV2Section = ({
         onSubmitTask={handleSubmitTask}
         onBudgetChange={handleBudgetChange}
         onDeleteTask={handleDeleteTask}
+        onReanalyze={handleReanalyze}
+        onUpdateTaskInfo={handleUpdateTaskInfo}
       />
     </div>
   );

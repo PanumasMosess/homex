@@ -17,8 +17,33 @@ const withTimeout = <T>(promise: Promise<T>, ms: number): Promise<T> => {
   ]);
 };
 
-export const generateTaskV2Analysis = async (taskName: string) => {
-  const prompt = `ข้อมูลตั้งต้น (Task Name): "${taskName}"`;
+export const generateTaskV2Analysis = async (
+  taskName: string,
+  images?: { base64: string; mimeType: string }[],
+  description?: string,
+) => {
+  const textParts: string[] = [`ข้อมูลตั้งต้น (Task Name): "${taskName}"`];
+  if (description) {
+    textParts.push(`คำอธิบายเพิ่มเติม: "${description}"`);
+  }
+  if (images && images.length > 0) {
+    textParts.push(
+      `มีรูปภาพประกอบ ${images.length} รูป กรุณาวิเคราะห์รูปภาพประกอบด้วยเพื่อประเมินให้แม่นยำขึ้น`,
+    );
+  }
+
+  const userParts: any[] = [];
+  if (images && images.length > 0) {
+    for (const img of images) {
+      userParts.push({
+        inlineData: {
+          data: img.base64,
+          mimeType: img.mimeType,
+        },
+      });
+    }
+  }
+  userParts.push({ text: textParts.join("\n") });
 
   try {
     const result = await withTimeout(ai_gemini.models.generateContent({
@@ -27,7 +52,11 @@ export const generateTaskV2Analysis = async (taskName: string) => {
         systemInstruction: `
           คุณคือ AI ผู้เชี่ยวชาญระดับสูงด้านวิศวกรรมก่อสร้าง การประเมินราคา (Quantity Surveyor) และการบริหารโครงการ (Project Manager)
 
-          Task: กรุณาวิเคราะห์รายการทำงานก่อสร้างที่ได้รับ และสร้างข้อมูลประกอบการบริหารโครงการ 4 มิติ อย่างละเอียดเพื่อนำไปใช้ในระบบแอปพลิเคชันบริหารการก่อสร้าง
+          Task: กรุณาวิเคราะห์รายการทำงานก่อสร้างที่ได้รับ (ชื่องาน, รูปภาพประกอบ, คำอธิบายเพิ่มเติม) และสร้างข้อมูลประกอบการบริหารโครงการ 4 มิติ อย่างละเอียดเพื่อนำไปใช้ในระบบแอปพลิเคชันบริหารการก่อสร้าง
+
+          หมายเหตุ:
+          - ถ้ามีรูปภาพแนบมา ให้วิเคราะห์รูปภาพประกอบด้วย เพื่อประเมินขนาด ปริมาณ และรายละเอียดของงานให้แม่นยำมากขึ้น
+          - ถ้ามีคำอธิบายเพิ่มเติม ให้นำมาพิจารณาร่วมกับชื่องานและรูปภาพ
 
           Requirement: กรุณาตอบกลับเป็น JSON Object ที่มีโครงสร้างดังนี้อย่างเคร่งครัด:
 
@@ -84,7 +113,7 @@ export const generateTaskV2Analysis = async (taskName: string) => {
         temperature: 0.7,
         responseMimeType: "application/json",
       },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
+      contents: [{ role: "user", parts: userParts }],
     }), 60000);
 
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;

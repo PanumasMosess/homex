@@ -814,6 +814,12 @@ export interface TaskV2DetailDialogProps {
   onSubmitTask: (finishDate: string) => Promise<void>;
   onBudgetChange?: (newBudget: number) => void;
   onDeleteTask?: () => Promise<void>;
+  onReanalyze?: (aiData: TaskV2AIResponse) => Promise<void>;
+  onUpdateTaskInfo?: (data: {
+    taskName?: string;
+    aiRefDescription?: string | null;
+    aiRefImages?: string[] | null;
+  }) => Promise<void>;
 }
 
 export interface CreateTaskV2ModalProps {

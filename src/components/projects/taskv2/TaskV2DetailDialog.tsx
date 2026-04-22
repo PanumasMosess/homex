@@ -1,13 +1,16 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import {
   Modal,
   ModalContent,
+  ModalHeader,
   ModalBody,
+  ModalFooter,
   Chip,
   Progress,
   Button,
+  Input,
 } from "@heroui/react";
 import {
   FileText,
@@ -17,11 +20,21 @@ import {
   CalendarDays,
   Wallet,
   Trash2,
+  RefreshCw,
+  Pencil,
+  Check,
+  X,
+  Sparkles,
+  DollarSign,
+  AlertTriangle,
 } from "lucide-react";
+import { toast } from "react-toastify";
 import type {
   TaskV2DetailDialogProps,
   TaskV2ChecklistItem,
+  TaskV2AIResponse,
 } from "@/lib/type";
+import { generateTaskV2Analysis } from "@/lib/ai/taskV2AI";
 import TaskV2CardTab from "./TaskV2CardTab";
 import TaskV2ProcurementTab from "./TaskV2ProcurementTab";
 import TaskV2QCFieldTab from "./TaskV2QCFieldTab";
@@ -44,10 +57,31 @@ const TaskV2DetailDialog = ({
   onSubmitTask,
   onBudgetChange,
   onDeleteTask,
+  onReanalyze,
+  onUpdateTaskInfo,
 }: TaskV2DetailDialogProps) => {
   const [activeTab, setActiveTab] = useState<V2Tab>("card");
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  // Inline edit: task name
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [editNameValue, setEditNameValue] = useState("");
+  const [isSavingName, setIsSavingName] = useState(false);
+
+  // Re-analyze
+  const [isReanalyzing, setIsReanalyzing] = useState(false);
+  const [reanalyzePreview, setReanalyzePreview] = useState<TaskV2AIResponse | null>(null);
+  const [showReanalyzePreview, setShowReanalyzePreview] = useState(false);
+  const [isSavingReanalyze, setIsSavingReanalyze] = useState(false);
+
+  // Parse ref data from task
+  const aiRefImages = useMemo(() => {
+    if (!task?.aiRefImages) return [];
+    try { return JSON.parse(task.aiRefImages); } catch { return []; }
+  }, [task?.aiRefImages]);
+
+  const aiRefDescription = task?.aiRefDescription || null;
 
   const handleConfirmDelete = async () => {
     if (!onDeleteTask) return;
@@ -57,6 +91,79 @@ const TaskV2DetailDialog = ({
       setIsDeleteModalOpen(false);
     } finally {
       setIsDeletingTask(false);
+    }
+  };
+
+  // Inline edit: save task name
+  const handleSaveName = async () => {
+    if (!editNameValue.trim() || !onUpdateTaskInfo) return;
+    setIsSavingName(true);
+    try {
+      await onUpdateTaskInfo({ taskName: editNameValue.trim() });
+      setIsEditingName(false);
+    } catch {
+      toast.error("แก้ไขชื่อไม่สำเร็จ");
+    } finally {
+      setIsSavingName(false);
+    }
+  };
+
+  // Re-analyze: run AI
+  const handleReanalyze = async () => {
+    if (!task) return;
+    setIsReanalyzing(true);
+    setShowReanalyzePreview(false);
+    setReanalyzePreview(null);
+    try {
+      // Prepare images from S3 URLs → fetch and convert to base64
+      let imagePayloads: { base64: string; mimeType: string }[] | undefined;
+      if (aiRefImages.length > 0) {
+        const results = await Promise.allSettled(
+          aiRefImages.map(async (url: string) => {
+            const res = await fetch(url);
+            const blob = await res.blob();
+            const arrayBuffer = await blob.arrayBuffer();
+            const base64 = Buffer.from(arrayBuffer).toString("base64");
+            return { base64, mimeType: blob.type || "image/jpeg" };
+          })
+        );
+        imagePayloads = results
+          .filter((r): r is PromiseFulfilledResult<{ base64: string; mimeType: string }> => r.status === "fulfilled")
+          .map((r) => r.value);
+      }
+
+      const result = await generateTaskV2Analysis(
+        task.taskName || "",
+        imagePayloads,
+        aiRefDescription || undefined,
+      );
+
+      if (result) {
+        setReanalyzePreview(result);
+        setShowReanalyzePreview(true);
+      } else {
+        toast.error("AI วิเคราะห์ไม่สำเร็จ กรุณาลองใหม่");
+      }
+    } catch {
+      toast.error("เกิดข้อผิดพลาดในการวิเคราะห์");
+    } finally {
+      setIsReanalyzing(false);
+    }
+  };
+
+  // Re-analyze: confirm save
+  const handleConfirmReanalyze = async () => {
+    if (!reanalyzePreview || !onReanalyze) return;
+    setIsSavingReanalyze(true);
+    try {
+      await onReanalyze(reanalyzePreview);
+      setShowReanalyzePreview(false);
+      setReanalyzePreview(null);
+      toast.success("บันทึกผลวิเคราะห์ใหม่สำเร็จ");
+    } catch {
+      toast.error("บันทึกไม่สำเร็จ");
+    } finally {
+      setIsSavingReanalyze(false);
     }
   };
 
@@ -152,9 +259,52 @@ const TaskV2DetailDialog = ({
                     <CalendarDays size={12} />
                     {aiData?.phase || "—"} / {projectInfo.code}
                   </p>
-                  <h2 className="text-lg sm:text-xl font-bold leading-tight break-words">
-                    {task.taskName || "Untitled"}
-                  </h2>
+
+                  {/* Inline editable task name */}
+                  {isEditingName ? (
+                    <div className="flex items-center gap-2">
+                      <Input
+                        value={editNameValue}
+                        onValueChange={setEditNameValue}
+                        size="sm"
+                        variant="bordered"
+                        autoFocus
+                        classNames={{
+                          input: "text-lg font-bold text-white",
+                          inputWrapper: "bg-zinc-900/80 border-zinc-600 h-10",
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveName();
+                          if (e.key === "Escape") setIsEditingName(false);
+                        }}
+                      />
+                      <Button isIconOnly size="sm" color="success" variant="flat" onPress={handleSaveName} isLoading={isSavingName}>
+                        <Check size={14} />
+                      </Button>
+                      <Button isIconOnly size="sm" color="danger" variant="flat" onPress={() => setIsEditingName(false)}>
+                        <X size={14} />
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 group">
+                      <h2 className="text-lg sm:text-xl font-bold leading-tight break-words">
+                        {task.taskName || "Untitled"}
+                      </h2>
+                      {onUpdateTaskInfo && (
+                        <button
+                          onClick={() => {
+                            setEditNameValue(task.taskName || "");
+                            setIsEditingName(true);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 rounded-md hover:bg-zinc-700/60 text-zinc-500 hover:text-zinc-300 transition-all"
+                          title="แก้ไขชื่องาน"
+                        >
+                          <Pencil size={13} />
+                        </button>
+                      )}
+                    </div>
+                  )}
+
                   <p className="text-xs text-zinc-500">
                     Project: {projectInfo.name} ({projectInfo.code})
                   </p>
@@ -168,9 +318,22 @@ const TaskV2DetailDialog = ({
                   >
                     {getStatusLabel(task.status)}
                   </Chip>
+                  {onReanalyze && (
+                    <Button
+                      size="sm"
+                      color="secondary"
+                      variant="flat"
+                      onPress={handleReanalyze}
+                      isLoading={isReanalyzing}
+                      startContent={!isReanalyzing ? <RefreshCw size={14} /> : undefined}
+                    >
+                      วิเคราะห์ใหม่
+                    </Button>
+                  )}
                   {onDeleteTask && (
-
-                    <Button size="sm" color="danger" variant="flat" onPress={() => setIsDeleteModalOpen(true)} > 🗑️ ลบ </Button>
+                    <Button size="sm" color="danger" variant="flat" onPress={() => setIsDeleteModalOpen(true)}>
+                      <Trash2 size={14} /> ลบ
+                    </Button>
                   )}
                 </div>
               </div>
@@ -246,6 +409,12 @@ const TaskV2DetailDialog = ({
                       startActual={task.startActual || null}
                       finishActual={task.finishActual || null}
                       onBudgetChange={onBudgetChange}
+                      aiRefDescription={aiRefDescription}
+                      aiRefImages={aiRefImages}
+                      onUpdateRef={onUpdateTaskInfo ? async (data) => {
+                        await onUpdateTaskInfo(data);
+                      } : undefined}
+                      projectId={Number(projectInfo.id)}
                     />
                   )}
                   {activeTab === "prpo" && (
@@ -282,6 +451,133 @@ const TaskV2DetailDialog = ({
         isDeleting={isDeletingTask}
         onConfirm={handleConfirmDelete}
       />
+
+      {/* ===== Re-analyze Preview Modal ===== */}
+      <Modal
+        isOpen={showReanalyzePreview}
+        onOpenChange={(open) => {
+          if (!open && !isSavingReanalyze) {
+            setShowReanalyzePreview(false);
+          }
+        }}
+        size="3xl"
+        placement="center"
+        scrollBehavior="inside"
+        classNames={{
+          base: "bg-[#0f1117] text-white rounded-2xl",
+          closeButton: "text-zinc-400 hover:text-white",
+          body: "p-0",
+        }}
+      >
+        <ModalContent>
+          {reanalyzePreview && (
+            <>
+              <ModalHeader className="flex items-center gap-2 border-b border-zinc-800 px-6 py-4">
+                <Sparkles size={18} className="text-secondary" />
+                <span className="font-bold">ผลวิเคราะห์ใหม่จาก AI</span>
+              </ModalHeader>
+              <ModalBody className="p-6 space-y-4 max-h-[60vh] overflow-y-auto scrollbar-hide">
+                {/* Cost */}
+                <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-2">
+                  <div className="flex items-center gap-2 text-primary">
+                    <DollarSign size={16} />
+                    <h4 className="font-bold text-sm">ประเมินงบประมาณ</h4>
+                  </div>
+                  <p className="text-2xl font-bold">
+                    ฿ {reanalyzePreview.costEstimation.totalEstimate.toLocaleString("th-TH")}
+                  </p>
+                  <div className="grid grid-cols-3 gap-2 text-xs text-zinc-400">
+                    <div>วัสดุ: ฿{reanalyzePreview.costEstimation.breakdown.materialCost.toLocaleString("th-TH")}</div>
+                    <div>ค่าแรง: ฿{reanalyzePreview.costEstimation.breakdown.laborCost.toLocaleString("th-TH")}</div>
+                    <div>เครื่องจักร: ฿{reanalyzePreview.costEstimation.breakdown.machineryCost.toLocaleString("th-TH")}</div>
+                  </div>
+                </div>
+                {/* Duration */}
+                <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-1">
+                  <div className="flex items-center gap-2 text-primary">
+                    <CalendarDays size={16} />
+                    <h4 className="font-bold text-sm">ระยะเวลา</h4>
+                  </div>
+                  <p className="text-xl font-bold">{reanalyzePreview.durationEstimate.totalDays} วัน</p>
+                  <p className="text-xs text-zinc-500">{reanalyzePreview.durationEstimate.assumptions}</p>
+                </div>
+                {/* Risks */}
+                {reanalyzePreview.risks.length > 0 && (
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-2">
+                    <div className="flex items-center gap-2 text-warning">
+                      <AlertTriangle size={16} />
+                      <h4 className="font-bold text-sm">ความเสี่ยง ({reanalyzePreview.risks.length})</h4>
+                    </div>
+                    {reanalyzePreview.risks.map((r: any, i: number) => (
+                      <div key={i} className="text-xs text-zinc-400 bg-zinc-800/50 rounded-lg p-2">
+                        <span className="font-medium text-zinc-300">{r.name}</span>: {r.description}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {/* Checklist */}
+                {reanalyzePreview.checklist.length > 0 && (
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-2">
+                    <h4 className="font-bold text-sm text-zinc-300">Checklist ({reanalyzePreview.checklist.length} ขั้นตอน)</h4>
+                    <div className="space-y-1">
+                      {reanalyzePreview.checklist.map((c: any, i: number) => (
+                        <div key={i} className="flex items-center gap-2 text-xs text-zinc-400">
+                          <span className="text-zinc-600 font-mono w-5">{String(i + 1).padStart(2, "0")}</span>
+                          <span>{c.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* Materials */}
+                {reanalyzePreview.materials.length > 0 && (
+                  <div className="bg-zinc-900/60 border border-zinc-800 rounded-xl p-4 space-y-2">
+                    <h4 className="font-bold text-sm text-zinc-300">วัสดุ ({reanalyzePreview.materials.length} รายการ)</h4>
+                    <div className="space-y-1">
+                      {reanalyzePreview.materials.map((m: any, i: number) => (
+                        <div key={i} className="flex justify-between text-xs text-zinc-400">
+                          <span>{m.spec} ({m.quantity})</span>
+                          <span className="font-medium">฿{m.totalPrice.toLocaleString("th-TH")}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </ModalBody>
+              <ModalFooter className="border-t border-zinc-800 px-6 py-4 flex flex-col sm:flex-row gap-2">
+                <Button
+                  variant="flat"
+                  color="default"
+                  onPress={() => setShowReanalyzePreview(false)}
+                  isDisabled={isSavingReanalyze}
+                  className="sm:flex-1"
+                >
+                  ยกเลิก
+                </Button>
+                <Button
+                  variant="flat"
+                  color="secondary"
+                  onPress={handleReanalyze}
+                  isDisabled={isSavingReanalyze}
+                  startContent={<RefreshCw size={14} />}
+                  className="sm:flex-1"
+                >
+                  วิเคราะห์ใหม่อีกครั้ง
+                </Button>
+                <Button
+                  color="primary"
+                  onPress={handleConfirmReanalyze}
+                  isLoading={isSavingReanalyze}
+                  startContent={!isSavingReanalyze ? <Check size={14} /> : undefined}
+                  className="sm:flex-1 font-bold"
+                >
+                  บันทึกเพื่อแทนที่
+                </Button>
+              </ModalFooter>
+            </>
+          )}
+        </ModalContent>
+      </Modal>
     </Modal>
   );
 };

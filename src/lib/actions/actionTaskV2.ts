@@ -11,7 +11,9 @@ export async function createTaskV2(
   taskName: string,
   projectId: number,
   organizationId: number,
-  coverImageUrl?: string
+  coverImageUrl?: string,
+  aiRefDescription?: string,
+  aiRefImages?: string[], // JSON array of image URLs
 ): Promise<ActionState> {
   try {
     const session = await auth();
@@ -32,6 +34,8 @@ export async function createTaskV2(
         organizationId,
         projectId,
         createdById: Number(session.user.id),
+        aiRefDescription: aiRefDescription || null,
+        aiRefImages: aiRefImages && aiRefImages.length > 0 ? JSON.stringify(aiRefImages) : null,
       },
     });
 
@@ -52,7 +56,109 @@ export async function createTaskV2(
 }
 
 /* ====================================================== */
+/* UPDATE TASK V2 INFO (ชื่อ, คำอธิบาย, รูปอ้างอิง)       */
+/* ====================================================== */
+export async function updateTaskV2Info(
+  taskId: number,
+  data: {
+    taskName?: string;
+    aiRefDescription?: string | null;
+    aiRefImages?: string[] | null;
+  }
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
+    }
+
+    const updateData: any = {};
+    if (data.taskName !== undefined) {
+      if (!data.taskName.trim()) {
+        return { success: false, error: true, message: "ชื่องานต้องไม่ว่าง" };
+      }
+      updateData.taskName = data.taskName.trim();
+    }
+    if (data.aiRefDescription !== undefined) {
+      updateData.aiRefDescription = data.aiRefDescription;
+    }
+    if (data.aiRefImages !== undefined) {
+      updateData.aiRefImages = data.aiRefImages ? JSON.stringify(data.aiRefImages) : null;
+    }
+
+    await prisma.task.update({ where: { id: taskId }, data: updateData });
+
+    return { success: true, error: false, message: "อัปเดตข้อมูลงานสำเร็จ" };
+  } catch (error: any) {
+    console.error("updateTaskV2Info error:", error);
+    return { success: false, error: true, message: error.message || "อัปเดตไม่สำเร็จ" };
+  }
+}
+
+/* ====================================================== */
+/* REPLACE AI DATA (ลบ subtasks เก่า + เขียน AI data ใหม่)  */
+/* ====================================================== */
+export async function replaceTaskV2AiData(
+  taskId: number,
+  projectId: number,
+  organizationId: number,
+  aiData: TaskV2AIResponse
+): Promise<ActionState> {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return { success: false, error: true, message: "ไม่ได้เข้าสู่ระบบ" };
+    }
+
+    // 1. Delete old subtasks
+    await prisma.task_detail.deleteMany({ where: { taskId } });
+
+    // 2. Save new AI data
+    await prisma.task.update({
+      where: { id: taskId },
+      data: {
+        estimatedBudget: aiData.costEstimation.totalEstimate,
+        aiMaterialPercent: aiData.costEstimation.breakdown.materialPercent,
+        aiMaterialCost: aiData.costEstimation.breakdown.materialCost,
+        aiLaborPercent: aiData.costEstimation.breakdown.laborPercent,
+        aiLaborCost: aiData.costEstimation.breakdown.laborCost,
+        aiMachineryPercent: aiData.costEstimation.breakdown.machineryPercent,
+        aiMachineryCost: aiData.costEstimation.breakdown.machineryCost,
+        estimatedDurationDays: aiData.durationEstimate.totalDays,
+        aiDurationAssumptions: aiData.durationEstimate.assumptions,
+        aiRisks: JSON.stringify(aiData.risks),
+        aiMaterials: JSON.stringify(aiData.materials),
+        phase: aiData.phase,
+        progressPercent: 0,
+      },
+    });
+
+    // 3. Create new subtasks from checklist
+    if (aiData.checklist && aiData.checklist.length > 0) {
+      const subtaskData = aiData.checklist.map((item, index) => ({
+        detailName: item.name,
+        detailDesc: "",
+        status: false,
+        weightPercent: item.progressPercent,
+        progressPercent: 0,
+        sortOrder: index,
+        taskId,
+        projectId,
+        organizationId,
+      }));
+      await prisma.task_detail.createMany({ data: subtaskData });
+    }
+
+    return { success: true, error: false, message: "วิเคราะห์ใหม่และบันทึกสำเร็จ" };
+  } catch (error: any) {
+    console.error("replaceTaskV2AiData error:", error);
+    return { success: false, error: true, message: error.message || "บันทึกไม่สำเร็จ" };
+  }
+}
+
+/* ====================================================== */
 /* SAVE AI DATA → เขียนลงฟิลด์ต่าง ๆ ใน task โดยตรง       */
+/* (ใช้ตอนสร้างครั้งแรก)                                   */
 /* ====================================================== */
 export async function saveTaskV2AiData(
   taskId: number,
