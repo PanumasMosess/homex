@@ -357,11 +357,15 @@ model task {
   aiMachineryPercent Int?     @default(0)
   aiMachineryCost    Decimal? @db.Decimal(14, 2)
 
-  // 🌟 --- AI V2 Extra ---
+  // --- AI V2 Extra ---
   aiDurationAssumptions String? @db.Text
   aiRisks               String? @db.LongText // JSON array
   aiMaterials           String? @db.LongText // JSON array (Draft PR)
   phase                 String?
+
+  // --- AI Reference Data (ข้อมูลที่ผู้ใช้ใส่ตอนสร้าง Task) ---
+  aiRefDescription String? @db.Text     // คำอธิบายเพิ่มเติมสำหรับ AI
+  aiRefImages      String? @db.LongText // JSON array ของ image URLs
 
   // ---------- relations ----------
   details                task_detail[] // ขั้นตอนย่อยของ task
