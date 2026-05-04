@@ -38,9 +38,9 @@ export default function CalendarView({ data, dependencies = [], projectStart }: 
         if (!task || !prev) return;
 
         const prevEnd = new Date(prev.startDate);
-        prevEnd.setDate(prevEnd.getDate() + prev.durationDay);
+        prevEnd.setDate(prevEnd.getDate() + prev.durationDay - 1);
 
-        if (new Date(task.startDate) < prevEnd) {
+        if (new Date(task.startDate) <= prevEnd) {
           task.startDate = new Date(prevEnd);
           changed = true;
         }
@@ -91,15 +91,15 @@ export default function CalendarView({ data, dependencies = [], projectStart }: 
 
     sorted.forEach(task => {
       const s = new Date(task.startDate).getTime();
-      const e = s + task.durationDay * 86400000;
+      const e = s + (task.durationDay - 1) * 86400000;
 
       let placed = false;
 
       for (let i = 0; i < tracks.length; i++) {
         const overlap = tracks[i].find(t => {
           const ts = new Date(t.startDate).getTime();
-          const te = ts + t.durationDay * 86400000;
-          return s < te && e > ts;
+          const te = ts + (t.durationDay - 1) * 86400000;
+          return s <= te && e >= ts;
         });
 
         if (!overlap) {
@@ -129,7 +129,7 @@ export default function CalendarView({ data, dependencies = [], projectStart }: 
 
     const weekTasks = adjustedTasks.filter(t => {
       const s = new Date(t.startDate).getTime();
-      const e = s + t.durationDay * 86400000;
+      const e = s + (t.durationDay - 1) * 86400000;
       return s <= weekEnd && e >= weekStart;
     });
 
@@ -141,7 +141,7 @@ export default function CalendarView({ data, dependencies = [], projectStart }: 
           <div key={i} className="relative h-6 mb-1">
             {track.map(task => {
               const s = new Date(task.startDate).getTime();
-              const e = s + task.durationDay * 86400000;
+              const e = s + (task.durationDay - 1) * 86400000;
 
               const start = Math.max(0, Math.floor((s - weekStart) / 86400000));
               const end = Math.min(6, Math.floor((e - weekStart) / 86400000));
