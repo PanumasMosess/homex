@@ -49,6 +49,9 @@ export const generateTaskV2Analysis = async (
     const result = await withTimeout(ai_gemini.models.generateContent({
       model: model_version,
       config: {
+        thinkingConfig: {
+          thinkingBudget: 2048,
+        },
         systemInstruction: `
           คุณคือ AI ผู้เชี่ยวชาญระดับสูงด้านวิศวกรรมก่อสร้าง การประเมินราคา (Quantity Surveyor) และการบริหารโครงการ (Project Manager)
 
@@ -114,7 +117,7 @@ export const generateTaskV2Analysis = async (
         responseMimeType: "application/json",
       },
       contents: [{ role: "user", parts: userParts }],
-    }), 60000);
+    }), 180000);
 
     const responseText = result.candidates?.[0]?.content?.parts?.[0]?.text;
 

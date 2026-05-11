@@ -22,6 +22,38 @@ import { uploadImageFormData } from "@/lib/actions/actionIndex";
 import { generateTaskV2Analysis } from "@/lib/ai/taskV2AI";
 import { generationImage } from "@/lib/ai/geminiAI";
 
+const MAX_AI_IMAGES = 5;
+
+const resizeImageForAI = (file: File, maxSize = 1024): Promise<{ base64: string; mimeType: string }> => {
+  return new Promise((resolve, reject) => {
+    const img = new window.Image();
+    const url = URL.createObjectURL(file);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      let { width, height } = img;
+      if (width > maxSize || height > maxSize) {
+        const ratio = Math.min(maxSize / width, maxSize / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+      const canvas = document.createElement("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas not supported"));
+      ctx.drawImage(img, 0, 0, width, height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.8);
+      const base64 = dataUrl.split(",")[1];
+      resolve({ base64, mimeType: "image/jpeg" });
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Failed to load image"));
+    };
+    img.src = url;
+  });
+};
+
 const AI_STEPS = [
   { label: "สร้างรูปภาพปกงาน" },
   { label: "บันทึกข้อมูลงานลงระบบ" },
@@ -57,10 +89,20 @@ const CreateTaskV2Modal = ({
     if (validFiles.length !== files.length) {
       toast.warning("บางไฟล์ไม่ถูกต้อง (รองรับ JPG, PNG, WebP ขนาดไม่เกิน 10MB)");
     }
-    setAiImages((prev) => [...prev, ...validFiles]);
+    const remaining = MAX_AI_IMAGES - aiImages.length;
+    if (remaining <= 0) {
+      toast.warning(`อัพโหลดได้สูงสุด ${MAX_AI_IMAGES} รูป`);
+      e.target.value = "";
+      return;
+    }
+    const filesToAdd = validFiles.slice(0, remaining);
+    if (filesToAdd.length < validFiles.length) {
+      toast.warning(`อัพโหลดได้สูงสุด ${MAX_AI_IMAGES} รูป (เพิ่มได้อีก ${remaining} รูป)`);
+    }
+    setAiImages((prev) => [...prev, ...filesToAdd]);
     setAiImagePreviews((prev) => [
       ...prev,
-      ...validFiles.map((f) => URL.createObjectURL(f)),
+      ...filesToAdd.map((f) => URL.createObjectURL(f)),
     ]);
     e.target.value = "";
   };
@@ -87,11 +129,7 @@ const CreateTaskV2Modal = ({
       let imagePayloads: { base64: string; mimeType: string }[] | undefined;
       if (aiImages.length > 0) {
         imagePayloads = await Promise.all(
-          aiImages.map(async (file) => {
-            const arrayBuffer = await file.arrayBuffer();
-            const base64 = Buffer.from(arrayBuffer).toString("base64");
-            return { base64, mimeType: file.type };
-          }),
+          aiImages.map((file) => resizeImageForAI(file, 1024)),
         );
       }
 
